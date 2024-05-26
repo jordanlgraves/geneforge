@@ -1,0 +1,232 @@
+<?xml version="1.0" encoding="utf-8"?>
+<rdf:RDF
+   xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+   xmlns:sbol="http://sbols.org/v3#"
+>
+  <rdf:Description rdf:about="http://sys-bio.org/random_ffl_gene_circuit">
+    <sbol:displayId>random_ffl_gene_circuit</sbol:displayId>
+    <rdf:type rdf:resource="http://sbols.org/v3#Component"/>
+    <sbol:hasNamespace rdf:resource="http://sys-bio.org"/>
+    <sbol:type rdf:resource="https://identifiers.org/SBO:0000241"/>
+    <sbol:hasFeature rdf:resource="http://sys-bio.org/random_ffl_gene_circuit/SubComponent1"/>
+    <sbol:hasFeature rdf:resource="http://sys-bio.org/random_ffl_gene_circuit/SubComponent2"/>
+    <sbol:hasFeature rdf:resource="http://sys-bio.org/random_ffl_gene_circuit/SubComponent3"/>
+    <sbol:hasFeature rdf:resource="http://sys-bio.org/random_ffl_gene_circuit/SubComponent4"/>
+    <sbol:hasFeature rdf:resource="http://sys-bio.org/random_ffl_gene_circuit/SubComponent5"/>
+    <sbol:hasFeature rdf:resource="http://sys-bio.org/random_ffl_gene_circuit/SubComponent6"/>
+    <sbol:hasFeature rdf:resource="http://sys-bio.org/random_ffl_gene_circuit/SubComponent7"/>
+    <sbol:hasFeature rdf:resource="http://sys-bio.org/random_ffl_gene_circuit/SubComponent8"/>
+    <sbol:hasFeature rdf:resource="http://sys-bio.org/random_ffl_gene_circuit/SubComponent9"/>
+    <sbol:hasFeature rdf:resource="http://sys-bio.org/random_ffl_gene_circuit/SubComponent10"/>
+    <sbol:hasFeature rdf:resource="http://sys-bio.org/random_ffl_gene_circuit/SubComponent11"/>
+    <sbol:hasFeature rdf:resource="http://sys-bio.org/random_ffl_gene_circuit/SubComponent12"/>
+    <sbol:hasConstraint rdf:resource="http://sys-bio.org/random_ffl_gene_circuit/Constraint1"/>
+    <sbol:hasConstraint rdf:resource="http://sys-bio.org/random_ffl_gene_circuit/Constraint2"/>
+    <sbol:hasConstraint rdf:resource="http://sys-bio.org/random_ffl_gene_circuit/Constraint3"/>
+    <sbol:hasConstraint rdf:resource="http://sys-bio.org/random_ffl_gene_circuit/Constraint4"/>
+    <sbol:hasConstraint rdf:resource="http://sys-bio.org/random_ffl_gene_circuit/Constraint5"/>
+    <sbol:hasConstraint rdf:resource="http://sys-bio.org/random_ffl_gene_circuit/Constraint6"/>
+    <sbol:hasConstraint rdf:resource="http://sys-bio.org/random_ffl_gene_circuit/Constraint7"/>
+    <sbol:hasConstraint rdf:resource="http://sys-bio.org/random_ffl_gene_circuit/Constraint8"/>
+    <sbol:hasConstraint rdf:resource="http://sys-bio.org/random_ffl_gene_circuit/Constraint9"/>
+    <sbol:hasConstraint rdf:resource="http://sys-bio.org/random_ffl_gene_circuit/Constraint10"/>
+    <sbol:hasConstraint rdf:resource="http://sys-bio.org/random_ffl_gene_circuit/Constraint11"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="http://sys-bio.org/random_ffl_gene_circuit/Constraint11">
+    <sbol:displayId>Constraint11</sbol:displayId>
+    <rdf:type rdf:resource="http://sbols.org/v3#Constraint"/>
+    <sbol:restriction rdf:resource="http://sbols.org/v3#precedes"/>
+    <sbol:subject rdf:resource="http://sys-bio.org/random_ffl_gene_circuit/SubComponent11"/>
+    <sbol:object rdf:resource="http://sys-bio.org/random_ffl_gene_circuit/SubComponent12"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="http://sys-bio.org/random_ffl_gene_circuit/SubComponent8">
+    <sbol:displayId>SubComponent8</sbol:displayId>
+    <rdf:type rdf:resource="http://sbols.org/v3#SubComponent"/>
+    <sbol:instanceOf rdf:resource="http://sys-bio.org/BBa_B0034"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="http://sys-bio.org/random_ffl_gene_circuit/SubComponent11">
+    <sbol:displayId>SubComponent11</sbol:displayId>
+    <rdf:type rdf:resource="http://sbols.org/v3#SubComponent"/>
+    <sbol:instanceOf rdf:resource="http://sys-bio.org/BBa_J23119"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="http://sys-bio.org/random_ffl_gene_circuit/Constraint1">
+    <sbol:displayId>Constraint1</sbol:displayId>
+    <rdf:type rdf:resource="http://sbols.org/v3#Constraint"/>
+    <sbol:restriction rdf:resource="http://sbols.org/v3#precedes"/>
+    <sbol:subject rdf:resource="http://sys-bio.org/random_ffl_gene_circuit/SubComponent1"/>
+    <sbol:object rdf:resource="http://sys-bio.org/random_ffl_gene_circuit/SubComponent2"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="http://sys-bio.org/random_ffl_gene_circuit/Constraint9">
+    <sbol:displayId>Constraint9</sbol:displayId>
+    <rdf:type rdf:resource="http://sbols.org/v3#Constraint"/>
+    <sbol:restriction rdf:resource="http://sbols.org/v3#precedes"/>
+    <sbol:subject rdf:resource="http://sys-bio.org/random_ffl_gene_circuit/SubComponent9"/>
+    <sbol:object rdf:resource="http://sys-bio.org/random_ffl_gene_circuit/SubComponent10"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="http://sys-bio.org/BBa_E0040">
+    <sbol:displayId>BBa_E0040</sbol:displayId>
+    <sbol:name>cds_BBa_E0040</sbol:name>
+    <sbol:description>green fluorescent protein derived from jellyfish Aequeora victoria wild-type GFP (SwissProt: P42212</sbol:description>
+    <rdf:type rdf:resource="http://sbols.org/v3#Component"/>
+    <sbol:hasNamespace rdf:resource="http://sys-bio.org"/>
+    <sbol:type rdf:resource="https://identifiers.org/SBO:0000251"/>
+    <sbol:role rdf:resource="http://wiki.synbiohub.org/wiki/Terms/igem#partType/Coding"/>
+    <sbol:role rdf:resource="http://identifiers.org/so/SO:0000316"/>
+    <sbol:role rdf:resource="https://identifiers.org/SO:0000316"/>
+    <sbol:hasSequence rdf:resource="http://sys-bio.org/httpssynbiohuborgpublicigemBBa_E0040_sequence1"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="http://sys-bio.org/random_ffl_gene_circuit/Constraint10">
+    <sbol:displayId>Constraint10</sbol:displayId>
+    <rdf:type rdf:resource="http://sbols.org/v3#Constraint"/>
+    <sbol:restriction rdf:resource="http://sbols.org/v3#precedes"/>
+    <sbol:subject rdf:resource="http://sys-bio.org/random_ffl_gene_circuit/SubComponent10"/>
+    <sbol:object rdf:resource="http://sys-bio.org/random_ffl_gene_circuit/SubComponent11"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="http://sys-bio.org/random_ffl_gene_circuit/SubComponent6">
+    <sbol:displayId>SubComponent6</sbol:displayId>
+    <rdf:type rdf:resource="http://sbols.org/v3#SubComponent"/>
+    <sbol:instanceOf rdf:resource="http://sys-bio.org/BBa_J23119"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="http://sys-bio.org/random_ffl_gene_circuit/SubComponent12">
+    <sbol:displayId>SubComponent12</sbol:displayId>
+    <rdf:type rdf:resource="http://sbols.org/v3#SubComponent"/>
+    <sbol:instanceOf rdf:resource="http://sys-bio.org/BBa_B0034"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="http://sys-bio.org/random_ffl_gene_circuit/Constraint4">
+    <sbol:displayId>Constraint4</sbol:displayId>
+    <rdf:type rdf:resource="http://sbols.org/v3#Constraint"/>
+    <sbol:restriction rdf:resource="http://sbols.org/v3#precedes"/>
+    <sbol:subject rdf:resource="http://sys-bio.org/random_ffl_gene_circuit/SubComponent4"/>
+    <sbol:object rdf:resource="http://sys-bio.org/random_ffl_gene_circuit/SubComponent5"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="http://sys-bio.org/random_ffl_gene_circuit/Constraint7">
+    <sbol:displayId>Constraint7</sbol:displayId>
+    <rdf:type rdf:resource="http://sbols.org/v3#Constraint"/>
+    <sbol:restriction rdf:resource="http://sbols.org/v3#precedes"/>
+    <sbol:subject rdf:resource="http://sys-bio.org/random_ffl_gene_circuit/SubComponent7"/>
+    <sbol:object rdf:resource="http://sys-bio.org/random_ffl_gene_circuit/SubComponent8"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="http://sys-bio.org/random_ffl_gene_circuit/Constraint3">
+    <sbol:displayId>Constraint3</sbol:displayId>
+    <rdf:type rdf:resource="http://sbols.org/v3#Constraint"/>
+    <sbol:restriction rdf:resource="http://sbols.org/v3#precedes"/>
+    <sbol:subject rdf:resource="http://sys-bio.org/random_ffl_gene_circuit/SubComponent3"/>
+    <sbol:object rdf:resource="http://sys-bio.org/random_ffl_gene_circuit/SubComponent4"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="http://sys-bio.org/random_ffl_gene_circuit/SubComponent2">
+    <sbol:displayId>SubComponent2</sbol:displayId>
+    <rdf:type rdf:resource="http://sbols.org/v3#SubComponent"/>
+    <sbol:instanceOf rdf:resource="http://sys-bio.org/BBa_B0034"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="http://sys-bio.org/random_ffl_gene_circuit/SubComponent7">
+    <sbol:displayId>SubComponent7</sbol:displayId>
+    <rdf:type rdf:resource="http://sbols.org/v3#SubComponent"/>
+    <sbol:instanceOf rdf:resource="http://sys-bio.org/BBa_J23100"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="http://sys-bio.org/BBa_J23100">
+    <sbol:displayId>BBa_J23100</sbol:displayId>
+    <sbol:name>promoter_BBa_J23100</sbol:name>
+    <sbol:description>constitutive promoter family member</sbol:description>
+    <rdf:type rdf:resource="http://sbols.org/v3#Component"/>
+    <sbol:hasNamespace rdf:resource="http://sys-bio.org"/>
+    <sbol:type rdf:resource="https://identifiers.org/SBO:0000251"/>
+    <sbol:role rdf:resource="http://wiki.synbiohub.org/wiki/Terms/igem#partType/Regulatory"/>
+    <sbol:role rdf:resource="http://identifiers.org/so/SO:0000167"/>
+    <sbol:role rdf:resource="https://identifiers.org/SO:0000167"/>
+    <sbol:hasSequence rdf:resource="http://sys-bio.org/httpssynbiohuborgpublicigemBBa_J23100_sequence1"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="http://sys-bio.org/BBa_J23119">
+    <sbol:displayId>BBa_J23119</sbol:displayId>
+    <sbol:name>promoter_BBa_J23119</sbol:name>
+    <sbol:description>constitutive promoter family member</sbol:description>
+    <rdf:type rdf:resource="http://sbols.org/v3#Component"/>
+    <sbol:hasNamespace rdf:resource="http://sys-bio.org"/>
+    <sbol:type rdf:resource="https://identifiers.org/SBO:0000251"/>
+    <sbol:role rdf:resource="http://wiki.synbiohub.org/wiki/Terms/igem#partType/Regulatory"/>
+    <sbol:role rdf:resource="http://identifiers.org/so/SO:0000167"/>
+    <sbol:role rdf:resource="https://identifiers.org/SO:0000167"/>
+    <sbol:hasSequence rdf:resource="http://sys-bio.org/httpssynbiohuborgpublicigemBBa_J23119_sequence1"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="http://sys-bio.org/random_ffl_gene_circuit/Constraint8">
+    <sbol:displayId>Constraint8</sbol:displayId>
+    <rdf:type rdf:resource="http://sbols.org/v3#Constraint"/>
+    <sbol:restriction rdf:resource="http://sbols.org/v3#precedes"/>
+    <sbol:subject rdf:resource="http://sys-bio.org/random_ffl_gene_circuit/SubComponent8"/>
+    <sbol:object rdf:resource="http://sys-bio.org/random_ffl_gene_circuit/SubComponent9"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="http://sys-bio.org/BBa_B0015">
+    <sbol:displayId>BBa_B0015</sbol:displayId>
+    <sbol:name>terminator_BBa_B0015</sbol:name>
+    <sbol:description>double terminator (B0010-B0012)</sbol:description>
+    <rdf:type rdf:resource="http://sbols.org/v3#Component"/>
+    <sbol:hasNamespace rdf:resource="http://sys-bio.org"/>
+    <sbol:type rdf:resource="https://identifiers.org/SBO:0000251"/>
+    <sbol:role rdf:resource="http://identifiers.org/so/SO:0000141"/>
+    <sbol:role rdf:resource="http://wiki.synbiohub.org/wiki/Terms/igem#partType/Terminator"/>
+    <sbol:role rdf:resource="https://identifiers.org/SO:0000141"/>
+    <sbol:hasSequence rdf:resource="http://sys-bio.org/httpssynbiohuborgpublicigemBBa_B0015_sequence1"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="http://sys-bio.org/random_ffl_gene_circuit/Constraint5">
+    <sbol:displayId>Constraint5</sbol:displayId>
+    <rdf:type rdf:resource="http://sbols.org/v3#Constraint"/>
+    <sbol:restriction rdf:resource="http://sbols.org/v3#precedes"/>
+    <sbol:subject rdf:resource="http://sys-bio.org/random_ffl_gene_circuit/SubComponent5"/>
+    <sbol:object rdf:resource="http://sys-bio.org/random_ffl_gene_circuit/SubComponent6"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="http://sys-bio.org/random_ffl_gene_circuit/Constraint2">
+    <sbol:displayId>Constraint2</sbol:displayId>
+    <rdf:type rdf:resource="http://sbols.org/v3#Constraint"/>
+    <sbol:restriction rdf:resource="http://sbols.org/v3#precedes"/>
+    <sbol:subject rdf:resource="http://sys-bio.org/random_ffl_gene_circuit/SubComponent2"/>
+    <sbol:object rdf:resource="http://sys-bio.org/random_ffl_gene_circuit/SubComponent3"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="http://sys-bio.org/BBa_B0034">
+    <sbol:displayId>BBa_B0034</sbol:displayId>
+    <sbol:name>rbs_BBa_B0034</sbol:name>
+    <sbol:description>RBS (Elowitz 1999) -- defines RBS efficiency</sbol:description>
+    <rdf:type rdf:resource="http://sbols.org/v3#Component"/>
+    <sbol:hasNamespace rdf:resource="http://sys-bio.org"/>
+    <sbol:type rdf:resource="https://identifiers.org/SBO:0000251"/>
+    <sbol:role rdf:resource="http://identifiers.org/so/SO:0000139"/>
+    <sbol:role rdf:resource="http://wiki.synbiohub.org/wiki/Terms/igem#partType/RBS"/>
+    <sbol:role rdf:resource="https://identifiers.org/SO:0000139"/>
+    <sbol:hasSequence rdf:resource="http://sys-bio.org/httpssynbiohuborgpublicigemBBa_B0034_sequence1"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="http://sys-bio.org/random_ffl_gene_circuit/SubComponent3">
+    <sbol:displayId>SubComponent3</sbol:displayId>
+    <rdf:type rdf:resource="http://sbols.org/v3#SubComponent"/>
+    <sbol:instanceOf rdf:resource="http://sys-bio.org/BBa_J23100"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="http://sys-bio.org/random_ffl_gene_circuit/SubComponent1">
+    <sbol:displayId>SubComponent1</sbol:displayId>
+    <rdf:type rdf:resource="http://sbols.org/v3#SubComponent"/>
+    <sbol:instanceOf rdf:resource="http://sys-bio.org/BBa_J23100"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="http://sys-bio.org/random_ffl_gene_circuit/SubComponent4">
+    <sbol:displayId>SubComponent4</sbol:displayId>
+    <rdf:type rdf:resource="http://sbols.org/v3#SubComponent"/>
+    <sbol:instanceOf rdf:resource="http://sys-bio.org/BBa_J23100"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="http://sys-bio.org/random_ffl_gene_circuit/Constraint6">
+    <sbol:displayId>Constraint6</sbol:displayId>
+    <rdf:type rdf:resource="http://sbols.org/v3#Constraint"/>
+    <sbol:restriction rdf:resource="http://sbols.org/v3#precedes"/>
+    <sbol:subject rdf:resource="http://sys-bio.org/random_ffl_gene_circuit/SubComponent6"/>
+    <sbol:object rdf:resource="http://sys-bio.org/random_ffl_gene_circuit/SubComponent7"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="http://sys-bio.org/random_ffl_gene_circuit/SubComponent5">
+    <sbol:displayId>SubComponent5</sbol:displayId>
+    <rdf:type rdf:resource="http://sbols.org/v3#SubComponent"/>
+    <sbol:instanceOf rdf:resource="http://sys-bio.org/BBa_B0034"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="http://sys-bio.org/random_ffl_gene_circuit/SubComponent9">
+    <sbol:displayId>SubComponent9</sbol:displayId>
+    <rdf:type rdf:resource="http://sbols.org/v3#SubComponent"/>
+    <sbol:instanceOf rdf:resource="http://sys-bio.org/BBa_E0040"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="http://sys-bio.org/random_ffl_gene_circuit/SubComponent10">
+    <sbol:displayId>SubComponent10</sbol:displayId>
+    <rdf:type rdf:resource="http://sbols.org/v3#SubComponent"/>
+    <sbol:instanceOf rdf:resource="http://sys-bio.org/BBa_B0015"/>
+  </rdf:Description>
+</rdf:RDF>
