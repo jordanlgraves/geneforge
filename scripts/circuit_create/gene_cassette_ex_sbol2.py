@@ -32,5 +32,5 @@ b0012.sequence = Sequence('B0012', 'attcga')
 target_sequence = gene.compile()
 print(gene.sequence.elements)
 
-result = doc.write('gene_cassette.xml')
+result = doc.write('parts/gene_cassette.xml')
 print(result)

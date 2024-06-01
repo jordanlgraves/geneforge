@@ -42,6 +42,6 @@ ex_component1.assemblePrimaryStructure([promoter, rbs, cds, terminator])
 ex_component2.assemblePrimaryStructure([promoter2, rbs2, cds2, terminator2])
 
 # Save the document
-output_file = 'multi_part_gene_circuit.xml'
+output_file = 'parts/multi_part_gene_circuit.xml'
 doc.write(output_file)
 print(f'SBOL document written to {output_file}')
