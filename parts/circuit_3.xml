@@ -1,0 +1,95 @@
+<?xml version="1.0" encoding="utf-8"?>
+<rdf:RDF
+   xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+   xmlns:sbol="http://sbols.org/v3#"
+>
+  <rdf:Description rdf:about="http://sys-bio.org/circuit/SubComponent1">
+    <sbol:displayId>SubComponent1</sbol:displayId>
+    <rdf:type rdf:resource="http://sbols.org/v3#SubComponent"/>
+    <sbol:instanceOf rdf:resource="http://sys-bio.org/pTetR"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="http://sys-bio.org/circuit/Constraint1">
+    <sbol:displayId>Constraint1</sbol:displayId>
+    <rdf:type rdf:resource="http://sbols.org/v3#Constraint"/>
+    <sbol:restriction rdf:resource="http://sbols.org/v3#precedes"/>
+    <sbol:subject rdf:resource="http://sys-bio.org/circuit/SubComponent1"/>
+    <sbol:object rdf:resource="http://sys-bio.org/circuit/SubComponent2"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="http://sys-bio.org/pTetR">
+    <sbol:displayId>pTetR</sbol:displayId>
+    <sbol:name>pTetR</sbol:name>
+    <sbol:description>TetR repressible promoter</sbol:description>
+    <rdf:type rdf:resource="http://sbols.org/v3#Component"/>
+    <sbol:hasNamespace rdf:resource="http://sys-bio.org"/>
+    <sbol:type rdf:resource="https://identifiers.org/SBO:0000251"/>
+    <sbol:role rdf:resource="https://identifiers.org/SO:0000167"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="http://sys-bio.org/circuit/SubComponent3">
+    <sbol:displayId>SubComponent3</sbol:displayId>
+    <rdf:type rdf:resource="http://sbols.org/v3#SubComponent"/>
+    <sbol:instanceOf rdf:resource="http://sys-bio.org/UTR1"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="http://sys-bio.org/circuit">
+    <sbol:displayId>circuit</sbol:displayId>
+    <rdf:type rdf:resource="http://sbols.org/v3#Component"/>
+    <sbol:hasNamespace rdf:resource="http://sys-bio.org"/>
+    <sbol:type rdf:resource="https://identifiers.org/SBO:0000251"/>
+    <sbol:role rdf:resource="https://identifiers.org/SO:0000804"/>
+    <sbol:hasFeature rdf:resource="http://sys-bio.org/circuit/SubComponent1"/>
+    <sbol:hasFeature rdf:resource="http://sys-bio.org/circuit/SubComponent2"/>
+    <sbol:hasFeature rdf:resource="http://sys-bio.org/circuit/SubComponent3"/>
+    <sbol:hasFeature rdf:resource="http://sys-bio.org/circuit/SubComponent4"/>
+    <sbol:hasConstraint rdf:resource="http://sys-bio.org/circuit/Constraint1"/>
+    <sbol:hasConstraint rdf:resource="http://sys-bio.org/circuit/Constraint2"/>
+    <sbol:hasConstraint rdf:resource="http://sys-bio.org/circuit/Constraint3"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="http://sys-bio.org/circuit/Constraint2">
+    <sbol:displayId>Constraint2</sbol:displayId>
+    <rdf:type rdf:resource="http://sbols.org/v3#Constraint"/>
+    <sbol:restriction rdf:resource="http://sbols.org/v3#precedes"/>
+    <sbol:subject rdf:resource="http://sys-bio.org/circuit/SubComponent2"/>
+    <sbol:object rdf:resource="http://sys-bio.org/circuit/SubComponent3"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="http://sys-bio.org/GFP">
+    <sbol:displayId>GFP</sbol:displayId>
+    <sbol:name>GFP</sbol:name>
+    <sbol:description>GFP Coding Sequence</sbol:description>
+    <rdf:type rdf:resource="http://sbols.org/v3#Component"/>
+    <sbol:hasNamespace rdf:resource="http://sys-bio.org"/>
+    <sbol:type rdf:resource="https://identifiers.org/SBO:0000251"/>
+    <sbol:role rdf:resource="https://identifiers.org/SO:0000316"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="http://sys-bio.org/circuit/SubComponent2">
+    <sbol:displayId>SubComponent2</sbol:displayId>
+    <rdf:type rdf:resource="http://sbols.org/v3#SubComponent"/>
+    <sbol:instanceOf rdf:resource="http://sys-bio.org/op1"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="http://sys-bio.org/circuit/SubComponent4">
+    <sbol:displayId>SubComponent4</sbol:displayId>
+    <rdf:type rdf:resource="http://sbols.org/v3#SubComponent"/>
+    <sbol:instanceOf rdf:resource="http://sys-bio.org/GFP"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="http://sys-bio.org/circuit/Constraint3">
+    <sbol:displayId>Constraint3</sbol:displayId>
+    <rdf:type rdf:resource="http://sbols.org/v3#Constraint"/>
+    <sbol:restriction rdf:resource="http://sbols.org/v3#precedes"/>
+    <sbol:subject rdf:resource="http://sys-bio.org/circuit/SubComponent3"/>
+    <sbol:object rdf:resource="http://sys-bio.org/circuit/SubComponent4"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="http://sys-bio.org/UTR1">
+    <sbol:displayId>UTR1</sbol:displayId>
+    <sbol:description>Your Description Here</sbol:description>
+    <rdf:type rdf:resource="http://sbols.org/v3#Component"/>
+    <sbol:hasNamespace rdf:resource="http://sys-bio.org"/>
+    <sbol:type rdf:resource="https://identifiers.org/SBO:0000251"/>
+    <sbol:role rdf:resource="https://identifiers.org/SO:0000139"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="http://sys-bio.org/op1">
+    <sbol:displayId>op1</sbol:displayId>
+    <sbol:description>Your Description Here</sbol:description>
+    <rdf:type rdf:resource="http://sbols.org/v3#Component"/>
+    <sbol:hasNamespace rdf:resource="http://sys-bio.org"/>
+    <sbol:type rdf:resource="https://identifiers.org/SBO:0000251"/>
+    <sbol:role rdf:resource="https://identifiers.org/SO:0000057"/>
+  </rdf:Description>
+</rdf:RDF>

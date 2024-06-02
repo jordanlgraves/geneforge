@@ -1,0 +1,2177 @@
+<rdf:RDF xmlns:brick="https://brickschema.org/schema/Brick#" xmlns:csvw="http://www.w3.org/ns/csvw#" xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:dcat="http://www.w3.org/ns/dcat#" xmlns:dcmitype="http://purl.org/dc/dcmitype/" xmlns:dcterms="http://purl.org/dc/terms/" xmlns:dcam="http://purl.org/dc/dcam/" xmlns:doap="http://usefulinc.com/ns/doap#" xmlns:foaf="http://xmlns.com/foaf/0.1/" xmlns:geo="http://www.opengis.net/ont/geosparql#" xmlns:odrl="http://www.w3.org/ns/odrl/2/" xmlns:org="http://www.w3.org/ns/org#" xmlns:prof="http://www.w3.org/ns/dx/prof/" xmlns:prov="http://www.w3.org/ns/prov#" xmlns:qb="http://purl.org/linked-data/cube#" xmlns:schema="https://schema.org/" xmlns:sh="http://www.w3.org/ns/shacl#" xmlns:skos="http://www.w3.org/2004/02/skos/core#" xmlns:sosa="http://www.w3.org/ns/sosa/" xmlns:ssn="http://www.w3.org/ns/ssn/" xmlns:time="http://www.w3.org/2006/time#" xmlns:vann="http://purl.org/vocab/vann/" xmlns:void="http://rdfs.org/ns/void#" xmlns:wgs="https://www.w3.org/2003/01/geo/wgs84_pos#" xmlns:owl="http://www.w3.org/2002/07/owl#" xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#" xmlns:rdfs="http://www.w3.org/2000/01/rdf-schema#" xmlns:xsd="http://www.w3.org/2001/XMLSchema#" xmlns:sbol="http://sbols.org/v2#" xmlns:ns0="http://wiki.synbiohub.org/wiki/Terms/igem#" xmlns:ns1="http://wiki.synbiohub.org/wiki/Terms/synbiohub#">
+  <sbol:ComponentDefinition rdf:about="http://example.org/ComponentDefinition/ffl_gene_circuit_4ecb724f-8cbb-4634-aeff-41df49ce684e/1">
+    <sbol:sequenceConstraint>
+      <sbol:SequenceConstraint rdf:about="http://example.org/ComponentDefinition/ffl_gene_circuit_4ecb724f-8cbb-4634-aeff-41df49ce684e/constraint_3/1">
+        <sbol:subject rdf:resource="http://example.org/ComponentDefinition/ffl_gene_circuit_4ecb724f-8cbb-4634-aeff-41df49ce684e/BBa_J23100_1/1"/>
+        <sbol:displayId>constraint_3</sbol:displayId>
+        <sbol:persistentIdentity rdf:resource="http://example.org/ComponentDefinition/ffl_gene_circuit_4ecb724f-8cbb-4634-aeff-41df49ce684e/constraint_3"/>
+        <sbol:version>1</sbol:version>
+        <sbol:restriction rdf:resource="http://sbols.org/v2#precedes"/>
+        <sbol:object rdf:resource="http://example.org/ComponentDefinition/ffl_gene_circuit_4ecb724f-8cbb-4634-aeff-41df49ce684e/BBa_B0034_2/1"/>
+      </sbol:SequenceConstraint>
+    </sbol:sequenceConstraint>
+    <sbol:sequenceConstraint>
+      <sbol:SequenceConstraint rdf:about="http://example.org/ComponentDefinition/ffl_gene_circuit_4ecb724f-8cbb-4634-aeff-41df49ce684e/constraint_9/1">
+        <sbol:displayId>constraint_9</sbol:displayId>
+        <sbol:persistentIdentity rdf:resource="http://example.org/ComponentDefinition/ffl_gene_circuit_4ecb724f-8cbb-4634-aeff-41df49ce684e/constraint_9"/>
+        <sbol:version>1</sbol:version>
+        <sbol:subject rdf:resource="http://example.org/ComponentDefinition/ffl_gene_circuit_4ecb724f-8cbb-4634-aeff-41df49ce684e/BBa_B0015_0/1"/>
+        <sbol:restriction rdf:resource="http://sbols.org/v2#precedes"/>
+        <sbol:object rdf:resource="http://example.org/ComponentDefinition/ffl_gene_circuit_4ecb724f-8cbb-4634-aeff-41df49ce684e/BBa_J23119_0/1"/>
+      </sbol:SequenceConstraint>
+    </sbol:sequenceConstraint>
+    <sbol:version>1</sbol:version>
+    <sbol:component>
+      <sbol:Component rdf:about="http://example.org/ComponentDefinition/ffl_gene_circuit_4ecb724f-8cbb-4634-aeff-41df49ce684e/BBa_B0034_2/1">
+        <sbol:definition rdf:resource="https://synbiohub.org/public/igem/BBa_B0034/1"/>
+        <sbol:displayId>BBa_B0034_2</sbol:displayId>
+        <sbol:version>1</sbol:version>
+        <sbol:access rdf:resource="http://sbols.org/v2#public"/>
+        <sbol:persistentIdentity rdf:resource="http://example.org/ComponentDefinition/ffl_gene_circuit_4ecb724f-8cbb-4634-aeff-41df49ce684e/BBa_B0034_2"/>
+      </sbol:Component>
+    </sbol:component>
+    <sbol:sequenceConstraint>
+      <sbol:SequenceConstraint rdf:about="http://example.org/ComponentDefinition/ffl_gene_circuit_4ecb724f-8cbb-4634-aeff-41df49ce684e/constraint_1/1">
+        <sbol:subject rdf:resource="http://example.org/ComponentDefinition/ffl_gene_circuit_4ecb724f-8cbb-4634-aeff-41df49ce684e/BBa_B0034_3/1"/>
+        <sbol:persistentIdentity rdf:resource="http://example.org/ComponentDefinition/ffl_gene_circuit_4ecb724f-8cbb-4634-aeff-41df49ce684e/constraint_1"/>
+        <sbol:displayId>constraint_1</sbol:displayId>
+        <sbol:object rdf:resource="http://example.org/ComponentDefinition/ffl_gene_circuit_4ecb724f-8cbb-4634-aeff-41df49ce684e/BBa_J23100_2/1"/>
+        <sbol:restriction rdf:resource="http://sbols.org/v2#precedes"/>
+        <sbol:version>1</sbol:version>
+      </sbol:SequenceConstraint>
+    </sbol:sequenceConstraint>
+    <sbol:sequenceConstraint>
+      <sbol:SequenceConstraint rdf:about="http://example.org/ComponentDefinition/ffl_gene_circuit_4ecb724f-8cbb-4634-aeff-41df49ce684e/constraint_10/1">
+        <sbol:object rdf:resource="http://example.org/ComponentDefinition/ffl_gene_circuit_4ecb724f-8cbb-4634-aeff-41df49ce684e/BBa_B0034_0/1"/>
+        <sbol:displayId>constraint_10</sbol:displayId>
+        <sbol:restriction rdf:resource="http://sbols.org/v2#precedes"/>
+        <sbol:subject rdf:resource="http://example.org/ComponentDefinition/ffl_gene_circuit_4ecb724f-8cbb-4634-aeff-41df49ce684e/BBa_J23119_0/1"/>
+        <sbol:persistentIdentity rdf:resource="http://example.org/ComponentDefinition/ffl_gene_circuit_4ecb724f-8cbb-4634-aeff-41df49ce684e/constraint_10"/>
+        <sbol:version>1</sbol:version>
+      </sbol:SequenceConstraint>
+    </sbol:sequenceConstraint>
+    <sbol:sequenceConstraint>
+      <sbol:SequenceConstraint rdf:about="http://example.org/ComponentDefinition/ffl_gene_circuit_4ecb724f-8cbb-4634-aeff-41df49ce684e/constraint_0/1">
+        <sbol:object rdf:resource="http://example.org/ComponentDefinition/ffl_gene_circuit_4ecb724f-8cbb-4634-aeff-41df49ce684e/BBa_B0034_3/1"/>
+        <sbol:restriction rdf:resource="http://sbols.org/v2#precedes"/>
+        <sbol:persistentIdentity rdf:resource="http://example.org/ComponentDefinition/ffl_gene_circuit_4ecb724f-8cbb-4634-aeff-41df49ce684e/constraint_0"/>
+        <sbol:version>1</sbol:version>
+        <sbol:displayId>constraint_0</sbol:displayId>
+        <sbol:subject rdf:resource="http://example.org/ComponentDefinition/ffl_gene_circuit_4ecb724f-8cbb-4634-aeff-41df49ce684e/BBa_J23100_3/1"/>
+      </sbol:SequenceConstraint>
+    </sbol:sequenceConstraint>
+    <sbol:component>
+      <sbol:Component rdf:about="http://example.org/ComponentDefinition/ffl_gene_circuit_4ecb724f-8cbb-4634-aeff-41df49ce684e/BBa_B0015_0/1">
+        <sbol:definition rdf:resource="https://synbiohub.org/public/igem/BBa_B0015/1"/>
+        <sbol:displayId>BBa_B0015_0</sbol:displayId>
+        <sbol:access rdf:resource="http://sbols.org/v2#public"/>
+        <sbol:persistentIdentity rdf:resource="http://example.org/ComponentDefinition/ffl_gene_circuit_4ecb724f-8cbb-4634-aeff-41df49ce684e/BBa_B0015_0"/>
+        <sbol:version>1</sbol:version>
+      </sbol:Component>
+    </sbol:component>
+    <sbol:component>
+      <sbol:Component rdf:about="http://example.org/ComponentDefinition/ffl_gene_circuit_4ecb724f-8cbb-4634-aeff-41df49ce684e/BBa_J23100_3/1">
+        <sbol:displayId>BBa_J23100_3</sbol:displayId>
+        <sbol:persistentIdentity rdf:resource="http://example.org/ComponentDefinition/ffl_gene_circuit_4ecb724f-8cbb-4634-aeff-41df49ce684e/BBa_J23100_3"/>
+        <sbol:version>1</sbol:version>
+        <sbol:access rdf:resource="http://sbols.org/v2#public"/>
+        <sbol:definition rdf:resource="https://synbiohub.org/public/igem/BBa_J23100/1"/>
+      </sbol:Component>
+    </sbol:component>
+    <sbol:component>
+      <sbol:Component rdf:about="http://example.org/ComponentDefinition/ffl_gene_circuit_4ecb724f-8cbb-4634-aeff-41df49ce684e/BBa_J23119_0/1">
+        <sbol:version>1</sbol:version>
+        <sbol:persistentIdentity rdf:resource="http://example.org/ComponentDefinition/ffl_gene_circuit_4ecb724f-8cbb-4634-aeff-41df49ce684e/BBa_J23119_0"/>
+        <sbol:displayId>BBa_J23119_0</sbol:displayId>
+        <sbol:definition rdf:resource="https://synbiohub.org/public/igem/BBa_J23119/1"/>
+        <sbol:access rdf:resource="http://sbols.org/v2#public"/>
+      </sbol:Component>
+    </sbol:component>
+    <sbol:displayId>ffl_gene_circuit_4ecb724f-8cbb-4634-aeff-41df49ce684e</sbol:displayId>
+    <sbol:component>
+      <sbol:Component rdf:about="http://example.org/ComponentDefinition/ffl_gene_circuit_4ecb724f-8cbb-4634-aeff-41df49ce684e/BBa_J23100_0/1">
+        <sbol:version>1</sbol:version>
+        <sbol:persistentIdentity rdf:resource="http://example.org/ComponentDefinition/ffl_gene_circuit_4ecb724f-8cbb-4634-aeff-41df49ce684e/BBa_J23100_0"/>
+        <sbol:definition rdf:resource="https://synbiohub.org/public/igem/BBa_J23100/1"/>
+        <sbol:access rdf:resource="http://sbols.org/v2#public"/>
+        <sbol:displayId>BBa_J23100_0</sbol:displayId>
+      </sbol:Component>
+    </sbol:component>
+    <sbol:component>
+      <sbol:Component rdf:about="http://example.org/ComponentDefinition/ffl_gene_circuit_4ecb724f-8cbb-4634-aeff-41df49ce684e/BBa_B0034_0/1">
+        <sbol:version>1</sbol:version>
+        <sbol:definition rdf:resource="https://synbiohub.org/public/igem/BBa_B0034/1"/>
+        <sbol:displayId>BBa_B0034_0</sbol:displayId>
+        <sbol:access rdf:resource="http://sbols.org/v2#public"/>
+        <sbol:persistentIdentity rdf:resource="http://example.org/ComponentDefinition/ffl_gene_circuit_4ecb724f-8cbb-4634-aeff-41df49ce684e/BBa_B0034_0"/>
+      </sbol:Component>
+    </sbol:component>
+    <sbol:component>
+      <sbol:Component rdf:about="http://example.org/ComponentDefinition/ffl_gene_circuit_4ecb724f-8cbb-4634-aeff-41df49ce684e/BBa_B0034_1/1">
+        <sbol:persistentIdentity rdf:resource="http://example.org/ComponentDefinition/ffl_gene_circuit_4ecb724f-8cbb-4634-aeff-41df49ce684e/BBa_B0034_1"/>
+        <sbol:definition rdf:resource="https://synbiohub.org/public/igem/BBa_B0034/1"/>
+        <sbol:access rdf:resource="http://sbols.org/v2#public"/>
+        <sbol:displayId>BBa_B0034_1</sbol:displayId>
+        <sbol:version>1</sbol:version>
+      </sbol:Component>
+    </sbol:component>
+    <sbol:component>
+      <sbol:Component rdf:about="http://example.org/ComponentDefinition/ffl_gene_circuit_4ecb724f-8cbb-4634-aeff-41df49ce684e/BBa_J23119_1/1">
+        <sbol:version>1</sbol:version>
+        <sbol:displayId>BBa_J23119_1</sbol:displayId>
+        <sbol:persistentIdentity rdf:resource="http://example.org/ComponentDefinition/ffl_gene_circuit_4ecb724f-8cbb-4634-aeff-41df49ce684e/BBa_J23119_1"/>
+        <sbol:definition rdf:resource="https://synbiohub.org/public/igem/BBa_J23119/1"/>
+        <sbol:access rdf:resource="http://sbols.org/v2#public"/>
+      </sbol:Component>
+    </sbol:component>
+    <sbol:component>
+      <sbol:Component rdf:about="http://example.org/ComponentDefinition/ffl_gene_circuit_4ecb724f-8cbb-4634-aeff-41df49ce684e/BBa_B0034_3/1">
+        <sbol:version>1</sbol:version>
+        <sbol:definition rdf:resource="https://synbiohub.org/public/igem/BBa_B0034/1"/>
+        <sbol:displayId>BBa_B0034_3</sbol:displayId>
+        <sbol:persistentIdentity rdf:resource="http://example.org/ComponentDefinition/ffl_gene_circuit_4ecb724f-8cbb-4634-aeff-41df49ce684e/BBa_B0034_3"/>
+        <sbol:access rdf:resource="http://sbols.org/v2#public"/>
+      </sbol:Component>
+    </sbol:component>
+    <sbol:type rdf:resource="http://www.biopax.org/release/biopax-level3.owl#DnaRegion"/>
+    <sbol:component>
+      <sbol:Component rdf:about="http://example.org/ComponentDefinition/ffl_gene_circuit_4ecb724f-8cbb-4634-aeff-41df49ce684e/BBa_J23100_2/1">
+        <sbol:access rdf:resource="http://sbols.org/v2#public"/>
+        <sbol:version>1</sbol:version>
+        <sbol:displayId>BBa_J23100_2</sbol:displayId>
+        <sbol:definition rdf:resource="https://synbiohub.org/public/igem/BBa_J23100/1"/>
+        <sbol:persistentIdentity rdf:resource="http://example.org/ComponentDefinition/ffl_gene_circuit_4ecb724f-8cbb-4634-aeff-41df49ce684e/BBa_J23100_2"/>
+      </sbol:Component>
+    </sbol:component>
+    <sbol:component>
+      <sbol:Component rdf:about="http://example.org/ComponentDefinition/ffl_gene_circuit_4ecb724f-8cbb-4634-aeff-41df49ce684e/BBa_J23100_1/1">
+        <sbol:displayId>BBa_J23100_1</sbol:displayId>
+        <sbol:version>1</sbol:version>
+        <sbol:definition rdf:resource="https://synbiohub.org/public/igem/BBa_J23100/1"/>
+        <sbol:persistentIdentity rdf:resource="http://example.org/ComponentDefinition/ffl_gene_circuit_4ecb724f-8cbb-4634-aeff-41df49ce684e/BBa_J23100_1"/>
+        <sbol:access rdf:resource="http://sbols.org/v2#public"/>
+      </sbol:Component>
+    </sbol:component>
+    <sbol:sequenceConstraint>
+      <sbol:SequenceConstraint rdf:about="http://example.org/ComponentDefinition/ffl_gene_circuit_4ecb724f-8cbb-4634-aeff-41df49ce684e/constraint_8/1">
+        <sbol:object rdf:resource="http://example.org/ComponentDefinition/ffl_gene_circuit_4ecb724f-8cbb-4634-aeff-41df49ce684e/BBa_B0015_0/1"/>
+        <sbol:subject rdf:resource="http://example.org/ComponentDefinition/ffl_gene_circuit_4ecb724f-8cbb-4634-aeff-41df49ce684e/BBa_E0040_0/1"/>
+        <sbol:restriction rdf:resource="http://sbols.org/v2#precedes"/>
+        <sbol:displayId>constraint_8</sbol:displayId>
+        <sbol:version>1</sbol:version>
+        <sbol:persistentIdentity rdf:resource="http://example.org/ComponentDefinition/ffl_gene_circuit_4ecb724f-8cbb-4634-aeff-41df49ce684e/constraint_8"/>
+      </sbol:SequenceConstraint>
+    </sbol:sequenceConstraint>
+    <sbol:sequenceConstraint>
+      <sbol:SequenceConstraint rdf:about="http://example.org/ComponentDefinition/ffl_gene_circuit_4ecb724f-8cbb-4634-aeff-41df49ce684e/constraint_2/1">
+        <sbol:subject rdf:resource="http://example.org/ComponentDefinition/ffl_gene_circuit_4ecb724f-8cbb-4634-aeff-41df49ce684e/BBa_J23100_2/1"/>
+        <sbol:object rdf:resource="http://example.org/ComponentDefinition/ffl_gene_circuit_4ecb724f-8cbb-4634-aeff-41df49ce684e/BBa_J23100_1/1"/>
+        <sbol:restriction rdf:resource="http://sbols.org/v2#precedes"/>
+        <sbol:version>1</sbol:version>
+        <sbol:persistentIdentity rdf:resource="http://example.org/ComponentDefinition/ffl_gene_circuit_4ecb724f-8cbb-4634-aeff-41df49ce684e/constraint_2"/>
+        <sbol:displayId>constraint_2</sbol:displayId>
+      </sbol:SequenceConstraint>
+    </sbol:sequenceConstraint>
+    <sbol:sequenceConstraint>
+      <sbol:SequenceConstraint rdf:about="http://example.org/ComponentDefinition/ffl_gene_circuit_4ecb724f-8cbb-4634-aeff-41df49ce684e/constraint_7/1">
+        <sbol:restriction rdf:resource="http://sbols.org/v2#precedes"/>
+        <sbol:persistentIdentity rdf:resource="http://example.org/ComponentDefinition/ffl_gene_circuit_4ecb724f-8cbb-4634-aeff-41df49ce684e/constraint_7"/>
+        <sbol:object rdf:resource="http://example.org/ComponentDefinition/ffl_gene_circuit_4ecb724f-8cbb-4634-aeff-41df49ce684e/BBa_E0040_0/1"/>
+        <sbol:displayId>constraint_7</sbol:displayId>
+        <sbol:version>1</sbol:version>
+        <sbol:subject rdf:resource="http://example.org/ComponentDefinition/ffl_gene_circuit_4ecb724f-8cbb-4634-aeff-41df49ce684e/BBa_B0034_1/1"/>
+      </sbol:SequenceConstraint>
+    </sbol:sequenceConstraint>
+    <sbol:persistentIdentity rdf:resource="http://example.org/ComponentDefinition/ffl_gene_circuit_4ecb724f-8cbb-4634-aeff-41df49ce684e"/>
+    <sbol:component>
+      <sbol:Component rdf:about="http://example.org/ComponentDefinition/ffl_gene_circuit_4ecb724f-8cbb-4634-aeff-41df49ce684e/BBa_E0040_0/1">
+        <sbol:displayId>BBa_E0040_0</sbol:displayId>
+        <sbol:access rdf:resource="http://sbols.org/v2#public"/>
+        <sbol:version>1</sbol:version>
+        <sbol:definition rdf:resource="https://synbiohub.org/public/igem/BBa_E0040/1"/>
+        <sbol:persistentIdentity rdf:resource="http://example.org/ComponentDefinition/ffl_gene_circuit_4ecb724f-8cbb-4634-aeff-41df49ce684e/BBa_E0040_0"/>
+      </sbol:Component>
+    </sbol:component>
+    <sbol:type rdf:resource="http://identifiers.org/so/SO:0000987"/>
+    <sbol:sequenceConstraint>
+      <sbol:SequenceConstraint rdf:about="http://example.org/ComponentDefinition/ffl_gene_circuit_4ecb724f-8cbb-4634-aeff-41df49ce684e/constraint_6/1">
+        <sbol:displayId>constraint_6</sbol:displayId>
+        <sbol:version>1</sbol:version>
+        <sbol:object rdf:resource="http://example.org/ComponentDefinition/ffl_gene_circuit_4ecb724f-8cbb-4634-aeff-41df49ce684e/BBa_B0034_1/1"/>
+        <sbol:subject rdf:resource="http://example.org/ComponentDefinition/ffl_gene_circuit_4ecb724f-8cbb-4634-aeff-41df49ce684e/BBa_J23100_0/1"/>
+        <sbol:persistentIdentity rdf:resource="http://example.org/ComponentDefinition/ffl_gene_circuit_4ecb724f-8cbb-4634-aeff-41df49ce684e/constraint_6"/>
+        <sbol:restriction rdf:resource="http://sbols.org/v2#precedes"/>
+      </sbol:SequenceConstraint>
+    </sbol:sequenceConstraint>
+    <sbol:sequenceConstraint>
+      <sbol:SequenceConstraint rdf:about="http://example.org/ComponentDefinition/ffl_gene_circuit_4ecb724f-8cbb-4634-aeff-41df49ce684e/constraint_4/1">
+        <sbol:subject rdf:resource="http://example.org/ComponentDefinition/ffl_gene_circuit_4ecb724f-8cbb-4634-aeff-41df49ce684e/BBa_B0034_2/1"/>
+        <sbol:displayId>constraint_4</sbol:displayId>
+        <sbol:object rdf:resource="http://example.org/ComponentDefinition/ffl_gene_circuit_4ecb724f-8cbb-4634-aeff-41df49ce684e/BBa_J23119_1/1"/>
+        <sbol:persistentIdentity rdf:resource="http://example.org/ComponentDefinition/ffl_gene_circuit_4ecb724f-8cbb-4634-aeff-41df49ce684e/constraint_4"/>
+        <sbol:restriction rdf:resource="http://sbols.org/v2#precedes"/>
+        <sbol:version>1</sbol:version>
+      </sbol:SequenceConstraint>
+    </sbol:sequenceConstraint>
+    <sbol:sequenceConstraint>
+      <sbol:SequenceConstraint rdf:about="http://example.org/ComponentDefinition/ffl_gene_circuit_4ecb724f-8cbb-4634-aeff-41df49ce684e/constraint_5/1">
+        <sbol:subject rdf:resource="http://example.org/ComponentDefinition/ffl_gene_circuit_4ecb724f-8cbb-4634-aeff-41df49ce684e/BBa_J23119_1/1"/>
+        <sbol:restriction rdf:resource="http://sbols.org/v2#precedes"/>
+        <sbol:object rdf:resource="http://example.org/ComponentDefinition/ffl_gene_circuit_4ecb724f-8cbb-4634-aeff-41df49ce684e/BBa_J23100_0/1"/>
+        <sbol:persistentIdentity rdf:resource="http://example.org/ComponentDefinition/ffl_gene_circuit_4ecb724f-8cbb-4634-aeff-41df49ce684e/constraint_5"/>
+        <sbol:displayId>constraint_5</sbol:displayId>
+        <sbol:version>1</sbol:version>
+      </sbol:SequenceConstraint>
+    </sbol:sequenceConstraint>
+  </sbol:ComponentDefinition>
+  <sbol:ComponentDefinition rdf:about="https://synbiohub.org/public/igem/BBa_J23100/1">
+    <sbol:sequence rdf:resource="https://synbiohub.org/public/igem/BBa_J23100_sequence/1"/>
+    <dcterms:modified>2015-08-31T04:08:40Z</dcterms:modified>
+    <ns0:group_u_list>_52_</ns0:group_u_list>
+    <ns0:owning_group_id>95</ns0:owning_group_id>
+    <prov:wasGeneratedBy rdf:resource="https://synbiohub.org/public/igem/igem2sbol/1"/>
+    <sbol:displayId>BBa_J23100</sbol:displayId>
+    <dcterms:created>2006-08-03T11:00:00Z</dcterms:created>
+    <ns0:owner_id>483</ns0:owner_id>
+    <ns0:dominant>true</ns0:dominant>
+    <ns1:bookmark>true</ns1:bookmark>
+    <dcterms:title>promoter_BBa_J23100</dcterms:title>
+    <ns1:ownedBy rdf:resource="https://synbiohub.org/user/myers"/>
+    <prov:wasDerivedFrom rdf:resource="http://parts.igem.org/Part:BBa_J23100"/>
+    <dcterms:description>constitutive promoter family member</dcterms:description>
+    <ns1:topLevel rdf:resource="https://synbiohub.org/public/igem/BBa_J23100/1"/>
+    <ns1:mutableNotes>N/A</ns1:mutableNotes>
+    <sbol:role rdf:resource="http://identifiers.org/so/SO:0000167"/>
+    <dc:creator>John Anderson</dc:creator>
+    <ns0:status rdf:resource="http://wiki.synbiohub.org/wiki/Terms/igem#status/Available"/>
+    <ns0:experience rdf:resource="http://wiki.synbiohub.org/wiki/Terms/igem#experience/Works"/>
+    <ns1:mutableDescription>Replace later</ns1:mutableDescription>
+    <ns0:partStatus>Released HQ 2013</ns0:partStatus>
+    <ns0:discontinued>false</ns0:discontinued>
+    <ns1:ownedBy rdf:resource="https://synbiohub.org/user/james"/>
+    <ns1:star>true</ns1:star>
+    <sbol:type rdf:resource="http://www.biopax.org/release/biopax-level3.owl#DnaRegion"/>
+    <sbol:version>1</sbol:version>
+    <ns0:m_user_id>0</ns0:m_user_id>
+    <ns0:sampleStatus>In stock</ns0:sampleStatus>
+    <ns1:mutableProvenance>Isolated from library of promoters</ns1:mutableProvenance>
+    <sbol:persistentIdentity rdf:resource="https://synbiohub.org/public/igem/BBa_J23100"/>
+  </sbol:ComponentDefinition>
+  <sbol:ComponentDefinition rdf:about="https://synbiohub.org/public/igem/BBa_J23119/1">
+    <ns0:partStatus>Released HQ 2013</ns0:partStatus>
+    <dcterms:title>promoter_BBa_J23119</dcterms:title>
+    <sbol:persistentIdentity rdf:resource="https://synbiohub.org/public/igem/BBa_J23119"/>
+    <dcterms:description>constitutive promoter family member</dcterms:description>
+    <ns1:ownedBy rdf:resource="https://synbiohub.org/user/james"/>
+    <ns1:bookmark>false</ns1:bookmark>
+    <ns0:group_u_list>_52_</ns0:group_u_list>
+    <sbol:displayId>BBa_J23119</sbol:displayId>
+    <ns0:owner_id>483</ns0:owner_id>
+    <dcterms:created>2006-08-23T11:00:00Z</dcterms:created>
+    <ns0:dominant>true</ns0:dominant>
+    <sbol:role rdf:resource="http://identifiers.org/so/SO:0000167"/>
+    <ns1:ownedBy rdf:resource="https://synbiohub.org/user/myers"/>
+    <ns1:mutableDescription>Later</ns1:mutableDescription>
+    <ns0:discontinued>false</ns0:discontinued>
+    <prov:wasDerivedFrom rdf:resource="http://parts.igem.org/Part:BBa_J23119"/>
+    <ns1:mutableNotes>N/A</ns1:mutableNotes>
+    <prov:wasGeneratedBy rdf:resource="https://synbiohub.org/public/igem/igem2sbol/1"/>
+    <ns1:star>true</ns1:star>
+    <sbol:type rdf:resource="http://www.biopax.org/release/biopax-level3.owl#DnaRegion"/>
+    <sbol:version>1</sbol:version>
+    <dc:creator>John Anderson</dc:creator>
+    <ns1:mutableProvenance>Overlap extension of synthetic oligonucleotides</ns1:mutableProvenance>
+    <ns0:m_user_id>0</ns0:m_user_id>
+    <ns0:sampleStatus>In stock</ns0:sampleStatus>
+    <ns0:status rdf:resource="http://wiki.synbiohub.org/wiki/Terms/igem#status/Available"/>
+    <sbol:sequence rdf:resource="https://synbiohub.org/public/igem/BBa_J23119_sequence/1"/>
+    <dcterms:modified>2015-08-31T04:08:40Z</dcterms:modified>
+    <ns0:owning_group_id>95</ns0:owning_group_id>
+    <ns1:topLevel rdf:resource="https://synbiohub.org/public/igem/BBa_J23119/1"/>
+  </sbol:ComponentDefinition>
+  <sbol:ComponentDefinition rdf:about="https://synbiohub.org/public/igem/BBa_E0040/1">
+    <sbol:version>1</sbol:version>
+    <prov:wasGeneratedBy rdf:resource="https://synbiohub.org/public/igem/igem2sbol/1"/>
+    <sbol:displayId>BBa_E0040</sbol:displayId>
+    <prov:wasDerivedFrom rdf:resource="http://parts.igem.org/Part:BBa_E0040"/>
+    <ns1:ownedBy rdf:resource="https://synbiohub.org/user/myers"/>
+    <ns0:status rdf:resource="http://wiki.synbiohub.org/wiki/Terms/igem#status/Available"/>
+    <ns0:experience rdf:resource="http://wiki.synbiohub.org/wiki/Terms/igem#experience/Works"/>
+    <sbol:persistentIdentity rdf:resource="https://synbiohub.org/public/igem/BBa_E0040"/>
+    <ns0:partStatus>Released HQ 2013</ns0:partStatus>
+    <dcterms:description>green fluorescent protein derived from jellyfish Aequeora victoria wild-type GFP (SwissProt: P42212</dcterms:description>
+    <ns0:discontinued>false</ns0:discontinued>
+    <ns0:group_u_list>_11_1_</ns0:group_u_list>
+    <dcterms:created>2004-09-29T11:00:00Z</dcterms:created>
+    <sbol:role rdf:resource="http://identifiers.org/so/SO:0000316"/>
+    <ns1:star>true</ns1:star>
+    <sbol:type rdf:resource="http://www.biopax.org/release/biopax-level3.owl#DnaRegion"/>
+    <ns0:sampleStatus>In stock</ns0:sampleStatus>
+    <sbol:sequence rdf:resource="https://synbiohub.org/public/igem/BBa_E0040_sequence/1"/>
+    <dcterms:title>cds_BBa_E0040</dcterms:title>
+    <ns0:owning_group_id>7</ns0:owning_group_id>
+    <dcterms:modified>2016-01-26T02:09:38Z</dcterms:modified>
+    <ns0:m_user_id>4206</ns0:m_user_id>
+    <sbol:sequenceAnnotation>
+      <sbol:SequenceAnnotation rdf:about="https://synbiohub.org/public/igem/BBa_E0040/annotation1934520/1">
+        <sbol:displayId>annotation1934520</sbol:displayId>
+        <sbol:persistentIdentity rdf:resource="https://synbiohub.org/public/igem/BBa_E0040/annotation1934520"/>
+        <sbol:role rdf:resource="http://identifiers.org/so/SO:0000316"/>
+        <sbol:version>1</sbol:version>
+        <sbol:role rdf:resource="http://wiki.synbiohub.org/wiki/Terms/igem#feature/protein"/>
+        <dcterms:title>GFP protein</dcterms:title>
+        <ns1:topLevel rdf:resource="https://synbiohub.org/public/igem/BBa_E0040/1"/>
+        <sbol:location>
+          <sbol:Range rdf:about="https://synbiohub.org/public/igem/BBa_E0040/annotation1934520/range1934520/1">
+            <sbol:orientation rdf:resource="http://sbols.org/v2#inline"/>
+            <ns1:topLevel rdf:resource="https://synbiohub.org/public/igem/BBa_E0040/1"/>
+            <sbol:start>1</sbol:start>
+            <ns0:direction rdf:resource="http://wiki.synbiohub.org/wiki/Terms/igem#direction/forward"/>
+            <sbol:end>720</sbol:end>
+            <sbol:persistentIdentity rdf:resource="https://synbiohub.org/public/igem/BBa_E0040/annotation1934520/range1934520"/>
+            <sbol:displayId>range1934520</sbol:displayId>
+            <sbol:version>1</sbol:version>
+          </sbol:Range>
+        </sbol:location>
+      </sbol:SequenceAnnotation>
+    </sbol:sequenceAnnotation>
+    <ns0:dominant>true</ns0:dominant>
+    <dc:creator>jcbraff</dc:creator>
+    <ns1:ownedBy rdf:resource="https://synbiohub.org/user/james"/>
+    <ns0:owner_id>61</ns0:owner_id>
+    <ns1:bookmark>false</ns1:bookmark>
+    <ns1:mutableDescription>GFP (mut3b) [note that this part does not have a barcode]</ns1:mutableDescription>
+    <ns1:topLevel rdf:resource="https://synbiohub.org/public/igem/BBa_E0040/1"/>
+  </sbol:ComponentDefinition>
+  <sbol:ComponentDefinition rdf:about="https://synbiohub.org/public/igem/BBa_B0034/1">
+    <sbol:sequence rdf:resource="https://synbiohub.org/public/igem/BBa_B0034_sequence/1"/>
+    <ns1:star>true</ns1:star>
+    <ns0:m_user_id>0</ns0:m_user_id>
+    <ns0:sampleStatus>In stock</ns0:sampleStatus>
+    <sbol:role rdf:resource="http://identifiers.org/so/SO:0000139"/>
+    <ns0:owning_group_id>7</ns0:owning_group_id>
+    <ns0:dominant>true</ns0:dominant>
+    <ns1:ownedBy rdf:resource="https://synbiohub.org/user/james"/>
+    <ns1:mutableDescription>RBS based on Elowitz repressilator.</ns1:mutableDescription>
+    <ns1:bookmark>false</ns1:bookmark>
+    <sbol:displayId>BBa_B0034</sbol:displayId>
+    <ns0:owner_id>24</ns0:owner_id>
+    <dc:creator>Vinay S Mahajan, Voichita D. Marinescu, Brian Chow, Alexander      D Wissner-Gross and Peter Carr IAP, 2003.</dc:creator>
+    <sbol:version>1</sbol:version>
+    <prov:wasGeneratedBy rdf:resource="https://synbiohub.org/public/igem/igem2sbol/1"/>
+    <sbol:persistentIdentity rdf:resource="https://synbiohub.org/public/igem/BBa_B0034"/>
+    <dcterms:created>2003-01-31T12:00:00Z</dcterms:created>
+    <dcterms:description>RBS (Elowitz 1999) -- defines RBS efficiency</dcterms:description>
+    <sbol:type rdf:resource="http://www.biopax.org/release/biopax-level3.owl#DnaRegion"/>
+    <ns1:mutableNotes>Varies from -6 to +1 region from original sequence to accomodate BioBricks      suffix.   &lt;p&gt;No secondary structures are formed in the given RBS region. Users should check      for secondary structures induced in the RBS by upstream and downstream elements      in the +50 to -50 region, as such structures will greatly affect the strength      of the RBS.
+
+Contact info for this part: &lt;a href="mailto:(bchow@media.mit.edu)"&gt;Brian Chow&lt;/a&gt;</ns1:mutableNotes>
+    <dcterms:title>rbs_BBa_B0034</dcterms:title>
+    <ns0:group_u_list>_1_</ns0:group_u_list>
+    <dcterms:modified>2015-08-31T04:07:20Z</dcterms:modified>
+    <ns1:topLevel rdf:resource="https://synbiohub.org/public/igem/BBa_B0034/1"/>
+    <sbol:sequenceAnnotation>
+      <sbol:SequenceAnnotation rdf:about="https://synbiohub.org/public/igem/BBa_B0034/annotation23325/1">
+        <ns1:topLevel rdf:resource="https://synbiohub.org/public/igem/BBa_B0034/1"/>
+        <dcterms:title>conserved</dcterms:title>
+        <sbol:location>
+          <sbol:Range rdf:about="https://synbiohub.org/public/igem/BBa_B0034/annotation23325/range23325/1">
+            <sbol:persistentIdentity rdf:resource="https://synbiohub.org/public/igem/BBa_B0034/annotation23325/range23325"/>
+            <sbol:version>1</sbol:version>
+            <sbol:end>8</sbol:end>
+            <sbol:displayId>range23325</sbol:displayId>
+            <sbol:orientation rdf:resource="http://sbols.org/v2#inline"/>
+            <ns1:topLevel rdf:resource="https://synbiohub.org/public/igem/BBa_B0034/1"/>
+            <sbol:start>5</sbol:start>
+            <ns0:direction rdf:resource="http://wiki.synbiohub.org/wiki/Terms/igem#direction/forward"/>
+          </sbol:Range>
+        </sbol:location>
+        <sbol:persistentIdentity rdf:resource="https://synbiohub.org/public/igem/BBa_B0034/annotation23325"/>
+        <sbol:role rdf:resource="http://wiki.synbiohub.org/wiki/Terms/igem#feature/conserved"/>
+        <sbol:role rdf:resource="http://identifiers.org/so/SO:0000330"/>
+        <sbol:displayId>annotation23325</sbol:displayId>
+        <sbol:version>1</sbol:version>
+      </sbol:SequenceAnnotation>
+    </sbol:sequenceAnnotation>
+    <ns1:ownedBy rdf:resource="https://synbiohub.org/user/myers"/>
+    <ns0:status rdf:resource="http://wiki.synbiohub.org/wiki/Terms/igem#status/Available"/>
+    <ns0:experience rdf:resource="http://wiki.synbiohub.org/wiki/Terms/igem#experience/Works"/>
+    <ns0:partStatus>Released HQ 2013</ns0:partStatus>
+    <prov:wasDerivedFrom rdf:resource="http://parts.igem.org/Part:BBa_B0034"/>
+    <ns0:discontinued>false</ns0:discontinued>
+  </sbol:ComponentDefinition>
+  <sbol:ComponentDefinition rdf:about="https://synbiohub.org/public/igem/BBa_B0015/1">
+    <sbol:sequenceAnnotation>
+      <sbol:SequenceAnnotation rdf:about="https://synbiohub.org/public/igem/BBa_B0015/annotation1916612/1">
+        <ns1:topLevel rdf:resource="https://synbiohub.org/public/igem/BBa_B0015/1"/>
+        <sbol:component rdf:resource="https://synbiohub.org/public/igem/BBa_B0015/component1916612/1"/>
+        <sbol:displayId>annotation1916612</sbol:displayId>
+        <sbol:location>
+          <sbol:Range rdf:about="https://synbiohub.org/public/igem/BBa_B0015/annotation1916612/range1916612/1">
+            <sbol:start>89</sbol:start>
+            <sbol:end>129</sbol:end>
+            <sbol:persistentIdentity rdf:resource="https://synbiohub.org/public/igem/BBa_B0015/annotation1916612/range1916612"/>
+            <ns0:direction rdf:resource="http://wiki.synbiohub.org/wiki/Terms/igem#direction/forward"/>
+            <sbol:version>1</sbol:version>
+            <sbol:orientation rdf:resource="http://sbols.org/v2#inline"/>
+            <sbol:displayId>range1916612</sbol:displayId>
+            <ns1:topLevel rdf:resource="https://synbiohub.org/public/igem/BBa_B0015/1"/>
+          </sbol:Range>
+        </sbol:location>
+        <dcterms:title>BBa_B0012</dcterms:title>
+        <sbol:persistentIdentity rdf:resource="https://synbiohub.org/public/igem/BBa_B0015/annotation1916612"/>
+        <sbol:version>1</sbol:version>
+      </sbol:SequenceAnnotation>
+    </sbol:sequenceAnnotation>
+    <ns0:owner_id>24</ns0:owner_id>
+    <sbol:component>
+      <sbol:Component rdf:about="https://synbiohub.org/public/igem/BBa_B0015/component1916610/1">
+        <sbol:definition rdf:resource="https://synbiohub.org/public/igem/BBa_B0010/1"/>
+        <dcterms:title>BBa_B0010</dcterms:title>
+        <sbol:persistentIdentity rdf:resource="https://synbiohub.org/public/igem/BBa_B0015/component1916610"/>
+        <sbol:access rdf:resource="http://sbols.org/v2#public"/>
+        <sbol:displayId>component1916610</sbol:displayId>
+        <ns1:topLevel rdf:resource="https://synbiohub.org/public/igem/BBa_B0015/1"/>
+        <sbol:version>1</sbol:version>
+      </sbol:Component>
+    </sbol:component>
+    <prov:wasGeneratedBy rdf:resource="https://synbiohub.org/public/igem/igem2sbol/1"/>
+    <ns1:star>true</ns1:star>
+    <sbol:type rdf:resource="http://www.biopax.org/release/biopax-level3.owl#DnaRegion"/>
+    <sbol:version>1</sbol:version>
+    <sbol:displayId>BBa_B0015</sbol:displayId>
+    <ns0:sampleStatus>In stock</ns0:sampleStatus>
+    <ns0:dominant>true</ns0:dominant>
+    <dcterms:modified>2015-08-31T04:07:20Z</dcterms:modified>
+    <ns1:ownedBy rdf:resource="https://synbiohub.org/user/myers"/>
+    <ns0:owning_group_id>7</ns0:owning_group_id>
+    <sbol:component>
+      <sbol:Component rdf:about="https://synbiohub.org/public/igem/BBa_B0015/component1916612/1">
+        <sbol:persistentIdentity rdf:resource="https://synbiohub.org/public/igem/BBa_B0015/component1916612"/>
+        <sbol:version>1</sbol:version>
+        <sbol:access rdf:resource="http://sbols.org/v2#public"/>
+        <sbol:displayId>component1916612</sbol:displayId>
+        <dcterms:title>BBa_B0012</dcterms:title>
+        <sbol:definition rdf:resource="https://synbiohub.org/public/igem/BBa_B0012/1"/>
+        <ns1:topLevel rdf:resource="https://synbiohub.org/public/igem/BBa_B0015/1"/>
+      </sbol:Component>
+    </sbol:component>
+    <dcterms:description>double terminator (B0010-B0012)</dcterms:description>
+    <ns1:topLevel rdf:resource="https://synbiohub.org/public/igem/BBa_B0015/1"/>
+    <ns1:mutableDescription>Double terminator consisting of BBa_B0010 and BBa_B0012</ns1:mutableDescription>
+    <sbol:sequence rdf:resource="https://synbiohub.org/public/igem/BBa_B0015_sequence/1"/>
+    <dcterms:title>terminator_BBa_B0015</dcterms:title>
+    <ns1:bookmark>false</ns1:bookmark>
+    <ns0:discontinued>false</ns0:discontinued>
+    <dcterms:created>2003-07-16T11:00:00Z</dcterms:created>
+    <ns0:m_user_id>0</ns0:m_user_id>
+    <ns0:status rdf:resource="http://wiki.synbiohub.org/wiki/Terms/igem#status/Available"/>
+    <ns0:group_u_list>_1_</ns0:group_u_list>
+    <sbol:sequenceAnnotation>
+      <sbol:SequenceAnnotation rdf:about="https://synbiohub.org/public/igem/BBa_B0015/annotation1916610/1">
+        <sbol:displayId>annotation1916610</sbol:displayId>
+        <sbol:persistentIdentity rdf:resource="https://synbiohub.org/public/igem/BBa_B0015/annotation1916610"/>
+        <dcterms:title>BBa_B0010</dcterms:title>
+        <sbol:component rdf:resource="https://synbiohub.org/public/igem/BBa_B0015/component1916610/1"/>
+        <sbol:version>1</sbol:version>
+        <sbol:location>
+          <sbol:Range rdf:about="https://synbiohub.org/public/igem/BBa_B0015/annotation1916610/range1916610/1">
+            <sbol:persistentIdentity rdf:resource="https://synbiohub.org/public/igem/BBa_B0015/annotation1916610/range1916610"/>
+            <sbol:orientation rdf:resource="http://sbols.org/v2#inline"/>
+            <sbol:version>1</sbol:version>
+            <sbol:displayId>range1916610</sbol:displayId>
+            <sbol:end>80</sbol:end>
+            <ns1:topLevel rdf:resource="https://synbiohub.org/public/igem/BBa_B0015/1"/>
+            <sbol:start>1</sbol:start>
+            <ns0:direction rdf:resource="http://wiki.synbiohub.org/wiki/Terms/igem#direction/forward"/>
+          </sbol:Range>
+        </sbol:location>
+        <ns1:topLevel rdf:resource="https://synbiohub.org/public/igem/BBa_B0015/1"/>
+      </sbol:SequenceAnnotation>
+    </sbol:sequenceAnnotation>
+    <ns0:partStatus>Released HQ 2013</ns0:partStatus>
+    <sbol:persistentIdentity rdf:resource="https://synbiohub.org/public/igem/BBa_B0015"/>
+    <ns0:experience rdf:resource="http://wiki.synbiohub.org/wiki/Terms/igem#experience/Works"/>
+    <ns1:ownedBy rdf:resource="https://synbiohub.org/user/james"/>
+    <dc:creator>Reshma Shetty</dc:creator>
+    <prov:wasDerivedFrom rdf:resource="http://parts.igem.org/Part:BBa_B0015"/>
+    <sbol:role rdf:resource="http://identifiers.org/so/SO:0000141"/>
+  </sbol:ComponentDefinition>
+  <sbol:ComponentDefinition rdf:about="http://example.org/ComponentDefinition/ffl_gene_circuit_ec73b117-4c89-4358-9744-4ebbd0621280/1">
+    <sbol:sequenceConstraint>
+      <sbol:SequenceConstraint rdf:about="http://example.org/ComponentDefinition/ffl_gene_circuit_ec73b117-4c89-4358-9744-4ebbd0621280/constraint_8/1">
+        <sbol:displayId>constraint_8</sbol:displayId>
+        <sbol:version>1</sbol:version>
+        <sbol:persistentIdentity rdf:resource="http://example.org/ComponentDefinition/ffl_gene_circuit_ec73b117-4c89-4358-9744-4ebbd0621280/constraint_8"/>
+        <sbol:restriction rdf:resource="http://sbols.org/v2#precedes"/>
+        <sbol:object rdf:resource="http://example.org/ComponentDefinition/ffl_gene_circuit_ec73b117-4c89-4358-9744-4ebbd0621280/BBa_B0015_0/1"/>
+        <sbol:subject rdf:resource="http://example.org/ComponentDefinition/ffl_gene_circuit_ec73b117-4c89-4358-9744-4ebbd0621280/BBa_C0040_0/1"/>
+      </sbol:SequenceConstraint>
+    </sbol:sequenceConstraint>
+    <sbol:persistentIdentity rdf:resource="http://example.org/ComponentDefinition/ffl_gene_circuit_ec73b117-4c89-4358-9744-4ebbd0621280"/>
+    <sbol:component>
+      <sbol:Component rdf:about="http://example.org/ComponentDefinition/ffl_gene_circuit_ec73b117-4c89-4358-9744-4ebbd0621280/BBa_B0034_3/1">
+        <sbol:definition rdf:resource="https://synbiohub.org/public/igem/BBa_B0034/1"/>
+        <sbol:displayId>BBa_B0034_3</sbol:displayId>
+        <sbol:persistentIdentity rdf:resource="http://example.org/ComponentDefinition/ffl_gene_circuit_ec73b117-4c89-4358-9744-4ebbd0621280/BBa_B0034_3"/>
+        <sbol:version>1</sbol:version>
+        <sbol:access rdf:resource="http://sbols.org/v2#public"/>
+      </sbol:Component>
+    </sbol:component>
+    <sbol:sequenceConstraint>
+      <sbol:SequenceConstraint rdf:about="http://example.org/ComponentDefinition/ffl_gene_circuit_ec73b117-4c89-4358-9744-4ebbd0621280/constraint_7/1">
+        <sbol:subject rdf:resource="http://example.org/ComponentDefinition/ffl_gene_circuit_ec73b117-4c89-4358-9744-4ebbd0621280/BBa_B0034_1/1"/>
+        <sbol:object rdf:resource="http://example.org/ComponentDefinition/ffl_gene_circuit_ec73b117-4c89-4358-9744-4ebbd0621280/BBa_C0040_0/1"/>
+        <sbol:persistentIdentity rdf:resource="http://example.org/ComponentDefinition/ffl_gene_circuit_ec73b117-4c89-4358-9744-4ebbd0621280/constraint_7"/>
+        <sbol:restriction rdf:resource="http://sbols.org/v2#precedes"/>
+        <sbol:displayId>constraint_7</sbol:displayId>
+        <sbol:version>1</sbol:version>
+      </sbol:SequenceConstraint>
+    </sbol:sequenceConstraint>
+    <sbol:component>
+      <sbol:Component rdf:about="http://example.org/ComponentDefinition/ffl_gene_circuit_ec73b117-4c89-4358-9744-4ebbd0621280/BBa_B0015_0/1">
+        <sbol:definition rdf:resource="https://synbiohub.org/public/igem/BBa_B0015/1"/>
+        <sbol:displayId>BBa_B0015_0</sbol:displayId>
+        <sbol:access rdf:resource="http://sbols.org/v2#public"/>
+        <sbol:persistentIdentity rdf:resource="http://example.org/ComponentDefinition/ffl_gene_circuit_ec73b117-4c89-4358-9744-4ebbd0621280/BBa_B0015_0"/>
+        <sbol:version>1</sbol:version>
+      </sbol:Component>
+    </sbol:component>
+    <sbol:component>
+      <sbol:Component rdf:about="http://example.org/ComponentDefinition/ffl_gene_circuit_ec73b117-4c89-4358-9744-4ebbd0621280/BBa_B0034_2/1">
+        <sbol:definition rdf:resource="https://synbiohub.org/public/igem/BBa_B0034/1"/>
+        <sbol:persistentIdentity rdf:resource="http://example.org/ComponentDefinition/ffl_gene_circuit_ec73b117-4c89-4358-9744-4ebbd0621280/BBa_B0034_2"/>
+        <sbol:displayId>BBa_B0034_2</sbol:displayId>
+        <sbol:access rdf:resource="http://sbols.org/v2#public"/>
+        <sbol:version>1</sbol:version>
+      </sbol:Component>
+    </sbol:component>
+    <sbol:version>1</sbol:version>
+    <sbol:sequenceConstraint>
+      <sbol:SequenceConstraint rdf:about="http://example.org/ComponentDefinition/ffl_gene_circuit_ec73b117-4c89-4358-9744-4ebbd0621280/constraint_10/1">
+        <sbol:subject rdf:resource="http://example.org/ComponentDefinition/ffl_gene_circuit_ec73b117-4c89-4358-9744-4ebbd0621280/BBa_J23100_0/1"/>
+        <sbol:object rdf:resource="http://example.org/ComponentDefinition/ffl_gene_circuit_ec73b117-4c89-4358-9744-4ebbd0621280/BBa_B0034_0/1"/>
+        <sbol:restriction rdf:resource="http://sbols.org/v2#precedes"/>
+        <sbol:displayId>constraint_10</sbol:displayId>
+        <sbol:version>1</sbol:version>
+        <sbol:persistentIdentity rdf:resource="http://example.org/ComponentDefinition/ffl_gene_circuit_ec73b117-4c89-4358-9744-4ebbd0621280/constraint_10"/>
+      </sbol:SequenceConstraint>
+    </sbol:sequenceConstraint>
+    <sbol:sequenceConstraint>
+      <sbol:SequenceConstraint rdf:about="http://example.org/ComponentDefinition/ffl_gene_circuit_ec73b117-4c89-4358-9744-4ebbd0621280/constraint_1/1">
+        <sbol:subject rdf:resource="http://example.org/ComponentDefinition/ffl_gene_circuit_ec73b117-4c89-4358-9744-4ebbd0621280/BBa_B0034_3/1"/>
+        <sbol:persistentIdentity rdf:resource="http://example.org/ComponentDefinition/ffl_gene_circuit_ec73b117-4c89-4358-9744-4ebbd0621280/constraint_1"/>
+        <sbol:displayId>constraint_1</sbol:displayId>
+        <sbol:object rdf:resource="http://example.org/ComponentDefinition/ffl_gene_circuit_ec73b117-4c89-4358-9744-4ebbd0621280/BBa_J23119_2/1"/>
+        <sbol:restriction rdf:resource="http://sbols.org/v2#precedes"/>
+        <sbol:version>1</sbol:version>
+      </sbol:SequenceConstraint>
+    </sbol:sequenceConstraint>
+    <sbol:component>
+      <sbol:Component rdf:about="http://example.org/ComponentDefinition/ffl_gene_circuit_ec73b117-4c89-4358-9744-4ebbd0621280/BBa_J23119_3/1">
+        <sbol:access rdf:resource="http://sbols.org/v2#public"/>
+        <sbol:persistentIdentity rdf:resource="http://example.org/ComponentDefinition/ffl_gene_circuit_ec73b117-4c89-4358-9744-4ebbd0621280/BBa_J23119_3"/>
+        <sbol:displayId>BBa_J23119_3</sbol:displayId>
+        <sbol:version>1</sbol:version>
+        <sbol:definition rdf:resource="https://synbiohub.org/public/igem/BBa_J23119/1"/>
+      </sbol:Component>
+    </sbol:component>
+    <sbol:sequenceConstraint>
+      <sbol:SequenceConstraint rdf:about="http://example.org/ComponentDefinition/ffl_gene_circuit_ec73b117-4c89-4358-9744-4ebbd0621280/constraint_0/1">
+        <sbol:restriction rdf:resource="http://sbols.org/v2#precedes"/>
+        <sbol:version>1</sbol:version>
+        <sbol:displayId>constraint_0</sbol:displayId>
+        <sbol:subject rdf:resource="http://example.org/ComponentDefinition/ffl_gene_circuit_ec73b117-4c89-4358-9744-4ebbd0621280/BBa_J23119_3/1"/>
+        <sbol:object rdf:resource="http://example.org/ComponentDefinition/ffl_gene_circuit_ec73b117-4c89-4358-9744-4ebbd0621280/BBa_B0034_3/1"/>
+        <sbol:persistentIdentity rdf:resource="http://example.org/ComponentDefinition/ffl_gene_circuit_ec73b117-4c89-4358-9744-4ebbd0621280/constraint_0"/>
+      </sbol:SequenceConstraint>
+    </sbol:sequenceConstraint>
+    <sbol:component>
+      <sbol:Component rdf:about="http://example.org/ComponentDefinition/ffl_gene_circuit_ec73b117-4c89-4358-9744-4ebbd0621280/BBa_J23100_0/1">
+        <sbol:access rdf:resource="http://sbols.org/v2#public"/>
+        <sbol:displayId>BBa_J23100_0</sbol:displayId>
+        <sbol:version>1</sbol:version>
+        <sbol:definition rdf:resource="https://synbiohub.org/public/igem/BBa_J23100/1"/>
+        <sbol:persistentIdentity rdf:resource="http://example.org/ComponentDefinition/ffl_gene_circuit_ec73b117-4c89-4358-9744-4ebbd0621280/BBa_J23100_0"/>
+      </sbol:Component>
+    </sbol:component>
+    <sbol:component>
+      <sbol:Component rdf:about="http://example.org/ComponentDefinition/ffl_gene_circuit_ec73b117-4c89-4358-9744-4ebbd0621280/BBa_J23100_1/1">
+        <sbol:persistentIdentity rdf:resource="http://example.org/ComponentDefinition/ffl_gene_circuit_ec73b117-4c89-4358-9744-4ebbd0621280/BBa_J23100_1"/>
+        <sbol:access rdf:resource="http://sbols.org/v2#public"/>
+        <sbol:displayId>BBa_J23100_1</sbol:displayId>
+        <sbol:version>1</sbol:version>
+        <sbol:definition rdf:resource="https://synbiohub.org/public/igem/BBa_J23100/1"/>
+      </sbol:Component>
+    </sbol:component>
+    <sbol:sequenceConstraint>
+      <sbol:SequenceConstraint rdf:about="http://example.org/ComponentDefinition/ffl_gene_circuit_ec73b117-4c89-4358-9744-4ebbd0621280/constraint_4/1">
+        <sbol:restriction rdf:resource="http://sbols.org/v2#precedes"/>
+        <sbol:version>1</sbol:version>
+        <sbol:displayId>constraint_4</sbol:displayId>
+        <sbol:object rdf:resource="http://example.org/ComponentDefinition/ffl_gene_circuit_ec73b117-4c89-4358-9744-4ebbd0621280/BBa_J23100_1/1"/>
+        <sbol:persistentIdentity rdf:resource="http://example.org/ComponentDefinition/ffl_gene_circuit_ec73b117-4c89-4358-9744-4ebbd0621280/constraint_4"/>
+        <sbol:subject rdf:resource="http://example.org/ComponentDefinition/ffl_gene_circuit_ec73b117-4c89-4358-9744-4ebbd0621280/BBa_B0034_2/1"/>
+      </sbol:SequenceConstraint>
+    </sbol:sequenceConstraint>
+    <sbol:sequenceConstraint>
+      <sbol:SequenceConstraint rdf:about="http://example.org/ComponentDefinition/ffl_gene_circuit_ec73b117-4c89-4358-9744-4ebbd0621280/constraint_5/1">
+        <sbol:displayId>constraint_5</sbol:displayId>
+        <sbol:restriction rdf:resource="http://sbols.org/v2#precedes"/>
+        <sbol:persistentIdentity rdf:resource="http://example.org/ComponentDefinition/ffl_gene_circuit_ec73b117-4c89-4358-9744-4ebbd0621280/constraint_5"/>
+        <sbol:subject rdf:resource="http://example.org/ComponentDefinition/ffl_gene_circuit_ec73b117-4c89-4358-9744-4ebbd0621280/BBa_J23100_1/1"/>
+        <sbol:object rdf:resource="http://example.org/ComponentDefinition/ffl_gene_circuit_ec73b117-4c89-4358-9744-4ebbd0621280/BBa_J23119_0/1"/>
+        <sbol:version>1</sbol:version>
+      </sbol:SequenceConstraint>
+    </sbol:sequenceConstraint>
+    <sbol:type rdf:resource="http://www.biopax.org/release/biopax-level3.owl#DnaRegion"/>
+    <sbol:component>
+      <sbol:Component rdf:about="http://example.org/ComponentDefinition/ffl_gene_circuit_ec73b117-4c89-4358-9744-4ebbd0621280/BBa_C0040_0/1">
+        <sbol:access rdf:resource="http://sbols.org/v2#public"/>
+        <sbol:persistentIdentity rdf:resource="http://example.org/ComponentDefinition/ffl_gene_circuit_ec73b117-4c89-4358-9744-4ebbd0621280/BBa_C0040_0"/>
+        <sbol:version>1</sbol:version>
+        <sbol:definition rdf:resource="https://synbiohub.org/public/igem/BBa_C0040/1"/>
+        <sbol:displayId>BBa_C0040_0</sbol:displayId>
+      </sbol:Component>
+    </sbol:component>
+    <sbol:component>
+      <sbol:Component rdf:about="http://example.org/ComponentDefinition/ffl_gene_circuit_ec73b117-4c89-4358-9744-4ebbd0621280/BBa_B0034_0/1">
+        <sbol:persistentIdentity rdf:resource="http://example.org/ComponentDefinition/ffl_gene_circuit_ec73b117-4c89-4358-9744-4ebbd0621280/BBa_B0034_0"/>
+        <sbol:access rdf:resource="http://sbols.org/v2#public"/>
+        <sbol:version>1</sbol:version>
+        <sbol:definition rdf:resource="https://synbiohub.org/public/igem/BBa_B0034/1"/>
+        <sbol:displayId>BBa_B0034_0</sbol:displayId>
+      </sbol:Component>
+    </sbol:component>
+    <sbol:type rdf:resource="http://identifiers.org/so/SO:0000987"/>
+    <sbol:component>
+      <sbol:Component rdf:about="http://example.org/ComponentDefinition/ffl_gene_circuit_ec73b117-4c89-4358-9744-4ebbd0621280/BBa_J23119_2/1">
+        <sbol:displayId>BBa_J23119_2</sbol:displayId>
+        <sbol:definition rdf:resource="https://synbiohub.org/public/igem/BBa_J23119/1"/>
+        <sbol:access rdf:resource="http://sbols.org/v2#public"/>
+        <sbol:version>1</sbol:version>
+        <sbol:persistentIdentity rdf:resource="http://example.org/ComponentDefinition/ffl_gene_circuit_ec73b117-4c89-4358-9744-4ebbd0621280/BBa_J23119_2"/>
+      </sbol:Component>
+    </sbol:component>
+    <sbol:sequenceConstraint>
+      <sbol:SequenceConstraint rdf:about="http://example.org/ComponentDefinition/ffl_gene_circuit_ec73b117-4c89-4358-9744-4ebbd0621280/constraint_6/1">
+        <sbol:displayId>constraint_6</sbol:displayId>
+        <sbol:object rdf:resource="http://example.org/ComponentDefinition/ffl_gene_circuit_ec73b117-4c89-4358-9744-4ebbd0621280/BBa_B0034_1/1"/>
+        <sbol:version>1</sbol:version>
+        <sbol:persistentIdentity rdf:resource="http://example.org/ComponentDefinition/ffl_gene_circuit_ec73b117-4c89-4358-9744-4ebbd0621280/constraint_6"/>
+        <sbol:restriction rdf:resource="http://sbols.org/v2#precedes"/>
+        <sbol:subject rdf:resource="http://example.org/ComponentDefinition/ffl_gene_circuit_ec73b117-4c89-4358-9744-4ebbd0621280/BBa_J23119_0/1"/>
+      </sbol:SequenceConstraint>
+    </sbol:sequenceConstraint>
+    <sbol:component>
+      <sbol:Component rdf:about="http://example.org/ComponentDefinition/ffl_gene_circuit_ec73b117-4c89-4358-9744-4ebbd0621280/BBa_B0034_1/1">
+        <sbol:version>1</sbol:version>
+        <sbol:displayId>BBa_B0034_1</sbol:displayId>
+        <sbol:definition rdf:resource="https://synbiohub.org/public/igem/BBa_B0034/1"/>
+        <sbol:persistentIdentity rdf:resource="http://example.org/ComponentDefinition/ffl_gene_circuit_ec73b117-4c89-4358-9744-4ebbd0621280/BBa_B0034_1"/>
+        <sbol:access rdf:resource="http://sbols.org/v2#public"/>
+      </sbol:Component>
+    </sbol:component>
+    <sbol:sequenceConstraint>
+      <sbol:SequenceConstraint rdf:about="http://example.org/ComponentDefinition/ffl_gene_circuit_ec73b117-4c89-4358-9744-4ebbd0621280/constraint_2/1">
+        <sbol:persistentIdentity rdf:resource="http://example.org/ComponentDefinition/ffl_gene_circuit_ec73b117-4c89-4358-9744-4ebbd0621280/constraint_2"/>
+        <sbol:object rdf:resource="http://example.org/ComponentDefinition/ffl_gene_circuit_ec73b117-4c89-4358-9744-4ebbd0621280/BBa_J23119_1/1"/>
+        <sbol:restriction rdf:resource="http://sbols.org/v2#precedes"/>
+        <sbol:subject rdf:resource="http://example.org/ComponentDefinition/ffl_gene_circuit_ec73b117-4c89-4358-9744-4ebbd0621280/BBa_J23119_2/1"/>
+        <sbol:version>1</sbol:version>
+        <sbol:displayId>constraint_2</sbol:displayId>
+      </sbol:SequenceConstraint>
+    </sbol:sequenceConstraint>
+    <sbol:sequenceConstraint>
+      <sbol:SequenceConstraint rdf:about="http://example.org/ComponentDefinition/ffl_gene_circuit_ec73b117-4c89-4358-9744-4ebbd0621280/constraint_3/1">
+        <sbol:displayId>constraint_3</sbol:displayId>
+        <sbol:restriction rdf:resource="http://sbols.org/v2#precedes"/>
+        <sbol:object rdf:resource="http://example.org/ComponentDefinition/ffl_gene_circuit_ec73b117-4c89-4358-9744-4ebbd0621280/BBa_B0034_2/1"/>
+        <sbol:version>1</sbol:version>
+        <sbol:persistentIdentity rdf:resource="http://example.org/ComponentDefinition/ffl_gene_circuit_ec73b117-4c89-4358-9744-4ebbd0621280/constraint_3"/>
+        <sbol:subject rdf:resource="http://example.org/ComponentDefinition/ffl_gene_circuit_ec73b117-4c89-4358-9744-4ebbd0621280/BBa_J23119_1/1"/>
+      </sbol:SequenceConstraint>
+    </sbol:sequenceConstraint>
+    <sbol:component>
+      <sbol:Component rdf:about="http://example.org/ComponentDefinition/ffl_gene_circuit_ec73b117-4c89-4358-9744-4ebbd0621280/BBa_J23119_0/1">
+        <sbol:version>1</sbol:version>
+        <sbol:persistentIdentity rdf:resource="http://example.org/ComponentDefinition/ffl_gene_circuit_ec73b117-4c89-4358-9744-4ebbd0621280/BBa_J23119_0"/>
+        <sbol:displayId>BBa_J23119_0</sbol:displayId>
+        <sbol:definition rdf:resource="https://synbiohub.org/public/igem/BBa_J23119/1"/>
+        <sbol:access rdf:resource="http://sbols.org/v2#public"/>
+      </sbol:Component>
+    </sbol:component>
+    <sbol:sequenceConstraint>
+      <sbol:SequenceConstraint rdf:about="http://example.org/ComponentDefinition/ffl_gene_circuit_ec73b117-4c89-4358-9744-4ebbd0621280/constraint_9/1">
+        <sbol:displayId>constraint_9</sbol:displayId>
+        <sbol:subject rdf:resource="http://example.org/ComponentDefinition/ffl_gene_circuit_ec73b117-4c89-4358-9744-4ebbd0621280/BBa_B0015_0/1"/>
+        <sbol:version>1</sbol:version>
+        <sbol:persistentIdentity rdf:resource="http://example.org/ComponentDefinition/ffl_gene_circuit_ec73b117-4c89-4358-9744-4ebbd0621280/constraint_9"/>
+        <sbol:restriction rdf:resource="http://sbols.org/v2#precedes"/>
+        <sbol:object rdf:resource="http://example.org/ComponentDefinition/ffl_gene_circuit_ec73b117-4c89-4358-9744-4ebbd0621280/BBa_J23100_0/1"/>
+      </sbol:SequenceConstraint>
+    </sbol:sequenceConstraint>
+    <sbol:component>
+      <sbol:Component rdf:about="http://example.org/ComponentDefinition/ffl_gene_circuit_ec73b117-4c89-4358-9744-4ebbd0621280/BBa_J23119_1/1">
+        <sbol:access rdf:resource="http://sbols.org/v2#public"/>
+        <sbol:definition rdf:resource="https://synbiohub.org/public/igem/BBa_J23119/1"/>
+        <sbol:displayId>BBa_J23119_1</sbol:displayId>
+        <sbol:persistentIdentity rdf:resource="http://example.org/ComponentDefinition/ffl_gene_circuit_ec73b117-4c89-4358-9744-4ebbd0621280/BBa_J23119_1"/>
+        <sbol:version>1</sbol:version>
+      </sbol:Component>
+    </sbol:component>
+    <sbol:displayId>ffl_gene_circuit_ec73b117-4c89-4358-9744-4ebbd0621280</sbol:displayId>
+  </sbol:ComponentDefinition>
+  <sbol:ComponentDefinition rdf:about="https://synbiohub.org/public/igem/BBa_C0040/1">
+    <ns0:dominant>true</ns0:dominant>
+    <ns1:ownedBy rdf:resource="https://synbiohub.org/user/myers"/>
+    <ns0:owning_group_id>7</ns0:owning_group_id>
+    <dcterms:description>tetracycline repressor from transposon Tn10 (+LVA)</dcterms:description>
+    <dcterms:title>cds_BBa_C0040</dcterms:title>
+    <dc:creator>June Rhee, Connie Tao, Ty Thomson, Louis Waldman.</dc:creator>
+    <dcterms:modified>2015-08-31T04:07:23Z</dcterms:modified>
+    <sbol:displayId>BBa_C0040</sbol:displayId>
+    <ns0:discontinued>false</ns0:discontinued>
+    <ns1:bookmark>false</ns1:bookmark>
+    <sbol:role rdf:resource="http://identifiers.org/so/SO:0000316"/>
+    <sbol:sequence rdf:resource="https://synbiohub.org/public/igem/BBa_C0040_sequence/1"/>
+    <ns0:m_user_id>0</ns0:m_user_id>
+    <ns0:status rdf:resource="http://wiki.synbiohub.org/wiki/Terms/igem#status/Available"/>
+    <ns0:experience rdf:resource="http://wiki.synbiohub.org/wiki/Terms/igem#experience/None"/>
+    <prov:wasDerivedFrom rdf:resource="http://parts.igem.org/Part:BBa_C0040"/>
+    <ns1:mutableDescription>Coding region for the TetR protein without the Ribosome Binding Site. Modified      with an LVA tail for rapid degradation of the protein and faster fall time      for the emission. TetR binds to the pTet regulator (BBa_R0040). aTc (anhydrotetracycline)      binds to TetR and inhibits its operation.&lt;/P&gt;</ns1:mutableDescription>
+    <dcterms:created>2003-01-31T12:00:00Z</dcterms:created>
+    <ns0:group_u_list>_1_</ns0:group_u_list>
+    <ns0:partStatus>Released HQ 2013</ns0:partStatus>
+    <sbol:sequenceAnnotation>
+      <sbol:SequenceAnnotation rdf:about="https://synbiohub.org/public/igem/BBa_C0040/annotation23330/1">
+        <dcterms:title>SsrA</dcterms:title>
+        <ns1:topLevel rdf:resource="https://synbiohub.org/public/igem/BBa_C0040/1"/>
+        <sbol:displayId>annotation23330</sbol:displayId>
+        <sbol:location>
+          <sbol:Range rdf:about="https://synbiohub.org/public/igem/BBa_C0040/annotation23330/range23330/1">
+            <sbol:start>621</sbol:start>
+            <ns1:topLevel rdf:resource="https://synbiohub.org/public/igem/BBa_C0040/1"/>
+            <sbol:orientation rdf:resource="http://sbols.org/v2#inline"/>
+            <ns0:direction rdf:resource="http://wiki.synbiohub.org/wiki/Terms/igem#direction/forward"/>
+            <sbol:version>1</sbol:version>
+            <sbol:persistentIdentity rdf:resource="https://synbiohub.org/public/igem/BBa_C0040/annotation23330/range23330"/>
+            <sbol:end>654</sbol:end>
+            <sbol:displayId>range23330</sbol:displayId>
+          </sbol:Range>
+        </sbol:location>
+        <sbol:persistentIdentity rdf:resource="https://synbiohub.org/public/igem/BBa_C0040/annotation23330"/>
+        <sbol:role rdf:resource="http://wiki.synbiohub.org/wiki/Terms/igem#feature/tag"/>
+        <sbol:version>1</sbol:version>
+        <sbol:role rdf:resource="http://identifiers.org/so/SO:0000324"/>
+      </sbol:SequenceAnnotation>
+    </sbol:sequenceAnnotation>
+    <ns1:mutableProvenance>Elowitz, M. B. Transport, Assembly, and Dynamics in Systems of Interacting Proteins. Thesis, Princeton Univ., Princeton (1999)</ns1:mutableProvenance>
+    <ns1:mutableNotes>References (unparsed) here: &lt;p&gt;Elowitz, M. B. Transport, Assembly, and Dynamics in Systems of Interacting      Proteins. Thesis, Princeton Univ., Princeton (1999). &lt;/P&gt; &lt;p&gt; Lutz R, Bujard H., Independent and tight regulation of transcriptional units in Escherichia coli via the LacR/O, the TetR/O and AraC/I1-I2 regulatory elements. Nucleic Acids Res. 1997 Mar 15;25(6):1203-10.   PMID: 9092630 &lt;/p&gt; &lt;P&gt; References (unparsed) here: &lt;p&gt;Elowitz, M. B. Transport, Assembly, and Dynamics in Systems of Interacting      Proteins. Thesis, Princeton Univ., Princeton (1999). &lt;/P&gt; &lt;p&gt; Lutz R, Bujard H., Independent and tight regulation of transcriptional units in Escherichia coli via the LacR/O, the TetR/O and AraC/I1-I2 regulatory elements. Nucleic Acids Res. 1997 Mar 15;25(6):1203-10.   PMID: 9092630 &lt;/p&gt; &lt;P&gt;BBa_C0040 TetR Protein is based on the TetR sequence from Elowitz's repressilator.      It has been modified to include a rapid degradation LVA tail, and includes      the BioBrick standard assembly head and tail restriction sites. The RBS has      been removed. The stop codon has been changed from TAA to a double stop codon      TAATAA.  &lt;P&gt;</ns1:mutableNotes>
+    <sbol:sequenceAnnotation>
+      <sbol:SequenceAnnotation rdf:about="https://synbiohub.org/public/igem/BBa_C0040/annotation23329/1">
+        <ns1:topLevel rdf:resource="https://synbiohub.org/public/igem/BBa_C0040/1"/>
+        <sbol:role rdf:resource="http://wiki.synbiohub.org/wiki/Terms/igem#feature/cds"/>
+        <dcterms:title>tetR</dcterms:title>
+        <sbol:location>
+          <sbol:Range rdf:about="https://synbiohub.org/public/igem/BBa_C0040/annotation23329/range23329/1">
+            <sbol:end>620</sbol:end>
+            <sbol:persistentIdentity rdf:resource="https://synbiohub.org/public/igem/BBa_C0040/annotation23329/range23329"/>
+            <sbol:displayId>range23329</sbol:displayId>
+            <ns0:direction rdf:resource="http://wiki.synbiohub.org/wiki/Terms/igem#direction/forward"/>
+            <sbol:start>4</sbol:start>
+            <sbol:version>1</sbol:version>
+            <ns1:topLevel rdf:resource="https://synbiohub.org/public/igem/BBa_C0040/1"/>
+            <sbol:orientation rdf:resource="http://sbols.org/v2#inline"/>
+          </sbol:Range>
+        </sbol:location>
+        <sbol:persistentIdentity rdf:resource="https://synbiohub.org/public/igem/BBa_C0040/annotation23329"/>
+        <sbol:role rdf:resource="http://identifiers.org/so/SO:0000316"/>
+        <sbol:version>1</sbol:version>
+        <sbol:displayId>annotation23329</sbol:displayId>
+      </sbol:SequenceAnnotation>
+    </sbol:sequenceAnnotation>
+    <ns1:ownedBy rdf:resource="https://synbiohub.org/user/james"/>
+    <sbol:persistentIdentity rdf:resource="https://synbiohub.org/public/igem/BBa_C0040"/>
+    <sbol:sequenceAnnotation>
+      <sbol:SequenceAnnotation rdf:about="https://synbiohub.org/public/igem/BBa_C0040/annotation2213989/1">
+        <dcterms:title>Help:Barcodes</dcterms:title>
+        <sbol:persistentIdentity rdf:resource="https://synbiohub.org/public/igem/BBa_C0040/annotation2213989"/>
+        <sbol:role rdf:resource="http://wiki.synbiohub.org/wiki/Terms/igem#feature/barcode"/>
+        <sbol:role rdf:resource="http://identifiers.org/so/SO:0000807"/>
+        <sbol:location>
+          <sbol:Range rdf:about="https://synbiohub.org/public/igem/BBa_C0040/annotation2213989/range2213989/1">
+            <sbol:start>661</sbol:start>
+            <sbol:persistentIdentity rdf:resource="https://synbiohub.org/public/igem/BBa_C0040/annotation2213989/range2213989"/>
+            <sbol:displayId>range2213989</sbol:displayId>
+            <ns1:topLevel rdf:resource="https://synbiohub.org/public/igem/BBa_C0040/1"/>
+            <sbol:orientation rdf:resource="http://sbols.org/v2#inline"/>
+            <sbol:end>685</sbol:end>
+            <ns0:direction rdf:resource="http://wiki.synbiohub.org/wiki/Terms/igem#direction/forward"/>
+            <sbol:version>1</sbol:version>
+          </sbol:Range>
+        </sbol:location>
+        <sbol:version>1</sbol:version>
+        <sbol:displayId>annotation2213989</sbol:displayId>
+        <ns1:topLevel rdf:resource="https://synbiohub.org/public/igem/BBa_C0040/1"/>
+      </sbol:SequenceAnnotation>
+    </sbol:sequenceAnnotation>
+    <ns0:owner_id>24</ns0:owner_id>
+    <ns1:star>true</ns1:star>
+    <sbol:version>1</sbol:version>
+    <prov:wasGeneratedBy rdf:resource="https://synbiohub.org/public/igem/igem2sbol/1"/>
+    <ns0:sampleStatus>In stock</ns0:sampleStatus>
+    <sbol:type rdf:resource="http://www.biopax.org/release/biopax-level3.owl#DnaRegion"/>
+    <ns1:topLevel rdf:resource="https://synbiohub.org/public/igem/BBa_C0040/1"/>
+  </sbol:ComponentDefinition>
+  <sbol:ComponentDefinition rdf:about="http://example.org/ComponentDefinition/ffl_gene_circuit_9b800f98-0379-4069-bc6f-c706ad30b45f/1">
+    <sbol:component>
+      <sbol:Component rdf:about="http://example.org/ComponentDefinition/ffl_gene_circuit_9b800f98-0379-4069-bc6f-c706ad30b45f/BBa_J23100_1/1">
+        <sbol:displayId>BBa_J23100_1</sbol:displayId>
+        <sbol:version>1</sbol:version>
+        <sbol:definition rdf:resource="https://synbiohub.org/public/igem/BBa_J23100/1"/>
+        <sbol:persistentIdentity rdf:resource="http://example.org/ComponentDefinition/ffl_gene_circuit_9b800f98-0379-4069-bc6f-c706ad30b45f/BBa_J23100_1"/>
+        <sbol:access rdf:resource="http://sbols.org/v2#public"/>
+      </sbol:Component>
+    </sbol:component>
+    <sbol:component>
+      <sbol:Component rdf:about="http://example.org/ComponentDefinition/ffl_gene_circuit_9b800f98-0379-4069-bc6f-c706ad30b45f/BBa_J23119_0/1">
+        <sbol:access rdf:resource="http://sbols.org/v2#public"/>
+        <sbol:version>1</sbol:version>
+        <sbol:definition rdf:resource="https://synbiohub.org/public/igem/BBa_J23119/1"/>
+        <sbol:persistentIdentity rdf:resource="http://example.org/ComponentDefinition/ffl_gene_circuit_9b800f98-0379-4069-bc6f-c706ad30b45f/BBa_J23119_0"/>
+        <sbol:displayId>BBa_J23119_0</sbol:displayId>
+      </sbol:Component>
+    </sbol:component>
+    <sbol:sequenceConstraint>
+      <sbol:SequenceConstraint rdf:about="http://example.org/ComponentDefinition/ffl_gene_circuit_9b800f98-0379-4069-bc6f-c706ad30b45f/constraint_8/1">
+        <sbol:object rdf:resource="http://example.org/ComponentDefinition/ffl_gene_circuit_9b800f98-0379-4069-bc6f-c706ad30b45f/BBa_B0015_0/1"/>
+        <sbol:restriction rdf:resource="http://sbols.org/v2#precedes"/>
+        <sbol:persistentIdentity rdf:resource="http://example.org/ComponentDefinition/ffl_gene_circuit_9b800f98-0379-4069-bc6f-c706ad30b45f/constraint_8"/>
+        <sbol:version>1</sbol:version>
+        <sbol:subject rdf:resource="http://example.org/ComponentDefinition/ffl_gene_circuit_9b800f98-0379-4069-bc6f-c706ad30b45f/BBa_E0040_0/1"/>
+        <sbol:displayId>constraint_8</sbol:displayId>
+      </sbol:SequenceConstraint>
+    </sbol:sequenceConstraint>
+    <sbol:sequenceConstraint>
+      <sbol:SequenceConstraint rdf:about="http://example.org/ComponentDefinition/ffl_gene_circuit_9b800f98-0379-4069-bc6f-c706ad30b45f/constraint_5/1">
+        <sbol:object rdf:resource="http://example.org/ComponentDefinition/ffl_gene_circuit_9b800f98-0379-4069-bc6f-c706ad30b45f/BBa_J23119_0/1"/>
+        <sbol:displayId>constraint_5</sbol:displayId>
+        <sbol:persistentIdentity rdf:resource="http://example.org/ComponentDefinition/ffl_gene_circuit_9b800f98-0379-4069-bc6f-c706ad30b45f/constraint_5"/>
+        <sbol:restriction rdf:resource="http://sbols.org/v2#precedes"/>
+        <sbol:version>1</sbol:version>
+        <sbol:subject rdf:resource="http://example.org/ComponentDefinition/ffl_gene_circuit_9b800f98-0379-4069-bc6f-c706ad30b45f/BBa_J23100_1/1"/>
+      </sbol:SequenceConstraint>
+    </sbol:sequenceConstraint>
+    <sbol:component>
+      <sbol:Component rdf:about="http://example.org/ComponentDefinition/ffl_gene_circuit_9b800f98-0379-4069-bc6f-c706ad30b45f/BBa_B0034_1/1">
+        <sbol:definition rdf:resource="https://synbiohub.org/public/igem/BBa_B0034/1"/>
+        <sbol:access rdf:resource="http://sbols.org/v2#public"/>
+        <sbol:version>1</sbol:version>
+        <sbol:displayId>BBa_B0034_1</sbol:displayId>
+        <sbol:persistentIdentity rdf:resource="http://example.org/ComponentDefinition/ffl_gene_circuit_9b800f98-0379-4069-bc6f-c706ad30b45f/BBa_B0034_1"/>
+      </sbol:Component>
+    </sbol:component>
+    <sbol:displayId>ffl_gene_circuit_9b800f98-0379-4069-bc6f-c706ad30b45f</sbol:displayId>
+    <sbol:sequenceConstraint>
+      <sbol:SequenceConstraint rdf:about="http://example.org/ComponentDefinition/ffl_gene_circuit_9b800f98-0379-4069-bc6f-c706ad30b45f/constraint_6/1">
+        <sbol:persistentIdentity rdf:resource="http://example.org/ComponentDefinition/ffl_gene_circuit_9b800f98-0379-4069-bc6f-c706ad30b45f/constraint_6"/>
+        <sbol:restriction rdf:resource="http://sbols.org/v2#precedes"/>
+        <sbol:displayId>constraint_6</sbol:displayId>
+        <sbol:version>1</sbol:version>
+        <sbol:object rdf:resource="http://example.org/ComponentDefinition/ffl_gene_circuit_9b800f98-0379-4069-bc6f-c706ad30b45f/BBa_B0034_1/1"/>
+        <sbol:subject rdf:resource="http://example.org/ComponentDefinition/ffl_gene_circuit_9b800f98-0379-4069-bc6f-c706ad30b45f/BBa_J23119_0/1"/>
+      </sbol:SequenceConstraint>
+    </sbol:sequenceConstraint>
+    <sbol:component>
+      <sbol:Component rdf:about="http://example.org/ComponentDefinition/ffl_gene_circuit_9b800f98-0379-4069-bc6f-c706ad30b45f/BBa_J23119_3/1">
+        <sbol:version>1</sbol:version>
+        <sbol:displayId>BBa_J23119_3</sbol:displayId>
+        <sbol:definition rdf:resource="https://synbiohub.org/public/igem/BBa_J23119/1"/>
+        <sbol:access rdf:resource="http://sbols.org/v2#public"/>
+        <sbol:persistentIdentity rdf:resource="http://example.org/ComponentDefinition/ffl_gene_circuit_9b800f98-0379-4069-bc6f-c706ad30b45f/BBa_J23119_3"/>
+      </sbol:Component>
+    </sbol:component>
+    <sbol:sequenceConstraint>
+      <sbol:SequenceConstraint rdf:about="http://example.org/ComponentDefinition/ffl_gene_circuit_9b800f98-0379-4069-bc6f-c706ad30b45f/constraint_7/1">
+        <sbol:object rdf:resource="http://example.org/ComponentDefinition/ffl_gene_circuit_9b800f98-0379-4069-bc6f-c706ad30b45f/BBa_E0040_0/1"/>
+        <sbol:persistentIdentity rdf:resource="http://example.org/ComponentDefinition/ffl_gene_circuit_9b800f98-0379-4069-bc6f-c706ad30b45f/constraint_7"/>
+        <sbol:displayId>constraint_7</sbol:displayId>
+        <sbol:version>1</sbol:version>
+        <sbol:subject rdf:resource="http://example.org/ComponentDefinition/ffl_gene_circuit_9b800f98-0379-4069-bc6f-c706ad30b45f/BBa_B0034_1/1"/>
+        <sbol:restriction rdf:resource="http://sbols.org/v2#precedes"/>
+      </sbol:SequenceConstraint>
+    </sbol:sequenceConstraint>
+    <sbol:sequenceConstraint>
+      <sbol:SequenceConstraint rdf:about="http://example.org/ComponentDefinition/ffl_gene_circuit_9b800f98-0379-4069-bc6f-c706ad30b45f/constraint_9/1">
+        <sbol:version>1</sbol:version>
+        <sbol:persistentIdentity rdf:resource="http://example.org/ComponentDefinition/ffl_gene_circuit_9b800f98-0379-4069-bc6f-c706ad30b45f/constraint_9"/>
+        <sbol:subject rdf:resource="http://example.org/ComponentDefinition/ffl_gene_circuit_9b800f98-0379-4069-bc6f-c706ad30b45f/BBa_B0015_0/1"/>
+        <sbol:displayId>constraint_9</sbol:displayId>
+        <sbol:restriction rdf:resource="http://sbols.org/v2#precedes"/>
+        <sbol:object rdf:resource="http://example.org/ComponentDefinition/ffl_gene_circuit_9b800f98-0379-4069-bc6f-c706ad30b45f/BBa_J23100_0/1"/>
+      </sbol:SequenceConstraint>
+    </sbol:sequenceConstraint>
+    <sbol:type rdf:resource="http://www.biopax.org/release/biopax-level3.owl#DnaRegion"/>
+    <sbol:sequenceConstraint>
+      <sbol:SequenceConstraint rdf:about="http://example.org/ComponentDefinition/ffl_gene_circuit_9b800f98-0379-4069-bc6f-c706ad30b45f/constraint_1/1">
+        <sbol:object rdf:resource="http://example.org/ComponentDefinition/ffl_gene_circuit_9b800f98-0379-4069-bc6f-c706ad30b45f/BBa_J23119_2/1"/>
+        <sbol:subject rdf:resource="http://example.org/ComponentDefinition/ffl_gene_circuit_9b800f98-0379-4069-bc6f-c706ad30b45f/BBa_B0034_3/1"/>
+        <sbol:displayId>constraint_1</sbol:displayId>
+        <sbol:restriction rdf:resource="http://sbols.org/v2#precedes"/>
+        <sbol:persistentIdentity rdf:resource="http://example.org/ComponentDefinition/ffl_gene_circuit_9b800f98-0379-4069-bc6f-c706ad30b45f/constraint_1"/>
+        <sbol:version>1</sbol:version>
+      </sbol:SequenceConstraint>
+    </sbol:sequenceConstraint>
+    <sbol:sequenceConstraint>
+      <sbol:SequenceConstraint rdf:about="http://example.org/ComponentDefinition/ffl_gene_circuit_9b800f98-0379-4069-bc6f-c706ad30b45f/constraint_0/1">
+        <sbol:restriction rdf:resource="http://sbols.org/v2#precedes"/>
+        <sbol:object rdf:resource="http://example.org/ComponentDefinition/ffl_gene_circuit_9b800f98-0379-4069-bc6f-c706ad30b45f/BBa_B0034_3/1"/>
+        <sbol:version>1</sbol:version>
+        <sbol:persistentIdentity rdf:resource="http://example.org/ComponentDefinition/ffl_gene_circuit_9b800f98-0379-4069-bc6f-c706ad30b45f/constraint_0"/>
+        <sbol:subject rdf:resource="http://example.org/ComponentDefinition/ffl_gene_circuit_9b800f98-0379-4069-bc6f-c706ad30b45f/BBa_J23119_3/1"/>
+        <sbol:displayId>constraint_0</sbol:displayId>
+      </sbol:SequenceConstraint>
+    </sbol:sequenceConstraint>
+    <sbol:component>
+      <sbol:Component rdf:about="http://example.org/ComponentDefinition/ffl_gene_circuit_9b800f98-0379-4069-bc6f-c706ad30b45f/BBa_B0034_3/1">
+        <sbol:version>1</sbol:version>
+        <sbol:persistentIdentity rdf:resource="http://example.org/ComponentDefinition/ffl_gene_circuit_9b800f98-0379-4069-bc6f-c706ad30b45f/BBa_B0034_3"/>
+        <sbol:displayId>BBa_B0034_3</sbol:displayId>
+        <sbol:definition rdf:resource="https://synbiohub.org/public/igem/BBa_B0034/1"/>
+        <sbol:access rdf:resource="http://sbols.org/v2#public"/>
+      </sbol:Component>
+    </sbol:component>
+    <sbol:sequenceConstraint>
+      <sbol:SequenceConstraint rdf:about="http://example.org/ComponentDefinition/ffl_gene_circuit_9b800f98-0379-4069-bc6f-c706ad30b45f/constraint_4/1">
+        <sbol:subject rdf:resource="http://example.org/ComponentDefinition/ffl_gene_circuit_9b800f98-0379-4069-bc6f-c706ad30b45f/BBa_B0034_2/1"/>
+        <sbol:object rdf:resource="http://example.org/ComponentDefinition/ffl_gene_circuit_9b800f98-0379-4069-bc6f-c706ad30b45f/BBa_J23100_1/1"/>
+        <sbol:restriction rdf:resource="http://sbols.org/v2#precedes"/>
+        <sbol:version>1</sbol:version>
+        <sbol:displayId>constraint_4</sbol:displayId>
+        <sbol:persistentIdentity rdf:resource="http://example.org/ComponentDefinition/ffl_gene_circuit_9b800f98-0379-4069-bc6f-c706ad30b45f/constraint_4"/>
+      </sbol:SequenceConstraint>
+    </sbol:sequenceConstraint>
+    <sbol:component>
+      <sbol:Component rdf:about="http://example.org/ComponentDefinition/ffl_gene_circuit_9b800f98-0379-4069-bc6f-c706ad30b45f/BBa_J23100_0/1">
+        <sbol:access rdf:resource="http://sbols.org/v2#public"/>
+        <sbol:displayId>BBa_J23100_0</sbol:displayId>
+        <sbol:version>1</sbol:version>
+        <sbol:definition rdf:resource="https://synbiohub.org/public/igem/BBa_J23100/1"/>
+        <sbol:persistentIdentity rdf:resource="http://example.org/ComponentDefinition/ffl_gene_circuit_9b800f98-0379-4069-bc6f-c706ad30b45f/BBa_J23100_0"/>
+      </sbol:Component>
+    </sbol:component>
+    <sbol:persistentIdentity rdf:resource="http://example.org/ComponentDefinition/ffl_gene_circuit_9b800f98-0379-4069-bc6f-c706ad30b45f"/>
+    <sbol:sequenceConstraint>
+      <sbol:SequenceConstraint rdf:about="http://example.org/ComponentDefinition/ffl_gene_circuit_9b800f98-0379-4069-bc6f-c706ad30b45f/constraint_2/1">
+        <sbol:subject rdf:resource="http://example.org/ComponentDefinition/ffl_gene_circuit_9b800f98-0379-4069-bc6f-c706ad30b45f/BBa_J23119_2/1"/>
+        <sbol:restriction rdf:resource="http://sbols.org/v2#precedes"/>
+        <sbol:version>1</sbol:version>
+        <sbol:persistentIdentity rdf:resource="http://example.org/ComponentDefinition/ffl_gene_circuit_9b800f98-0379-4069-bc6f-c706ad30b45f/constraint_2"/>
+        <sbol:object rdf:resource="http://example.org/ComponentDefinition/ffl_gene_circuit_9b800f98-0379-4069-bc6f-c706ad30b45f/BBa_J23119_1/1"/>
+        <sbol:displayId>constraint_2</sbol:displayId>
+      </sbol:SequenceConstraint>
+    </sbol:sequenceConstraint>
+    <sbol:component>
+      <sbol:Component rdf:about="http://example.org/ComponentDefinition/ffl_gene_circuit_9b800f98-0379-4069-bc6f-c706ad30b45f/BBa_B0034_2/1">
+        <sbol:definition rdf:resource="https://synbiohub.org/public/igem/BBa_B0034/1"/>
+        <sbol:displayId>BBa_B0034_2</sbol:displayId>
+        <sbol:persistentIdentity rdf:resource="http://example.org/ComponentDefinition/ffl_gene_circuit_9b800f98-0379-4069-bc6f-c706ad30b45f/BBa_B0034_2"/>
+        <sbol:access rdf:resource="http://sbols.org/v2#public"/>
+        <sbol:version>1</sbol:version>
+      </sbol:Component>
+    </sbol:component>
+    <sbol:component>
+      <sbol:Component rdf:about="http://example.org/ComponentDefinition/ffl_gene_circuit_9b800f98-0379-4069-bc6f-c706ad30b45f/BBa_J23119_1/1">
+        <sbol:version>1</sbol:version>
+        <sbol:definition rdf:resource="https://synbiohub.org/public/igem/BBa_J23119/1"/>
+        <sbol:displayId>BBa_J23119_1</sbol:displayId>
+        <sbol:persistentIdentity rdf:resource="http://example.org/ComponentDefinition/ffl_gene_circuit_9b800f98-0379-4069-bc6f-c706ad30b45f/BBa_J23119_1"/>
+        <sbol:access rdf:resource="http://sbols.org/v2#public"/>
+      </sbol:Component>
+    </sbol:component>
+    <sbol:sequenceConstraint>
+      <sbol:SequenceConstraint rdf:about="http://example.org/ComponentDefinition/ffl_gene_circuit_9b800f98-0379-4069-bc6f-c706ad30b45f/constraint_10/1">
+        <sbol:object rdf:resource="http://example.org/ComponentDefinition/ffl_gene_circuit_9b800f98-0379-4069-bc6f-c706ad30b45f/BBa_B0034_0/1"/>
+        <sbol:subject rdf:resource="http://example.org/ComponentDefinition/ffl_gene_circuit_9b800f98-0379-4069-bc6f-c706ad30b45f/BBa_J23100_0/1"/>
+        <sbol:restriction rdf:resource="http://sbols.org/v2#precedes"/>
+        <sbol:version>1</sbol:version>
+        <sbol:persistentIdentity rdf:resource="http://example.org/ComponentDefinition/ffl_gene_circuit_9b800f98-0379-4069-bc6f-c706ad30b45f/constraint_10"/>
+        <sbol:displayId>constraint_10</sbol:displayId>
+      </sbol:SequenceConstraint>
+    </sbol:sequenceConstraint>
+    <sbol:component>
+      <sbol:Component rdf:about="http://example.org/ComponentDefinition/ffl_gene_circuit_9b800f98-0379-4069-bc6f-c706ad30b45f/BBa_B0015_0/1">
+        <sbol:version>1</sbol:version>
+        <sbol:persistentIdentity rdf:resource="http://example.org/ComponentDefinition/ffl_gene_circuit_9b800f98-0379-4069-bc6f-c706ad30b45f/BBa_B0015_0"/>
+        <sbol:displayId>BBa_B0015_0</sbol:displayId>
+        <sbol:definition rdf:resource="https://synbiohub.org/public/igem/BBa_B0015/1"/>
+        <sbol:access rdf:resource="http://sbols.org/v2#public"/>
+      </sbol:Component>
+    </sbol:component>
+    <sbol:component>
+      <sbol:Component rdf:about="http://example.org/ComponentDefinition/ffl_gene_circuit_9b800f98-0379-4069-bc6f-c706ad30b45f/BBa_J23119_2/1">
+        <sbol:access rdf:resource="http://sbols.org/v2#public"/>
+        <sbol:displayId>BBa_J23119_2</sbol:displayId>
+        <sbol:persistentIdentity rdf:resource="http://example.org/ComponentDefinition/ffl_gene_circuit_9b800f98-0379-4069-bc6f-c706ad30b45f/BBa_J23119_2"/>
+        <sbol:version>1</sbol:version>
+        <sbol:definition rdf:resource="https://synbiohub.org/public/igem/BBa_J23119/1"/>
+      </sbol:Component>
+    </sbol:component>
+    <sbol:component>
+      <sbol:Component rdf:about="http://example.org/ComponentDefinition/ffl_gene_circuit_9b800f98-0379-4069-bc6f-c706ad30b45f/BBa_E0040_0/1">
+        <sbol:definition rdf:resource="https://synbiohub.org/public/igem/BBa_E0040/1"/>
+        <sbol:persistentIdentity rdf:resource="http://example.org/ComponentDefinition/ffl_gene_circuit_9b800f98-0379-4069-bc6f-c706ad30b45f/BBa_E0040_0"/>
+        <sbol:displayId>BBa_E0040_0</sbol:displayId>
+        <sbol:access rdf:resource="http://sbols.org/v2#public"/>
+        <sbol:version>1</sbol:version>
+      </sbol:Component>
+    </sbol:component>
+    <sbol:component>
+      <sbol:Component rdf:about="http://example.org/ComponentDefinition/ffl_gene_circuit_9b800f98-0379-4069-bc6f-c706ad30b45f/BBa_B0034_0/1">
+        <sbol:displayId>BBa_B0034_0</sbol:displayId>
+        <sbol:access rdf:resource="http://sbols.org/v2#public"/>
+        <sbol:version>1</sbol:version>
+        <sbol:persistentIdentity rdf:resource="http://example.org/ComponentDefinition/ffl_gene_circuit_9b800f98-0379-4069-bc6f-c706ad30b45f/BBa_B0034_0"/>
+        <sbol:definition rdf:resource="https://synbiohub.org/public/igem/BBa_B0034/1"/>
+      </sbol:Component>
+    </sbol:component>
+    <sbol:sequenceConstraint>
+      <sbol:SequenceConstraint rdf:about="http://example.org/ComponentDefinition/ffl_gene_circuit_9b800f98-0379-4069-bc6f-c706ad30b45f/constraint_3/1">
+        <sbol:restriction rdf:resource="http://sbols.org/v2#precedes"/>
+        <sbol:persistentIdentity rdf:resource="http://example.org/ComponentDefinition/ffl_gene_circuit_9b800f98-0379-4069-bc6f-c706ad30b45f/constraint_3"/>
+        <sbol:object rdf:resource="http://example.org/ComponentDefinition/ffl_gene_circuit_9b800f98-0379-4069-bc6f-c706ad30b45f/BBa_B0034_2/1"/>
+        <sbol:version>1</sbol:version>
+        <sbol:displayId>constraint_3</sbol:displayId>
+        <sbol:subject rdf:resource="http://example.org/ComponentDefinition/ffl_gene_circuit_9b800f98-0379-4069-bc6f-c706ad30b45f/BBa_J23119_1/1"/>
+      </sbol:SequenceConstraint>
+    </sbol:sequenceConstraint>
+    <sbol:version>1</sbol:version>
+    <sbol:type rdf:resource="http://identifiers.org/so/SO:0000987"/>
+  </sbol:ComponentDefinition>
+  <sbol:ComponentDefinition rdf:about="http://example.org/ComponentDefinition/ffl_gene_circuit_f8d00dcd-4132-4e2e-9955-a84d1f2886bb/1">
+    <sbol:component>
+      <sbol:Component rdf:about="http://example.org/ComponentDefinition/ffl_gene_circuit_f8d00dcd-4132-4e2e-9955-a84d1f2886bb/BBa_B0034_2/1">
+        <sbol:displayId>BBa_B0034_2</sbol:displayId>
+        <sbol:access rdf:resource="http://sbols.org/v2#public"/>
+        <sbol:version>1</sbol:version>
+        <sbol:persistentIdentity rdf:resource="http://example.org/ComponentDefinition/ffl_gene_circuit_f8d00dcd-4132-4e2e-9955-a84d1f2886bb/BBa_B0034_2"/>
+        <sbol:definition rdf:resource="https://synbiohub.org/public/igem/BBa_B0034/1"/>
+      </sbol:Component>
+    </sbol:component>
+    <sbol:component>
+      <sbol:Component rdf:about="http://example.org/ComponentDefinition/ffl_gene_circuit_f8d00dcd-4132-4e2e-9955-a84d1f2886bb/BBa_J23100_0/1">
+        <sbol:version>1</sbol:version>
+        <sbol:definition rdf:resource="https://synbiohub.org/public/igem/BBa_J23100/1"/>
+        <sbol:displayId>BBa_J23100_0</sbol:displayId>
+        <sbol:persistentIdentity rdf:resource="http://example.org/ComponentDefinition/ffl_gene_circuit_f8d00dcd-4132-4e2e-9955-a84d1f2886bb/BBa_J23100_0"/>
+        <sbol:access rdf:resource="http://sbols.org/v2#public"/>
+      </sbol:Component>
+    </sbol:component>
+    <sbol:persistentIdentity rdf:resource="http://example.org/ComponentDefinition/ffl_gene_circuit_f8d00dcd-4132-4e2e-9955-a84d1f2886bb"/>
+    <sbol:component>
+      <sbol:Component rdf:about="http://example.org/ComponentDefinition/ffl_gene_circuit_f8d00dcd-4132-4e2e-9955-a84d1f2886bb/BBa_C0040_0/1">
+        <sbol:access rdf:resource="http://sbols.org/v2#public"/>
+        <sbol:persistentIdentity rdf:resource="http://example.org/ComponentDefinition/ffl_gene_circuit_f8d00dcd-4132-4e2e-9955-a84d1f2886bb/BBa_C0040_0"/>
+        <sbol:version>1</sbol:version>
+        <sbol:definition rdf:resource="https://synbiohub.org/public/igem/BBa_C0040/1"/>
+        <sbol:displayId>BBa_C0040_0</sbol:displayId>
+      </sbol:Component>
+    </sbol:component>
+    <sbol:sequenceConstraint>
+      <sbol:SequenceConstraint rdf:about="http://example.org/ComponentDefinition/ffl_gene_circuit_f8d00dcd-4132-4e2e-9955-a84d1f2886bb/constraint_1/1">
+        <sbol:subject rdf:resource="http://example.org/ComponentDefinition/ffl_gene_circuit_f8d00dcd-4132-4e2e-9955-a84d1f2886bb/BBa_B0034_3/1"/>
+        <sbol:version>1</sbol:version>
+        <sbol:object rdf:resource="http://example.org/ComponentDefinition/ffl_gene_circuit_f8d00dcd-4132-4e2e-9955-a84d1f2886bb/BBa_J23119_2/1"/>
+        <sbol:persistentIdentity rdf:resource="http://example.org/ComponentDefinition/ffl_gene_circuit_f8d00dcd-4132-4e2e-9955-a84d1f2886bb/constraint_1"/>
+        <sbol:displayId>constraint_1</sbol:displayId>
+        <sbol:restriction rdf:resource="http://sbols.org/v2#precedes"/>
+      </sbol:SequenceConstraint>
+    </sbol:sequenceConstraint>
+    <sbol:sequenceConstraint>
+      <sbol:SequenceConstraint rdf:about="http://example.org/ComponentDefinition/ffl_gene_circuit_f8d00dcd-4132-4e2e-9955-a84d1f2886bb/constraint_8/1">
+        <sbol:displayId>constraint_8</sbol:displayId>
+        <sbol:version>1</sbol:version>
+        <sbol:persistentIdentity rdf:resource="http://example.org/ComponentDefinition/ffl_gene_circuit_f8d00dcd-4132-4e2e-9955-a84d1f2886bb/constraint_8"/>
+        <sbol:restriction rdf:resource="http://sbols.org/v2#precedes"/>
+        <sbol:subject rdf:resource="http://example.org/ComponentDefinition/ffl_gene_circuit_f8d00dcd-4132-4e2e-9955-a84d1f2886bb/BBa_C0040_0/1"/>
+        <sbol:object rdf:resource="http://example.org/ComponentDefinition/ffl_gene_circuit_f8d00dcd-4132-4e2e-9955-a84d1f2886bb/BBa_B0015_0/1"/>
+      </sbol:SequenceConstraint>
+    </sbol:sequenceConstraint>
+    <sbol:sequenceConstraint>
+      <sbol:SequenceConstraint rdf:about="http://example.org/ComponentDefinition/ffl_gene_circuit_f8d00dcd-4132-4e2e-9955-a84d1f2886bb/constraint_10/1">
+        <sbol:restriction rdf:resource="http://sbols.org/v2#precedes"/>
+        <sbol:version>1</sbol:version>
+        <sbol:displayId>constraint_10</sbol:displayId>
+        <sbol:object rdf:resource="http://example.org/ComponentDefinition/ffl_gene_circuit_f8d00dcd-4132-4e2e-9955-a84d1f2886bb/BBa_B0034_0/1"/>
+        <sbol:persistentIdentity rdf:resource="http://example.org/ComponentDefinition/ffl_gene_circuit_f8d00dcd-4132-4e2e-9955-a84d1f2886bb/constraint_10"/>
+        <sbol:subject rdf:resource="http://example.org/ComponentDefinition/ffl_gene_circuit_f8d00dcd-4132-4e2e-9955-a84d1f2886bb/BBa_J23100_0/1"/>
+      </sbol:SequenceConstraint>
+    </sbol:sequenceConstraint>
+    <sbol:sequenceConstraint>
+      <sbol:SequenceConstraint rdf:about="http://example.org/ComponentDefinition/ffl_gene_circuit_f8d00dcd-4132-4e2e-9955-a84d1f2886bb/constraint_0/1">
+        <sbol:object rdf:resource="http://example.org/ComponentDefinition/ffl_gene_circuit_f8d00dcd-4132-4e2e-9955-a84d1f2886bb/BBa_B0034_3/1"/>
+        <sbol:displayId>constraint_0</sbol:displayId>
+        <sbol:persistentIdentity rdf:resource="http://example.org/ComponentDefinition/ffl_gene_circuit_f8d00dcd-4132-4e2e-9955-a84d1f2886bb/constraint_0"/>
+        <sbol:subject rdf:resource="http://example.org/ComponentDefinition/ffl_gene_circuit_f8d00dcd-4132-4e2e-9955-a84d1f2886bb/BBa_J23119_3/1"/>
+        <sbol:restriction rdf:resource="http://sbols.org/v2#precedes"/>
+        <sbol:version>1</sbol:version>
+      </sbol:SequenceConstraint>
+    </sbol:sequenceConstraint>
+    <sbol:sequenceConstraint>
+      <sbol:SequenceConstraint rdf:about="http://example.org/ComponentDefinition/ffl_gene_circuit_f8d00dcd-4132-4e2e-9955-a84d1f2886bb/constraint_7/1">
+        <sbol:object rdf:resource="http://example.org/ComponentDefinition/ffl_gene_circuit_f8d00dcd-4132-4e2e-9955-a84d1f2886bb/BBa_C0040_0/1"/>
+        <sbol:subject rdf:resource="http://example.org/ComponentDefinition/ffl_gene_circuit_f8d00dcd-4132-4e2e-9955-a84d1f2886bb/BBa_B0034_1/1"/>
+        <sbol:displayId>constraint_7</sbol:displayId>
+        <sbol:version>1</sbol:version>
+        <sbol:restriction rdf:resource="http://sbols.org/v2#precedes"/>
+        <sbol:persistentIdentity rdf:resource="http://example.org/ComponentDefinition/ffl_gene_circuit_f8d00dcd-4132-4e2e-9955-a84d1f2886bb/constraint_7"/>
+      </sbol:SequenceConstraint>
+    </sbol:sequenceConstraint>
+    <sbol:version>1</sbol:version>
+    <sbol:displayId>ffl_gene_circuit_f8d00dcd-4132-4e2e-9955-a84d1f2886bb</sbol:displayId>
+    <sbol:type rdf:resource="http://www.biopax.org/release/biopax-level3.owl#DnaRegion"/>
+    <sbol:component>
+      <sbol:Component rdf:about="http://example.org/ComponentDefinition/ffl_gene_circuit_f8d00dcd-4132-4e2e-9955-a84d1f2886bb/BBa_B0034_0/1">
+        <sbol:version>1</sbol:version>
+        <sbol:definition rdf:resource="https://synbiohub.org/public/igem/BBa_B0034/1"/>
+        <sbol:displayId>BBa_B0034_0</sbol:displayId>
+        <sbol:access rdf:resource="http://sbols.org/v2#public"/>
+        <sbol:persistentIdentity rdf:resource="http://example.org/ComponentDefinition/ffl_gene_circuit_f8d00dcd-4132-4e2e-9955-a84d1f2886bb/BBa_B0034_0"/>
+      </sbol:Component>
+    </sbol:component>
+    <sbol:component>
+      <sbol:Component rdf:about="http://example.org/ComponentDefinition/ffl_gene_circuit_f8d00dcd-4132-4e2e-9955-a84d1f2886bb/BBa_B0034_1/1">
+        <sbol:persistentIdentity rdf:resource="http://example.org/ComponentDefinition/ffl_gene_circuit_f8d00dcd-4132-4e2e-9955-a84d1f2886bb/BBa_B0034_1"/>
+        <sbol:definition rdf:resource="https://synbiohub.org/public/igem/BBa_B0034/1"/>
+        <sbol:access rdf:resource="http://sbols.org/v2#public"/>
+        <sbol:displayId>BBa_B0034_1</sbol:displayId>
+        <sbol:version>1</sbol:version>
+      </sbol:Component>
+    </sbol:component>
+    <sbol:component>
+      <sbol:Component rdf:about="http://example.org/ComponentDefinition/ffl_gene_circuit_f8d00dcd-4132-4e2e-9955-a84d1f2886bb/BBa_J23100_1/1">
+        <sbol:access rdf:resource="http://sbols.org/v2#public"/>
+        <sbol:displayId>BBa_J23100_1</sbol:displayId>
+        <sbol:persistentIdentity rdf:resource="http://example.org/ComponentDefinition/ffl_gene_circuit_f8d00dcd-4132-4e2e-9955-a84d1f2886bb/BBa_J23100_1"/>
+        <sbol:version>1</sbol:version>
+        <sbol:definition rdf:resource="https://synbiohub.org/public/igem/BBa_J23100/1"/>
+      </sbol:Component>
+    </sbol:component>
+    <sbol:component>
+      <sbol:Component rdf:about="http://example.org/ComponentDefinition/ffl_gene_circuit_f8d00dcd-4132-4e2e-9955-a84d1f2886bb/BBa_J23119_0/1">
+        <sbol:access rdf:resource="http://sbols.org/v2#public"/>
+        <sbol:version>1</sbol:version>
+        <sbol:displayId>BBa_J23119_0</sbol:displayId>
+        <sbol:persistentIdentity rdf:resource="http://example.org/ComponentDefinition/ffl_gene_circuit_f8d00dcd-4132-4e2e-9955-a84d1f2886bb/BBa_J23119_0"/>
+        <sbol:definition rdf:resource="https://synbiohub.org/public/igem/BBa_J23119/1"/>
+      </sbol:Component>
+    </sbol:component>
+    <sbol:type rdf:resource="http://identifiers.org/so/SO:0000987"/>
+    <sbol:sequenceConstraint>
+      <sbol:SequenceConstraint rdf:about="http://example.org/ComponentDefinition/ffl_gene_circuit_f8d00dcd-4132-4e2e-9955-a84d1f2886bb/constraint_2/1">
+        <sbol:object rdf:resource="http://example.org/ComponentDefinition/ffl_gene_circuit_f8d00dcd-4132-4e2e-9955-a84d1f2886bb/BBa_J23119_1/1"/>
+        <sbol:restriction rdf:resource="http://sbols.org/v2#precedes"/>
+        <sbol:version>1</sbol:version>
+        <sbol:subject rdf:resource="http://example.org/ComponentDefinition/ffl_gene_circuit_f8d00dcd-4132-4e2e-9955-a84d1f2886bb/BBa_J23119_2/1"/>
+        <sbol:displayId>constraint_2</sbol:displayId>
+        <sbol:persistentIdentity rdf:resource="http://example.org/ComponentDefinition/ffl_gene_circuit_f8d00dcd-4132-4e2e-9955-a84d1f2886bb/constraint_2"/>
+      </sbol:SequenceConstraint>
+    </sbol:sequenceConstraint>
+    <sbol:sequenceConstraint>
+      <sbol:SequenceConstraint rdf:about="http://example.org/ComponentDefinition/ffl_gene_circuit_f8d00dcd-4132-4e2e-9955-a84d1f2886bb/constraint_3/1">
+        <sbol:object rdf:resource="http://example.org/ComponentDefinition/ffl_gene_circuit_f8d00dcd-4132-4e2e-9955-a84d1f2886bb/BBa_B0034_2/1"/>
+        <sbol:subject rdf:resource="http://example.org/ComponentDefinition/ffl_gene_circuit_f8d00dcd-4132-4e2e-9955-a84d1f2886bb/BBa_J23119_1/1"/>
+        <sbol:restriction rdf:resource="http://sbols.org/v2#precedes"/>
+        <sbol:displayId>constraint_3</sbol:displayId>
+        <sbol:persistentIdentity rdf:resource="http://example.org/ComponentDefinition/ffl_gene_circuit_f8d00dcd-4132-4e2e-9955-a84d1f2886bb/constraint_3"/>
+        <sbol:version>1</sbol:version>
+      </sbol:SequenceConstraint>
+    </sbol:sequenceConstraint>
+    <sbol:sequenceConstraint>
+      <sbol:SequenceConstraint rdf:about="http://example.org/ComponentDefinition/ffl_gene_circuit_f8d00dcd-4132-4e2e-9955-a84d1f2886bb/constraint_9/1">
+        <sbol:object rdf:resource="http://example.org/ComponentDefinition/ffl_gene_circuit_f8d00dcd-4132-4e2e-9955-a84d1f2886bb/BBa_J23100_0/1"/>
+        <sbol:persistentIdentity rdf:resource="http://example.org/ComponentDefinition/ffl_gene_circuit_f8d00dcd-4132-4e2e-9955-a84d1f2886bb/constraint_9"/>
+        <sbol:restriction rdf:resource="http://sbols.org/v2#precedes"/>
+        <sbol:subject rdf:resource="http://example.org/ComponentDefinition/ffl_gene_circuit_f8d00dcd-4132-4e2e-9955-a84d1f2886bb/BBa_B0015_0/1"/>
+        <sbol:version>1</sbol:version>
+        <sbol:displayId>constraint_9</sbol:displayId>
+      </sbol:SequenceConstraint>
+    </sbol:sequenceConstraint>
+    <sbol:sequenceConstraint>
+      <sbol:SequenceConstraint rdf:about="http://example.org/ComponentDefinition/ffl_gene_circuit_f8d00dcd-4132-4e2e-9955-a84d1f2886bb/constraint_4/1">
+        <sbol:version>1</sbol:version>
+        <sbol:restriction rdf:resource="http://sbols.org/v2#precedes"/>
+        <sbol:object rdf:resource="http://example.org/ComponentDefinition/ffl_gene_circuit_f8d00dcd-4132-4e2e-9955-a84d1f2886bb/BBa_J23100_1/1"/>
+        <sbol:displayId>constraint_4</sbol:displayId>
+        <sbol:persistentIdentity rdf:resource="http://example.org/ComponentDefinition/ffl_gene_circuit_f8d00dcd-4132-4e2e-9955-a84d1f2886bb/constraint_4"/>
+        <sbol:subject rdf:resource="http://example.org/ComponentDefinition/ffl_gene_circuit_f8d00dcd-4132-4e2e-9955-a84d1f2886bb/BBa_B0034_2/1"/>
+      </sbol:SequenceConstraint>
+    </sbol:sequenceConstraint>
+    <sbol:component>
+      <sbol:Component rdf:about="http://example.org/ComponentDefinition/ffl_gene_circuit_f8d00dcd-4132-4e2e-9955-a84d1f2886bb/BBa_B0015_0/1">
+        <sbol:definition rdf:resource="https://synbiohub.org/public/igem/BBa_B0015/1"/>
+        <sbol:version>1</sbol:version>
+        <sbol:displayId>BBa_B0015_0</sbol:displayId>
+        <sbol:access rdf:resource="http://sbols.org/v2#public"/>
+        <sbol:persistentIdentity rdf:resource="http://example.org/ComponentDefinition/ffl_gene_circuit_f8d00dcd-4132-4e2e-9955-a84d1f2886bb/BBa_B0015_0"/>
+      </sbol:Component>
+    </sbol:component>
+    <sbol:component>
+      <sbol:Component rdf:about="http://example.org/ComponentDefinition/ffl_gene_circuit_f8d00dcd-4132-4e2e-9955-a84d1f2886bb/BBa_J23119_2/1">
+        <sbol:access rdf:resource="http://sbols.org/v2#public"/>
+        <sbol:displayId>BBa_J23119_2</sbol:displayId>
+        <sbol:persistentIdentity rdf:resource="http://example.org/ComponentDefinition/ffl_gene_circuit_f8d00dcd-4132-4e2e-9955-a84d1f2886bb/BBa_J23119_2"/>
+        <sbol:version>1</sbol:version>
+        <sbol:definition rdf:resource="https://synbiohub.org/public/igem/BBa_J23119/1"/>
+      </sbol:Component>
+    </sbol:component>
+    <sbol:sequenceConstraint>
+      <sbol:SequenceConstraint rdf:about="http://example.org/ComponentDefinition/ffl_gene_circuit_f8d00dcd-4132-4e2e-9955-a84d1f2886bb/constraint_5/1">
+        <sbol:version>1</sbol:version>
+        <sbol:subject rdf:resource="http://example.org/ComponentDefinition/ffl_gene_circuit_f8d00dcd-4132-4e2e-9955-a84d1f2886bb/BBa_J23100_1/1"/>
+        <sbol:displayId>constraint_5</sbol:displayId>
+        <sbol:restriction rdf:resource="http://sbols.org/v2#precedes"/>
+        <sbol:object rdf:resource="http://example.org/ComponentDefinition/ffl_gene_circuit_f8d00dcd-4132-4e2e-9955-a84d1f2886bb/BBa_J23119_0/1"/>
+        <sbol:persistentIdentity rdf:resource="http://example.org/ComponentDefinition/ffl_gene_circuit_f8d00dcd-4132-4e2e-9955-a84d1f2886bb/constraint_5"/>
+      </sbol:SequenceConstraint>
+    </sbol:sequenceConstraint>
+    <sbol:component>
+      <sbol:Component rdf:about="http://example.org/ComponentDefinition/ffl_gene_circuit_f8d00dcd-4132-4e2e-9955-a84d1f2886bb/BBa_B0034_3/1">
+        <sbol:definition rdf:resource="https://synbiohub.org/public/igem/BBa_B0034/1"/>
+        <sbol:persistentIdentity rdf:resource="http://example.org/ComponentDefinition/ffl_gene_circuit_f8d00dcd-4132-4e2e-9955-a84d1f2886bb/BBa_B0034_3"/>
+        <sbol:displayId>BBa_B0034_3</sbol:displayId>
+        <sbol:access rdf:resource="http://sbols.org/v2#public"/>
+        <sbol:version>1</sbol:version>
+      </sbol:Component>
+    </sbol:component>
+    <sbol:component>
+      <sbol:Component rdf:about="http://example.org/ComponentDefinition/ffl_gene_circuit_f8d00dcd-4132-4e2e-9955-a84d1f2886bb/BBa_J23119_3/1">
+        <sbol:displayId>BBa_J23119_3</sbol:displayId>
+        <sbol:version>1</sbol:version>
+        <sbol:definition rdf:resource="https://synbiohub.org/public/igem/BBa_J23119/1"/>
+        <sbol:persistentIdentity rdf:resource="http://example.org/ComponentDefinition/ffl_gene_circuit_f8d00dcd-4132-4e2e-9955-a84d1f2886bb/BBa_J23119_3"/>
+        <sbol:access rdf:resource="http://sbols.org/v2#public"/>
+      </sbol:Component>
+    </sbol:component>
+    <sbol:sequenceConstraint>
+      <sbol:SequenceConstraint rdf:about="http://example.org/ComponentDefinition/ffl_gene_circuit_f8d00dcd-4132-4e2e-9955-a84d1f2886bb/constraint_6/1">
+        <sbol:restriction rdf:resource="http://sbols.org/v2#precedes"/>
+        <sbol:persistentIdentity rdf:resource="http://example.org/ComponentDefinition/ffl_gene_circuit_f8d00dcd-4132-4e2e-9955-a84d1f2886bb/constraint_6"/>
+        <sbol:displayId>constraint_6</sbol:displayId>
+        <sbol:object rdf:resource="http://example.org/ComponentDefinition/ffl_gene_circuit_f8d00dcd-4132-4e2e-9955-a84d1f2886bb/BBa_B0034_1/1"/>
+        <sbol:version>1</sbol:version>
+        <sbol:subject rdf:resource="http://example.org/ComponentDefinition/ffl_gene_circuit_f8d00dcd-4132-4e2e-9955-a84d1f2886bb/BBa_J23119_0/1"/>
+      </sbol:SequenceConstraint>
+    </sbol:sequenceConstraint>
+    <sbol:component>
+      <sbol:Component rdf:about="http://example.org/ComponentDefinition/ffl_gene_circuit_f8d00dcd-4132-4e2e-9955-a84d1f2886bb/BBa_J23119_1/1">
+        <sbol:access rdf:resource="http://sbols.org/v2#public"/>
+        <sbol:version>1</sbol:version>
+        <sbol:definition rdf:resource="https://synbiohub.org/public/igem/BBa_J23119/1"/>
+        <sbol:displayId>BBa_J23119_1</sbol:displayId>
+        <sbol:persistentIdentity rdf:resource="http://example.org/ComponentDefinition/ffl_gene_circuit_f8d00dcd-4132-4e2e-9955-a84d1f2886bb/BBa_J23119_1"/>
+      </sbol:Component>
+    </sbol:component>
+  </sbol:ComponentDefinition>
+  <sbol:ComponentDefinition rdf:about="http://example.org/ComponentDefinition/ffl_gene_circuit_bcbe2434-f854-4aff-b49c-6d385e28f119/1">
+    <sbol:component>
+      <sbol:Component rdf:about="http://example.org/ComponentDefinition/ffl_gene_circuit_bcbe2434-f854-4aff-b49c-6d385e28f119/BBa_J23100_0/1">
+        <sbol:access rdf:resource="http://sbols.org/v2#public"/>
+        <sbol:version>1</sbol:version>
+        <sbol:definition rdf:resource="https://synbiohub.org/public/igem/BBa_J23100/1"/>
+        <sbol:persistentIdentity rdf:resource="http://example.org/ComponentDefinition/ffl_gene_circuit_bcbe2434-f854-4aff-b49c-6d385e28f119/BBa_J23100_0"/>
+        <sbol:displayId>BBa_J23100_0</sbol:displayId>
+      </sbol:Component>
+    </sbol:component>
+    <sbol:version>1</sbol:version>
+    <sbol:sequenceConstraint>
+      <sbol:SequenceConstraint rdf:about="http://example.org/ComponentDefinition/ffl_gene_circuit_bcbe2434-f854-4aff-b49c-6d385e28f119/constraint_0/1">
+        <sbol:subject rdf:resource="http://example.org/ComponentDefinition/ffl_gene_circuit_bcbe2434-f854-4aff-b49c-6d385e28f119/BBa_J23119_3/1"/>
+        <sbol:restriction rdf:resource="http://sbols.org/v2#precedes"/>
+        <sbol:object rdf:resource="http://example.org/ComponentDefinition/ffl_gene_circuit_bcbe2434-f854-4aff-b49c-6d385e28f119/BBa_B0034_3/1"/>
+        <sbol:persistentIdentity rdf:resource="http://example.org/ComponentDefinition/ffl_gene_circuit_bcbe2434-f854-4aff-b49c-6d385e28f119/constraint_0"/>
+        <sbol:version>1</sbol:version>
+        <sbol:displayId>constraint_0</sbol:displayId>
+      </sbol:SequenceConstraint>
+    </sbol:sequenceConstraint>
+    <sbol:component>
+      <sbol:Component rdf:about="http://example.org/ComponentDefinition/ffl_gene_circuit_bcbe2434-f854-4aff-b49c-6d385e28f119/BBa_E0040_0/1">
+        <sbol:version>1</sbol:version>
+        <sbol:persistentIdentity rdf:resource="http://example.org/ComponentDefinition/ffl_gene_circuit_bcbe2434-f854-4aff-b49c-6d385e28f119/BBa_E0040_0"/>
+        <sbol:definition rdf:resource="https://synbiohub.org/public/igem/BBa_E0040/1"/>
+        <sbol:displayId>BBa_E0040_0</sbol:displayId>
+        <sbol:access rdf:resource="http://sbols.org/v2#public"/>
+      </sbol:Component>
+    </sbol:component>
+    <sbol:sequenceConstraint>
+      <sbol:SequenceConstraint rdf:about="http://example.org/ComponentDefinition/ffl_gene_circuit_bcbe2434-f854-4aff-b49c-6d385e28f119/constraint_9/1">
+        <sbol:object rdf:resource="http://example.org/ComponentDefinition/ffl_gene_circuit_bcbe2434-f854-4aff-b49c-6d385e28f119/BBa_J23100_0/1"/>
+        <sbol:version>1</sbol:version>
+        <sbol:displayId>constraint_9</sbol:displayId>
+        <sbol:restriction rdf:resource="http://sbols.org/v2#precedes"/>
+        <sbol:subject rdf:resource="http://example.org/ComponentDefinition/ffl_gene_circuit_bcbe2434-f854-4aff-b49c-6d385e28f119/BBa_B0015_0/1"/>
+        <sbol:persistentIdentity rdf:resource="http://example.org/ComponentDefinition/ffl_gene_circuit_bcbe2434-f854-4aff-b49c-6d385e28f119/constraint_9"/>
+      </sbol:SequenceConstraint>
+    </sbol:sequenceConstraint>
+    <sbol:persistentIdentity rdf:resource="http://example.org/ComponentDefinition/ffl_gene_circuit_bcbe2434-f854-4aff-b49c-6d385e28f119"/>
+    <sbol:component>
+      <sbol:Component rdf:about="http://example.org/ComponentDefinition/ffl_gene_circuit_bcbe2434-f854-4aff-b49c-6d385e28f119/BBa_J23100_1/1">
+        <sbol:access rdf:resource="http://sbols.org/v2#public"/>
+        <sbol:displayId>BBa_J23100_1</sbol:displayId>
+        <sbol:version>1</sbol:version>
+        <sbol:persistentIdentity rdf:resource="http://example.org/ComponentDefinition/ffl_gene_circuit_bcbe2434-f854-4aff-b49c-6d385e28f119/BBa_J23100_1"/>
+        <sbol:definition rdf:resource="https://synbiohub.org/public/igem/BBa_J23100/1"/>
+      </sbol:Component>
+    </sbol:component>
+    <sbol:component>
+      <sbol:Component rdf:about="http://example.org/ComponentDefinition/ffl_gene_circuit_bcbe2434-f854-4aff-b49c-6d385e28f119/BBa_B0015_0/1">
+        <sbol:access rdf:resource="http://sbols.org/v2#public"/>
+        <sbol:version>1</sbol:version>
+        <sbol:persistentIdentity rdf:resource="http://example.org/ComponentDefinition/ffl_gene_circuit_bcbe2434-f854-4aff-b49c-6d385e28f119/BBa_B0015_0"/>
+        <sbol:definition rdf:resource="https://synbiohub.org/public/igem/BBa_B0015/1"/>
+        <sbol:displayId>BBa_B0015_0</sbol:displayId>
+      </sbol:Component>
+    </sbol:component>
+    <sbol:sequenceConstraint>
+      <sbol:SequenceConstraint rdf:about="http://example.org/ComponentDefinition/ffl_gene_circuit_bcbe2434-f854-4aff-b49c-6d385e28f119/constraint_6/1">
+        <sbol:restriction rdf:resource="http://sbols.org/v2#precedes"/>
+        <sbol:displayId>constraint_6</sbol:displayId>
+        <sbol:persistentIdentity rdf:resource="http://example.org/ComponentDefinition/ffl_gene_circuit_bcbe2434-f854-4aff-b49c-6d385e28f119/constraint_6"/>
+        <sbol:object rdf:resource="http://example.org/ComponentDefinition/ffl_gene_circuit_bcbe2434-f854-4aff-b49c-6d385e28f119/BBa_B0034_1/1"/>
+        <sbol:subject rdf:resource="http://example.org/ComponentDefinition/ffl_gene_circuit_bcbe2434-f854-4aff-b49c-6d385e28f119/BBa_J23119_0/1"/>
+        <sbol:version>1</sbol:version>
+      </sbol:SequenceConstraint>
+    </sbol:sequenceConstraint>
+    <sbol:type rdf:resource="http://www.biopax.org/release/biopax-level3.owl#DnaRegion"/>
+    <sbol:component>
+      <sbol:Component rdf:about="http://example.org/ComponentDefinition/ffl_gene_circuit_bcbe2434-f854-4aff-b49c-6d385e28f119/BBa_J23119_0/1">
+        <sbol:displayId>BBa_J23119_0</sbol:displayId>
+        <sbol:definition rdf:resource="https://synbiohub.org/public/igem/BBa_J23119/1"/>
+        <sbol:access rdf:resource="http://sbols.org/v2#public"/>
+        <sbol:version>1</sbol:version>
+        <sbol:persistentIdentity rdf:resource="http://example.org/ComponentDefinition/ffl_gene_circuit_bcbe2434-f854-4aff-b49c-6d385e28f119/BBa_J23119_0"/>
+      </sbol:Component>
+    </sbol:component>
+    <sbol:component>
+      <sbol:Component rdf:about="http://example.org/ComponentDefinition/ffl_gene_circuit_bcbe2434-f854-4aff-b49c-6d385e28f119/BBa_B0034_0/1">
+        <sbol:version>1</sbol:version>
+        <sbol:persistentIdentity rdf:resource="http://example.org/ComponentDefinition/ffl_gene_circuit_bcbe2434-f854-4aff-b49c-6d385e28f119/BBa_B0034_0"/>
+        <sbol:definition rdf:resource="https://synbiohub.org/public/igem/BBa_B0034/1"/>
+        <sbol:displayId>BBa_B0034_0</sbol:displayId>
+        <sbol:access rdf:resource="http://sbols.org/v2#public"/>
+      </sbol:Component>
+    </sbol:component>
+    <sbol:component>
+      <sbol:Component rdf:about="http://example.org/ComponentDefinition/ffl_gene_circuit_bcbe2434-f854-4aff-b49c-6d385e28f119/BBa_B0034_3/1">
+        <sbol:persistentIdentity rdf:resource="http://example.org/ComponentDefinition/ffl_gene_circuit_bcbe2434-f854-4aff-b49c-6d385e28f119/BBa_B0034_3"/>
+        <sbol:displayId>BBa_B0034_3</sbol:displayId>
+        <sbol:access rdf:resource="http://sbols.org/v2#public"/>
+        <sbol:version>1</sbol:version>
+        <sbol:definition rdf:resource="https://synbiohub.org/public/igem/BBa_B0034/1"/>
+      </sbol:Component>
+    </sbol:component>
+    <sbol:component>
+      <sbol:Component rdf:about="http://example.org/ComponentDefinition/ffl_gene_circuit_bcbe2434-f854-4aff-b49c-6d385e28f119/BBa_J23119_1/1">
+        <sbol:access rdf:resource="http://sbols.org/v2#public"/>
+        <sbol:version>1</sbol:version>
+        <sbol:displayId>BBa_J23119_1</sbol:displayId>
+        <sbol:definition rdf:resource="https://synbiohub.org/public/igem/BBa_J23119/1"/>
+        <sbol:persistentIdentity rdf:resource="http://example.org/ComponentDefinition/ffl_gene_circuit_bcbe2434-f854-4aff-b49c-6d385e28f119/BBa_J23119_1"/>
+      </sbol:Component>
+    </sbol:component>
+    <sbol:type rdf:resource="http://identifiers.org/so/SO:0000987"/>
+    <sbol:displayId>ffl_gene_circuit_bcbe2434-f854-4aff-b49c-6d385e28f119</sbol:displayId>
+    <sbol:component>
+      <sbol:Component rdf:about="http://example.org/ComponentDefinition/ffl_gene_circuit_bcbe2434-f854-4aff-b49c-6d385e28f119/BBa_J23119_2/1">
+        <sbol:definition rdf:resource="https://synbiohub.org/public/igem/BBa_J23119/1"/>
+        <sbol:access rdf:resource="http://sbols.org/v2#public"/>
+        <sbol:version>1</sbol:version>
+        <sbol:displayId>BBa_J23119_2</sbol:displayId>
+        <sbol:persistentIdentity rdf:resource="http://example.org/ComponentDefinition/ffl_gene_circuit_bcbe2434-f854-4aff-b49c-6d385e28f119/BBa_J23119_2"/>
+      </sbol:Component>
+    </sbol:component>
+    <sbol:component>
+      <sbol:Component rdf:about="http://example.org/ComponentDefinition/ffl_gene_circuit_bcbe2434-f854-4aff-b49c-6d385e28f119/BBa_J23119_3/1">
+        <sbol:version>1</sbol:version>
+        <sbol:persistentIdentity rdf:resource="http://example.org/ComponentDefinition/ffl_gene_circuit_bcbe2434-f854-4aff-b49c-6d385e28f119/BBa_J23119_3"/>
+        <sbol:access rdf:resource="http://sbols.org/v2#public"/>
+        <sbol:displayId>BBa_J23119_3</sbol:displayId>
+        <sbol:definition rdf:resource="https://synbiohub.org/public/igem/BBa_J23119/1"/>
+      </sbol:Component>
+    </sbol:component>
+    <sbol:component>
+      <sbol:Component rdf:about="http://example.org/ComponentDefinition/ffl_gene_circuit_bcbe2434-f854-4aff-b49c-6d385e28f119/BBa_B0034_2/1">
+        <sbol:persistentIdentity rdf:resource="http://example.org/ComponentDefinition/ffl_gene_circuit_bcbe2434-f854-4aff-b49c-6d385e28f119/BBa_B0034_2"/>
+        <sbol:definition rdf:resource="https://synbiohub.org/public/igem/BBa_B0034/1"/>
+        <sbol:displayId>BBa_B0034_2</sbol:displayId>
+        <sbol:access rdf:resource="http://sbols.org/v2#public"/>
+        <sbol:version>1</sbol:version>
+      </sbol:Component>
+    </sbol:component>
+    <sbol:sequenceConstraint>
+      <sbol:SequenceConstraint rdf:about="http://example.org/ComponentDefinition/ffl_gene_circuit_bcbe2434-f854-4aff-b49c-6d385e28f119/constraint_3/1">
+        <sbol:restriction rdf:resource="http://sbols.org/v2#precedes"/>
+        <sbol:persistentIdentity rdf:resource="http://example.org/ComponentDefinition/ffl_gene_circuit_bcbe2434-f854-4aff-b49c-6d385e28f119/constraint_3"/>
+        <sbol:displayId>constraint_3</sbol:displayId>
+        <sbol:object rdf:resource="http://example.org/ComponentDefinition/ffl_gene_circuit_bcbe2434-f854-4aff-b49c-6d385e28f119/BBa_B0034_2/1"/>
+        <sbol:subject rdf:resource="http://example.org/ComponentDefinition/ffl_gene_circuit_bcbe2434-f854-4aff-b49c-6d385e28f119/BBa_J23119_1/1"/>
+        <sbol:version>1</sbol:version>
+      </sbol:SequenceConstraint>
+    </sbol:sequenceConstraint>
+    <sbol:sequenceConstraint>
+      <sbol:SequenceConstraint rdf:about="http://example.org/ComponentDefinition/ffl_gene_circuit_bcbe2434-f854-4aff-b49c-6d385e28f119/constraint_10/1">
+        <sbol:restriction rdf:resource="http://sbols.org/v2#precedes"/>
+        <sbol:version>1</sbol:version>
+        <sbol:persistentIdentity rdf:resource="http://example.org/ComponentDefinition/ffl_gene_circuit_bcbe2434-f854-4aff-b49c-6d385e28f119/constraint_10"/>
+        <sbol:subject rdf:resource="http://example.org/ComponentDefinition/ffl_gene_circuit_bcbe2434-f854-4aff-b49c-6d385e28f119/BBa_J23100_0/1"/>
+        <sbol:displayId>constraint_10</sbol:displayId>
+        <sbol:object rdf:resource="http://example.org/ComponentDefinition/ffl_gene_circuit_bcbe2434-f854-4aff-b49c-6d385e28f119/BBa_B0034_0/1"/>
+      </sbol:SequenceConstraint>
+    </sbol:sequenceConstraint>
+    <sbol:sequenceConstraint>
+      <sbol:SequenceConstraint rdf:about="http://example.org/ComponentDefinition/ffl_gene_circuit_bcbe2434-f854-4aff-b49c-6d385e28f119/constraint_7/1">
+        <sbol:subject rdf:resource="http://example.org/ComponentDefinition/ffl_gene_circuit_bcbe2434-f854-4aff-b49c-6d385e28f119/BBa_B0034_1/1"/>
+        <sbol:object rdf:resource="http://example.org/ComponentDefinition/ffl_gene_circuit_bcbe2434-f854-4aff-b49c-6d385e28f119/BBa_E0040_0/1"/>
+        <sbol:displayId>constraint_7</sbol:displayId>
+        <sbol:version>1</sbol:version>
+        <sbol:restriction rdf:resource="http://sbols.org/v2#precedes"/>
+        <sbol:persistentIdentity rdf:resource="http://example.org/ComponentDefinition/ffl_gene_circuit_bcbe2434-f854-4aff-b49c-6d385e28f119/constraint_7"/>
+      </sbol:SequenceConstraint>
+    </sbol:sequenceConstraint>
+    <sbol:sequenceConstraint>
+      <sbol:SequenceConstraint rdf:about="http://example.org/ComponentDefinition/ffl_gene_circuit_bcbe2434-f854-4aff-b49c-6d385e28f119/constraint_4/1">
+        <sbol:version>1</sbol:version>
+        <sbol:subject rdf:resource="http://example.org/ComponentDefinition/ffl_gene_circuit_bcbe2434-f854-4aff-b49c-6d385e28f119/BBa_B0034_2/1"/>
+        <sbol:restriction rdf:resource="http://sbols.org/v2#precedes"/>
+        <sbol:persistentIdentity rdf:resource="http://example.org/ComponentDefinition/ffl_gene_circuit_bcbe2434-f854-4aff-b49c-6d385e28f119/constraint_4"/>
+        <sbol:displayId>constraint_4</sbol:displayId>
+        <sbol:object rdf:resource="http://example.org/ComponentDefinition/ffl_gene_circuit_bcbe2434-f854-4aff-b49c-6d385e28f119/BBa_J23100_1/1"/>
+      </sbol:SequenceConstraint>
+    </sbol:sequenceConstraint>
+    <sbol:sequenceConstraint>
+      <sbol:SequenceConstraint rdf:about="http://example.org/ComponentDefinition/ffl_gene_circuit_bcbe2434-f854-4aff-b49c-6d385e28f119/constraint_1/1">
+        <sbol:object rdf:resource="http://example.org/ComponentDefinition/ffl_gene_circuit_bcbe2434-f854-4aff-b49c-6d385e28f119/BBa_J23119_2/1"/>
+        <sbol:subject rdf:resource="http://example.org/ComponentDefinition/ffl_gene_circuit_bcbe2434-f854-4aff-b49c-6d385e28f119/BBa_B0034_3/1"/>
+        <sbol:persistentIdentity rdf:resource="http://example.org/ComponentDefinition/ffl_gene_circuit_bcbe2434-f854-4aff-b49c-6d385e28f119/constraint_1"/>
+        <sbol:displayId>constraint_1</sbol:displayId>
+        <sbol:version>1</sbol:version>
+        <sbol:restriction rdf:resource="http://sbols.org/v2#precedes"/>
+      </sbol:SequenceConstraint>
+    </sbol:sequenceConstraint>
+    <sbol:sequenceConstraint>
+      <sbol:SequenceConstraint rdf:about="http://example.org/ComponentDefinition/ffl_gene_circuit_bcbe2434-f854-4aff-b49c-6d385e28f119/constraint_8/1">
+        <sbol:restriction rdf:resource="http://sbols.org/v2#precedes"/>
+        <sbol:displayId>constraint_8</sbol:displayId>
+        <sbol:persistentIdentity rdf:resource="http://example.org/ComponentDefinition/ffl_gene_circuit_bcbe2434-f854-4aff-b49c-6d385e28f119/constraint_8"/>
+        <sbol:version>1</sbol:version>
+        <sbol:subject rdf:resource="http://example.org/ComponentDefinition/ffl_gene_circuit_bcbe2434-f854-4aff-b49c-6d385e28f119/BBa_E0040_0/1"/>
+        <sbol:object rdf:resource="http://example.org/ComponentDefinition/ffl_gene_circuit_bcbe2434-f854-4aff-b49c-6d385e28f119/BBa_B0015_0/1"/>
+      </sbol:SequenceConstraint>
+    </sbol:sequenceConstraint>
+    <sbol:sequenceConstraint>
+      <sbol:SequenceConstraint rdf:about="http://example.org/ComponentDefinition/ffl_gene_circuit_bcbe2434-f854-4aff-b49c-6d385e28f119/constraint_5/1">
+        <sbol:object rdf:resource="http://example.org/ComponentDefinition/ffl_gene_circuit_bcbe2434-f854-4aff-b49c-6d385e28f119/BBa_J23119_0/1"/>
+        <sbol:persistentIdentity rdf:resource="http://example.org/ComponentDefinition/ffl_gene_circuit_bcbe2434-f854-4aff-b49c-6d385e28f119/constraint_5"/>
+        <sbol:subject rdf:resource="http://example.org/ComponentDefinition/ffl_gene_circuit_bcbe2434-f854-4aff-b49c-6d385e28f119/BBa_J23100_1/1"/>
+        <sbol:displayId>constraint_5</sbol:displayId>
+        <sbol:restriction rdf:resource="http://sbols.org/v2#precedes"/>
+        <sbol:version>1</sbol:version>
+      </sbol:SequenceConstraint>
+    </sbol:sequenceConstraint>
+    <sbol:component>
+      <sbol:Component rdf:about="http://example.org/ComponentDefinition/ffl_gene_circuit_bcbe2434-f854-4aff-b49c-6d385e28f119/BBa_B0034_1/1">
+        <sbol:version>1</sbol:version>
+        <sbol:persistentIdentity rdf:resource="http://example.org/ComponentDefinition/ffl_gene_circuit_bcbe2434-f854-4aff-b49c-6d385e28f119/BBa_B0034_1"/>
+        <sbol:displayId>BBa_B0034_1</sbol:displayId>
+        <sbol:definition rdf:resource="https://synbiohub.org/public/igem/BBa_B0034/1"/>
+        <sbol:access rdf:resource="http://sbols.org/v2#public"/>
+      </sbol:Component>
+    </sbol:component>
+    <sbol:sequenceConstraint>
+      <sbol:SequenceConstraint rdf:about="http://example.org/ComponentDefinition/ffl_gene_circuit_bcbe2434-f854-4aff-b49c-6d385e28f119/constraint_2/1">
+        <sbol:subject rdf:resource="http://example.org/ComponentDefinition/ffl_gene_circuit_bcbe2434-f854-4aff-b49c-6d385e28f119/BBa_J23119_2/1"/>
+        <sbol:restriction rdf:resource="http://sbols.org/v2#precedes"/>
+        <sbol:persistentIdentity rdf:resource="http://example.org/ComponentDefinition/ffl_gene_circuit_bcbe2434-f854-4aff-b49c-6d385e28f119/constraint_2"/>
+        <sbol:object rdf:resource="http://example.org/ComponentDefinition/ffl_gene_circuit_bcbe2434-f854-4aff-b49c-6d385e28f119/BBa_J23119_1/1"/>
+        <sbol:version>1</sbol:version>
+        <sbol:displayId>constraint_2</sbol:displayId>
+      </sbol:SequenceConstraint>
+    </sbol:sequenceConstraint>
+  </sbol:ComponentDefinition>
+  <sbol:ComponentDefinition rdf:about="http://example.org/ComponentDefinition/ffl_gene_circuit_5fcf7d95-bb6f-4c1d-8346-e288bd63cd92/1">
+    <sbol:sequenceConstraint>
+      <sbol:SequenceConstraint rdf:about="http://example.org/ComponentDefinition/ffl_gene_circuit_5fcf7d95-bb6f-4c1d-8346-e288bd63cd92/constraint_7/1">
+        <sbol:persistentIdentity rdf:resource="http://example.org/ComponentDefinition/ffl_gene_circuit_5fcf7d95-bb6f-4c1d-8346-e288bd63cd92/constraint_7"/>
+        <sbol:displayId>constraint_7</sbol:displayId>
+        <sbol:version>1</sbol:version>
+        <sbol:object rdf:resource="http://example.org/ComponentDefinition/ffl_gene_circuit_5fcf7d95-bb6f-4c1d-8346-e288bd63cd92/BBa_E0040_0/1"/>
+        <sbol:subject rdf:resource="http://example.org/ComponentDefinition/ffl_gene_circuit_5fcf7d95-bb6f-4c1d-8346-e288bd63cd92/BBa_B0034_1/1"/>
+        <sbol:restriction rdf:resource="http://sbols.org/v2#precedes"/>
+      </sbol:SequenceConstraint>
+    </sbol:sequenceConstraint>
+    <sbol:component>
+      <sbol:Component rdf:about="http://example.org/ComponentDefinition/ffl_gene_circuit_5fcf7d95-bb6f-4c1d-8346-e288bd63cd92/BBa_J23119_2/1">
+        <sbol:version>1</sbol:version>
+        <sbol:displayId>BBa_J23119_2</sbol:displayId>
+        <sbol:definition rdf:resource="https://synbiohub.org/public/igem/BBa_J23119/1"/>
+        <sbol:access rdf:resource="http://sbols.org/v2#public"/>
+        <sbol:persistentIdentity rdf:resource="http://example.org/ComponentDefinition/ffl_gene_circuit_5fcf7d95-bb6f-4c1d-8346-e288bd63cd92/BBa_J23119_2"/>
+      </sbol:Component>
+    </sbol:component>
+    <sbol:component>
+      <sbol:Component rdf:about="http://example.org/ComponentDefinition/ffl_gene_circuit_5fcf7d95-bb6f-4c1d-8346-e288bd63cd92/BBa_J23100_1/1">
+        <sbol:persistentIdentity rdf:resource="http://example.org/ComponentDefinition/ffl_gene_circuit_5fcf7d95-bb6f-4c1d-8346-e288bd63cd92/BBa_J23100_1"/>
+        <sbol:access rdf:resource="http://sbols.org/v2#public"/>
+        <sbol:displayId>BBa_J23100_1</sbol:displayId>
+        <sbol:version>1</sbol:version>
+        <sbol:definition rdf:resource="https://synbiohub.org/public/igem/BBa_J23100/1"/>
+      </sbol:Component>
+    </sbol:component>
+    <sbol:component>
+      <sbol:Component rdf:about="http://example.org/ComponentDefinition/ffl_gene_circuit_5fcf7d95-bb6f-4c1d-8346-e288bd63cd92/BBa_J23119_3/1">
+        <sbol:definition rdf:resource="https://synbiohub.org/public/igem/BBa_J23119/1"/>
+        <sbol:access rdf:resource="http://sbols.org/v2#public"/>
+        <sbol:persistentIdentity rdf:resource="http://example.org/ComponentDefinition/ffl_gene_circuit_5fcf7d95-bb6f-4c1d-8346-e288bd63cd92/BBa_J23119_3"/>
+        <sbol:displayId>BBa_J23119_3</sbol:displayId>
+        <sbol:version>1</sbol:version>
+      </sbol:Component>
+    </sbol:component>
+    <sbol:component>
+      <sbol:Component rdf:about="http://example.org/ComponentDefinition/ffl_gene_circuit_5fcf7d95-bb6f-4c1d-8346-e288bd63cd92/BBa_B0034_2/1">
+        <sbol:version>1</sbol:version>
+        <sbol:definition rdf:resource="https://synbiohub.org/public/igem/BBa_B0034/1"/>
+        <sbol:displayId>BBa_B0034_2</sbol:displayId>
+        <sbol:persistentIdentity rdf:resource="http://example.org/ComponentDefinition/ffl_gene_circuit_5fcf7d95-bb6f-4c1d-8346-e288bd63cd92/BBa_B0034_2"/>
+        <sbol:access rdf:resource="http://sbols.org/v2#public"/>
+      </sbol:Component>
+    </sbol:component>
+    <sbol:sequenceConstraint>
+      <sbol:SequenceConstraint rdf:about="http://example.org/ComponentDefinition/ffl_gene_circuit_5fcf7d95-bb6f-4c1d-8346-e288bd63cd92/constraint_3/1">
+        <sbol:restriction rdf:resource="http://sbols.org/v2#precedes"/>
+        <sbol:displayId>constraint_3</sbol:displayId>
+        <sbol:persistentIdentity rdf:resource="http://example.org/ComponentDefinition/ffl_gene_circuit_5fcf7d95-bb6f-4c1d-8346-e288bd63cd92/constraint_3"/>
+        <sbol:object rdf:resource="http://example.org/ComponentDefinition/ffl_gene_circuit_5fcf7d95-bb6f-4c1d-8346-e288bd63cd92/BBa_B0034_2/1"/>
+        <sbol:subject rdf:resource="http://example.org/ComponentDefinition/ffl_gene_circuit_5fcf7d95-bb6f-4c1d-8346-e288bd63cd92/BBa_J23119_1/1"/>
+        <sbol:version>1</sbol:version>
+      </sbol:SequenceConstraint>
+    </sbol:sequenceConstraint>
+    <sbol:version>1</sbol:version>
+    <sbol:persistentIdentity rdf:resource="http://example.org/ComponentDefinition/ffl_gene_circuit_5fcf7d95-bb6f-4c1d-8346-e288bd63cd92"/>
+    <sbol:component>
+      <sbol:Component rdf:about="http://example.org/ComponentDefinition/ffl_gene_circuit_5fcf7d95-bb6f-4c1d-8346-e288bd63cd92/BBa_B0034_1/1">
+        <sbol:version>1</sbol:version>
+        <sbol:persistentIdentity rdf:resource="http://example.org/ComponentDefinition/ffl_gene_circuit_5fcf7d95-bb6f-4c1d-8346-e288bd63cd92/BBa_B0034_1"/>
+        <sbol:displayId>BBa_B0034_1</sbol:displayId>
+        <sbol:definition rdf:resource="https://synbiohub.org/public/igem/BBa_B0034/1"/>
+        <sbol:access rdf:resource="http://sbols.org/v2#public"/>
+      </sbol:Component>
+    </sbol:component>
+    <sbol:component>
+      <sbol:Component rdf:about="http://example.org/ComponentDefinition/ffl_gene_circuit_5fcf7d95-bb6f-4c1d-8346-e288bd63cd92/BBa_E0040_0/1">
+        <sbol:version>1</sbol:version>
+        <sbol:definition rdf:resource="https://synbiohub.org/public/igem/BBa_E0040/1"/>
+        <sbol:persistentIdentity rdf:resource="http://example.org/ComponentDefinition/ffl_gene_circuit_5fcf7d95-bb6f-4c1d-8346-e288bd63cd92/BBa_E0040_0"/>
+        <sbol:displayId>BBa_E0040_0</sbol:displayId>
+        <sbol:access rdf:resource="http://sbols.org/v2#public"/>
+      </sbol:Component>
+    </sbol:component>
+    <sbol:sequenceConstraint>
+      <sbol:SequenceConstraint rdf:about="http://example.org/ComponentDefinition/ffl_gene_circuit_5fcf7d95-bb6f-4c1d-8346-e288bd63cd92/constraint_2/1">
+        <sbol:restriction rdf:resource="http://sbols.org/v2#precedes"/>
+        <sbol:version>1</sbol:version>
+        <sbol:object rdf:resource="http://example.org/ComponentDefinition/ffl_gene_circuit_5fcf7d95-bb6f-4c1d-8346-e288bd63cd92/BBa_J23119_1/1"/>
+        <sbol:persistentIdentity rdf:resource="http://example.org/ComponentDefinition/ffl_gene_circuit_5fcf7d95-bb6f-4c1d-8346-e288bd63cd92/constraint_2"/>
+        <sbol:subject rdf:resource="http://example.org/ComponentDefinition/ffl_gene_circuit_5fcf7d95-bb6f-4c1d-8346-e288bd63cd92/BBa_J23119_2/1"/>
+        <sbol:displayId>constraint_2</sbol:displayId>
+      </sbol:SequenceConstraint>
+    </sbol:sequenceConstraint>
+    <sbol:component>
+      <sbol:Component rdf:about="http://example.org/ComponentDefinition/ffl_gene_circuit_5fcf7d95-bb6f-4c1d-8346-e288bd63cd92/BBa_J23119_1/1">
+        <sbol:persistentIdentity rdf:resource="http://example.org/ComponentDefinition/ffl_gene_circuit_5fcf7d95-bb6f-4c1d-8346-e288bd63cd92/BBa_J23119_1"/>
+        <sbol:definition rdf:resource="https://synbiohub.org/public/igem/BBa_J23119/1"/>
+        <sbol:access rdf:resource="http://sbols.org/v2#public"/>
+        <sbol:version>1</sbol:version>
+        <sbol:displayId>BBa_J23119_1</sbol:displayId>
+      </sbol:Component>
+    </sbol:component>
+    <sbol:component>
+      <sbol:Component rdf:about="http://example.org/ComponentDefinition/ffl_gene_circuit_5fcf7d95-bb6f-4c1d-8346-e288bd63cd92/BBa_J23100_0/1">
+        <sbol:access rdf:resource="http://sbols.org/v2#public"/>
+        <sbol:persistentIdentity rdf:resource="http://example.org/ComponentDefinition/ffl_gene_circuit_5fcf7d95-bb6f-4c1d-8346-e288bd63cd92/BBa_J23100_0"/>
+        <sbol:version>1</sbol:version>
+        <sbol:definition rdf:resource="https://synbiohub.org/public/igem/BBa_J23100/1"/>
+        <sbol:displayId>BBa_J23100_0</sbol:displayId>
+      </sbol:Component>
+    </sbol:component>
+    <sbol:sequenceConstraint>
+      <sbol:SequenceConstraint rdf:about="http://example.org/ComponentDefinition/ffl_gene_circuit_5fcf7d95-bb6f-4c1d-8346-e288bd63cd92/constraint_0/1">
+        <sbol:persistentIdentity rdf:resource="http://example.org/ComponentDefinition/ffl_gene_circuit_5fcf7d95-bb6f-4c1d-8346-e288bd63cd92/constraint_0"/>
+        <sbol:object rdf:resource="http://example.org/ComponentDefinition/ffl_gene_circuit_5fcf7d95-bb6f-4c1d-8346-e288bd63cd92/BBa_B0034_3/1"/>
+        <sbol:version>1</sbol:version>
+        <sbol:restriction rdf:resource="http://sbols.org/v2#precedes"/>
+        <sbol:subject rdf:resource="http://example.org/ComponentDefinition/ffl_gene_circuit_5fcf7d95-bb6f-4c1d-8346-e288bd63cd92/BBa_J23119_3/1"/>
+        <sbol:displayId>constraint_0</sbol:displayId>
+      </sbol:SequenceConstraint>
+    </sbol:sequenceConstraint>
+    <sbol:component>
+      <sbol:Component rdf:about="http://example.org/ComponentDefinition/ffl_gene_circuit_5fcf7d95-bb6f-4c1d-8346-e288bd63cd92/BBa_B0015_0/1">
+        <sbol:displayId>BBa_B0015_0</sbol:displayId>
+        <sbol:persistentIdentity rdf:resource="http://example.org/ComponentDefinition/ffl_gene_circuit_5fcf7d95-bb6f-4c1d-8346-e288bd63cd92/BBa_B0015_0"/>
+        <sbol:version>1</sbol:version>
+        <sbol:access rdf:resource="http://sbols.org/v2#public"/>
+        <sbol:definition rdf:resource="https://synbiohub.org/public/igem/BBa_B0015/1"/>
+      </sbol:Component>
+    </sbol:component>
+    <sbol:displayId>ffl_gene_circuit_5fcf7d95-bb6f-4c1d-8346-e288bd63cd92</sbol:displayId>
+    <sbol:sequenceConstraint>
+      <sbol:SequenceConstraint rdf:about="http://example.org/ComponentDefinition/ffl_gene_circuit_5fcf7d95-bb6f-4c1d-8346-e288bd63cd92/constraint_10/1">
+        <sbol:subject rdf:resource="http://example.org/ComponentDefinition/ffl_gene_circuit_5fcf7d95-bb6f-4c1d-8346-e288bd63cd92/BBa_J23100_0/1"/>
+        <sbol:restriction rdf:resource="http://sbols.org/v2#precedes"/>
+        <sbol:displayId>constraint_10</sbol:displayId>
+        <sbol:object rdf:resource="http://example.org/ComponentDefinition/ffl_gene_circuit_5fcf7d95-bb6f-4c1d-8346-e288bd63cd92/BBa_B0034_0/1"/>
+        <sbol:version>1</sbol:version>
+        <sbol:persistentIdentity rdf:resource="http://example.org/ComponentDefinition/ffl_gene_circuit_5fcf7d95-bb6f-4c1d-8346-e288bd63cd92/constraint_10"/>
+      </sbol:SequenceConstraint>
+    </sbol:sequenceConstraint>
+    <sbol:component>
+      <sbol:Component rdf:about="http://example.org/ComponentDefinition/ffl_gene_circuit_5fcf7d95-bb6f-4c1d-8346-e288bd63cd92/BBa_J23119_0/1">
+        <sbol:displayId>BBa_J23119_0</sbol:displayId>
+        <sbol:definition rdf:resource="https://synbiohub.org/public/igem/BBa_J23119/1"/>
+        <sbol:access rdf:resource="http://sbols.org/v2#public"/>
+        <sbol:version>1</sbol:version>
+        <sbol:persistentIdentity rdf:resource="http://example.org/ComponentDefinition/ffl_gene_circuit_5fcf7d95-bb6f-4c1d-8346-e288bd63cd92/BBa_J23119_0"/>
+      </sbol:Component>
+    </sbol:component>
+    <sbol:type rdf:resource="http://www.biopax.org/release/biopax-level3.owl#DnaRegion"/>
+    <sbol:component>
+      <sbol:Component rdf:about="http://example.org/ComponentDefinition/ffl_gene_circuit_5fcf7d95-bb6f-4c1d-8346-e288bd63cd92/BBa_B0034_0/1">
+        <sbol:version>1</sbol:version>
+        <sbol:definition rdf:resource="https://synbiohub.org/public/igem/BBa_B0034/1"/>
+        <sbol:displayId>BBa_B0034_0</sbol:displayId>
+        <sbol:persistentIdentity rdf:resource="http://example.org/ComponentDefinition/ffl_gene_circuit_5fcf7d95-bb6f-4c1d-8346-e288bd63cd92/BBa_B0034_0"/>
+        <sbol:access rdf:resource="http://sbols.org/v2#public"/>
+      </sbol:Component>
+    </sbol:component>
+    <sbol:sequenceConstraint>
+      <sbol:SequenceConstraint rdf:about="http://example.org/ComponentDefinition/ffl_gene_circuit_5fcf7d95-bb6f-4c1d-8346-e288bd63cd92/constraint_8/1">
+        <sbol:displayId>constraint_8</sbol:displayId>
+        <sbol:version>1</sbol:version>
+        <sbol:restriction rdf:resource="http://sbols.org/v2#precedes"/>
+        <sbol:persistentIdentity rdf:resource="http://example.org/ComponentDefinition/ffl_gene_circuit_5fcf7d95-bb6f-4c1d-8346-e288bd63cd92/constraint_8"/>
+        <sbol:object rdf:resource="http://example.org/ComponentDefinition/ffl_gene_circuit_5fcf7d95-bb6f-4c1d-8346-e288bd63cd92/BBa_B0015_0/1"/>
+        <sbol:subject rdf:resource="http://example.org/ComponentDefinition/ffl_gene_circuit_5fcf7d95-bb6f-4c1d-8346-e288bd63cd92/BBa_E0040_0/1"/>
+      </sbol:SequenceConstraint>
+    </sbol:sequenceConstraint>
+    <sbol:sequenceConstraint>
+      <sbol:SequenceConstraint rdf:about="http://example.org/ComponentDefinition/ffl_gene_circuit_5fcf7d95-bb6f-4c1d-8346-e288bd63cd92/constraint_6/1">
+        <sbol:persistentIdentity rdf:resource="http://example.org/ComponentDefinition/ffl_gene_circuit_5fcf7d95-bb6f-4c1d-8346-e288bd63cd92/constraint_6"/>
+        <sbol:restriction rdf:resource="http://sbols.org/v2#precedes"/>
+        <sbol:version>1</sbol:version>
+        <sbol:object rdf:resource="http://example.org/ComponentDefinition/ffl_gene_circuit_5fcf7d95-bb6f-4c1d-8346-e288bd63cd92/BBa_B0034_1/1"/>
+        <sbol:subject rdf:resource="http://example.org/ComponentDefinition/ffl_gene_circuit_5fcf7d95-bb6f-4c1d-8346-e288bd63cd92/BBa_J23119_0/1"/>
+        <sbol:displayId>constraint_6</sbol:displayId>
+      </sbol:SequenceConstraint>
+    </sbol:sequenceConstraint>
+    <sbol:sequenceConstraint>
+      <sbol:SequenceConstraint rdf:about="http://example.org/ComponentDefinition/ffl_gene_circuit_5fcf7d95-bb6f-4c1d-8346-e288bd63cd92/constraint_9/1">
+        <sbol:version>1</sbol:version>
+        <sbol:restriction rdf:resource="http://sbols.org/v2#precedes"/>
+        <sbol:subject rdf:resource="http://example.org/ComponentDefinition/ffl_gene_circuit_5fcf7d95-bb6f-4c1d-8346-e288bd63cd92/BBa_B0015_0/1"/>
+        <sbol:displayId>constraint_9</sbol:displayId>
+        <sbol:object rdf:resource="http://example.org/ComponentDefinition/ffl_gene_circuit_5fcf7d95-bb6f-4c1d-8346-e288bd63cd92/BBa_J23100_0/1"/>
+        <sbol:persistentIdentity rdf:resource="http://example.org/ComponentDefinition/ffl_gene_circuit_5fcf7d95-bb6f-4c1d-8346-e288bd63cd92/constraint_9"/>
+      </sbol:SequenceConstraint>
+    </sbol:sequenceConstraint>
+    <sbol:component>
+      <sbol:Component rdf:about="http://example.org/ComponentDefinition/ffl_gene_circuit_5fcf7d95-bb6f-4c1d-8346-e288bd63cd92/BBa_B0034_3/1">
+        <sbol:definition rdf:resource="https://synbiohub.org/public/igem/BBa_B0034/1"/>
+        <sbol:persistentIdentity rdf:resource="http://example.org/ComponentDefinition/ffl_gene_circuit_5fcf7d95-bb6f-4c1d-8346-e288bd63cd92/BBa_B0034_3"/>
+        <sbol:displayId>BBa_B0034_3</sbol:displayId>
+        <sbol:access rdf:resource="http://sbols.org/v2#public"/>
+        <sbol:version>1</sbol:version>
+      </sbol:Component>
+    </sbol:component>
+    <sbol:type rdf:resource="http://identifiers.org/so/SO:0000987"/>
+    <sbol:sequenceConstraint>
+      <sbol:SequenceConstraint rdf:about="http://example.org/ComponentDefinition/ffl_gene_circuit_5fcf7d95-bb6f-4c1d-8346-e288bd63cd92/constraint_1/1">
+        <sbol:restriction rdf:resource="http://sbols.org/v2#precedes"/>
+        <sbol:version>1</sbol:version>
+        <sbol:subject rdf:resource="http://example.org/ComponentDefinition/ffl_gene_circuit_5fcf7d95-bb6f-4c1d-8346-e288bd63cd92/BBa_B0034_3/1"/>
+        <sbol:displayId>constraint_1</sbol:displayId>
+        <sbol:object rdf:resource="http://example.org/ComponentDefinition/ffl_gene_circuit_5fcf7d95-bb6f-4c1d-8346-e288bd63cd92/BBa_J23119_2/1"/>
+        <sbol:persistentIdentity rdf:resource="http://example.org/ComponentDefinition/ffl_gene_circuit_5fcf7d95-bb6f-4c1d-8346-e288bd63cd92/constraint_1"/>
+      </sbol:SequenceConstraint>
+    </sbol:sequenceConstraint>
+    <sbol:sequenceConstraint>
+      <sbol:SequenceConstraint rdf:about="http://example.org/ComponentDefinition/ffl_gene_circuit_5fcf7d95-bb6f-4c1d-8346-e288bd63cd92/constraint_5/1">
+        <sbol:object rdf:resource="http://example.org/ComponentDefinition/ffl_gene_circuit_5fcf7d95-bb6f-4c1d-8346-e288bd63cd92/BBa_J23119_0/1"/>
+        <sbol:displayId>constraint_5</sbol:displayId>
+        <sbol:subject rdf:resource="http://example.org/ComponentDefinition/ffl_gene_circuit_5fcf7d95-bb6f-4c1d-8346-e288bd63cd92/BBa_J23100_1/1"/>
+        <sbol:persistentIdentity rdf:resource="http://example.org/ComponentDefinition/ffl_gene_circuit_5fcf7d95-bb6f-4c1d-8346-e288bd63cd92/constraint_5"/>
+        <sbol:version>1</sbol:version>
+        <sbol:restriction rdf:resource="http://sbols.org/v2#precedes"/>
+      </sbol:SequenceConstraint>
+    </sbol:sequenceConstraint>
+    <sbol:sequenceConstraint>
+      <sbol:SequenceConstraint rdf:about="http://example.org/ComponentDefinition/ffl_gene_circuit_5fcf7d95-bb6f-4c1d-8346-e288bd63cd92/constraint_4/1">
+        <sbol:subject rdf:resource="http://example.org/ComponentDefinition/ffl_gene_circuit_5fcf7d95-bb6f-4c1d-8346-e288bd63cd92/BBa_B0034_2/1"/>
+        <sbol:version>1</sbol:version>
+        <sbol:object rdf:resource="http://example.org/ComponentDefinition/ffl_gene_circuit_5fcf7d95-bb6f-4c1d-8346-e288bd63cd92/BBa_J23100_1/1"/>
+        <sbol:persistentIdentity rdf:resource="http://example.org/ComponentDefinition/ffl_gene_circuit_5fcf7d95-bb6f-4c1d-8346-e288bd63cd92/constraint_4"/>
+        <sbol:restriction rdf:resource="http://sbols.org/v2#precedes"/>
+        <sbol:displayId>constraint_4</sbol:displayId>
+      </sbol:SequenceConstraint>
+    </sbol:sequenceConstraint>
+  </sbol:ComponentDefinition>
+  <sbol:ComponentDefinition rdf:about="http://example.org/ComponentDefinition/ffl_gene_circuit_0d5455f1-199d-4354-9972-5e983f6fafb6/1">
+    <sbol:type rdf:resource="http://identifiers.org/so/SO:0000987"/>
+    <sbol:displayId>ffl_gene_circuit_0d5455f1-199d-4354-9972-5e983f6fafb6</sbol:displayId>
+    <sbol:sequenceConstraint>
+      <sbol:SequenceConstraint rdf:about="http://example.org/ComponentDefinition/ffl_gene_circuit_0d5455f1-199d-4354-9972-5e983f6fafb6/constraint_10/1">
+        <sbol:subject rdf:resource="http://example.org/ComponentDefinition/ffl_gene_circuit_0d5455f1-199d-4354-9972-5e983f6fafb6/BBa_J23100_0/1"/>
+        <sbol:restriction rdf:resource="http://sbols.org/v2#precedes"/>
+        <sbol:version>1</sbol:version>
+        <sbol:persistentIdentity rdf:resource="http://example.org/ComponentDefinition/ffl_gene_circuit_0d5455f1-199d-4354-9972-5e983f6fafb6/constraint_10"/>
+        <sbol:displayId>constraint_10</sbol:displayId>
+        <sbol:object rdf:resource="http://example.org/ComponentDefinition/ffl_gene_circuit_0d5455f1-199d-4354-9972-5e983f6fafb6/BBa_B0034_0/1"/>
+      </sbol:SequenceConstraint>
+    </sbol:sequenceConstraint>
+    <sbol:component>
+      <sbol:Component rdf:about="http://example.org/ComponentDefinition/ffl_gene_circuit_0d5455f1-199d-4354-9972-5e983f6fafb6/BBa_J23100_1/1">
+        <sbol:persistentIdentity rdf:resource="http://example.org/ComponentDefinition/ffl_gene_circuit_0d5455f1-199d-4354-9972-5e983f6fafb6/BBa_J23100_1"/>
+        <sbol:access rdf:resource="http://sbols.org/v2#public"/>
+        <sbol:displayId>BBa_J23100_1</sbol:displayId>
+        <sbol:version>1</sbol:version>
+        <sbol:definition rdf:resource="https://synbiohub.org/public/igem/BBa_J23100/1"/>
+      </sbol:Component>
+    </sbol:component>
+    <sbol:component>
+      <sbol:Component rdf:about="http://example.org/ComponentDefinition/ffl_gene_circuit_0d5455f1-199d-4354-9972-5e983f6fafb6/BBa_B0034_2/1">
+        <sbol:access rdf:resource="http://sbols.org/v2#public"/>
+        <sbol:version>1</sbol:version>
+        <sbol:persistentIdentity rdf:resource="http://example.org/ComponentDefinition/ffl_gene_circuit_0d5455f1-199d-4354-9972-5e983f6fafb6/BBa_B0034_2"/>
+        <sbol:definition rdf:resource="https://synbiohub.org/public/igem/BBa_B0034/1"/>
+        <sbol:displayId>BBa_B0034_2</sbol:displayId>
+      </sbol:Component>
+    </sbol:component>
+    <sbol:sequenceConstraint>
+      <sbol:SequenceConstraint rdf:about="http://example.org/ComponentDefinition/ffl_gene_circuit_0d5455f1-199d-4354-9972-5e983f6fafb6/constraint_4/1">
+        <sbol:version>1</sbol:version>
+        <sbol:displayId>constraint_4</sbol:displayId>
+        <sbol:restriction rdf:resource="http://sbols.org/v2#precedes"/>
+        <sbol:subject rdf:resource="http://example.org/ComponentDefinition/ffl_gene_circuit_0d5455f1-199d-4354-9972-5e983f6fafb6/BBa_B0034_2/1"/>
+        <sbol:object rdf:resource="http://example.org/ComponentDefinition/ffl_gene_circuit_0d5455f1-199d-4354-9972-5e983f6fafb6/BBa_J23100_1/1"/>
+        <sbol:persistentIdentity rdf:resource="http://example.org/ComponentDefinition/ffl_gene_circuit_0d5455f1-199d-4354-9972-5e983f6fafb6/constraint_4"/>
+      </sbol:SequenceConstraint>
+    </sbol:sequenceConstraint>
+    <sbol:sequenceConstraint>
+      <sbol:SequenceConstraint rdf:about="http://example.org/ComponentDefinition/ffl_gene_circuit_0d5455f1-199d-4354-9972-5e983f6fafb6/constraint_7/1">
+        <sbol:version>1</sbol:version>
+        <sbol:persistentIdentity rdf:resource="http://example.org/ComponentDefinition/ffl_gene_circuit_0d5455f1-199d-4354-9972-5e983f6fafb6/constraint_7"/>
+        <sbol:restriction rdf:resource="http://sbols.org/v2#precedes"/>
+        <sbol:subject rdf:resource="http://example.org/ComponentDefinition/ffl_gene_circuit_0d5455f1-199d-4354-9972-5e983f6fafb6/BBa_B0034_1/1"/>
+        <sbol:object rdf:resource="http://example.org/ComponentDefinition/ffl_gene_circuit_0d5455f1-199d-4354-9972-5e983f6fafb6/BBa_C0040_0/1"/>
+        <sbol:displayId>constraint_7</sbol:displayId>
+      </sbol:SequenceConstraint>
+    </sbol:sequenceConstraint>
+    <sbol:component>
+      <sbol:Component rdf:about="http://example.org/ComponentDefinition/ffl_gene_circuit_0d5455f1-199d-4354-9972-5e983f6fafb6/BBa_J23100_0/1">
+        <sbol:access rdf:resource="http://sbols.org/v2#public"/>
+        <sbol:displayId>BBa_J23100_0</sbol:displayId>
+        <sbol:persistentIdentity rdf:resource="http://example.org/ComponentDefinition/ffl_gene_circuit_0d5455f1-199d-4354-9972-5e983f6fafb6/BBa_J23100_0"/>
+        <sbol:version>1</sbol:version>
+        <sbol:definition rdf:resource="https://synbiohub.org/public/igem/BBa_J23100/1"/>
+      </sbol:Component>
+    </sbol:component>
+    <sbol:component>
+      <sbol:Component rdf:about="http://example.org/ComponentDefinition/ffl_gene_circuit_0d5455f1-199d-4354-9972-5e983f6fafb6/BBa_J23119_2/1">
+        <sbol:access rdf:resource="http://sbols.org/v2#public"/>
+        <sbol:displayId>BBa_J23119_2</sbol:displayId>
+        <sbol:persistentIdentity rdf:resource="http://example.org/ComponentDefinition/ffl_gene_circuit_0d5455f1-199d-4354-9972-5e983f6fafb6/BBa_J23119_2"/>
+        <sbol:version>1</sbol:version>
+        <sbol:definition rdf:resource="https://synbiohub.org/public/igem/BBa_J23119/1"/>
+      </sbol:Component>
+    </sbol:component>
+    <sbol:sequenceConstraint>
+      <sbol:SequenceConstraint rdf:about="http://example.org/ComponentDefinition/ffl_gene_circuit_0d5455f1-199d-4354-9972-5e983f6fafb6/constraint_0/1">
+        <sbol:persistentIdentity rdf:resource="http://example.org/ComponentDefinition/ffl_gene_circuit_0d5455f1-199d-4354-9972-5e983f6fafb6/constraint_0"/>
+        <sbol:version>1</sbol:version>
+        <sbol:displayId>constraint_0</sbol:displayId>
+        <sbol:object rdf:resource="http://example.org/ComponentDefinition/ffl_gene_circuit_0d5455f1-199d-4354-9972-5e983f6fafb6/BBa_B0034_3/1"/>
+        <sbol:subject rdf:resource="http://example.org/ComponentDefinition/ffl_gene_circuit_0d5455f1-199d-4354-9972-5e983f6fafb6/BBa_J23119_3/1"/>
+        <sbol:restriction rdf:resource="http://sbols.org/v2#precedes"/>
+      </sbol:SequenceConstraint>
+    </sbol:sequenceConstraint>
+    <sbol:component>
+      <sbol:Component rdf:about="http://example.org/ComponentDefinition/ffl_gene_circuit_0d5455f1-199d-4354-9972-5e983f6fafb6/BBa_C0040_0/1">
+        <sbol:version>1</sbol:version>
+        <sbol:displayId>BBa_C0040_0</sbol:displayId>
+        <sbol:persistentIdentity rdf:resource="http://example.org/ComponentDefinition/ffl_gene_circuit_0d5455f1-199d-4354-9972-5e983f6fafb6/BBa_C0040_0"/>
+        <sbol:access rdf:resource="http://sbols.org/v2#public"/>
+        <sbol:definition rdf:resource="https://synbiohub.org/public/igem/BBa_C0040/1"/>
+      </sbol:Component>
+    </sbol:component>
+    <sbol:component>
+      <sbol:Component rdf:about="http://example.org/ComponentDefinition/ffl_gene_circuit_0d5455f1-199d-4354-9972-5e983f6fafb6/BBa_J23119_0/1">
+        <sbol:access rdf:resource="http://sbols.org/v2#public"/>
+        <sbol:version>1</sbol:version>
+        <sbol:persistentIdentity rdf:resource="http://example.org/ComponentDefinition/ffl_gene_circuit_0d5455f1-199d-4354-9972-5e983f6fafb6/BBa_J23119_0"/>
+        <sbol:displayId>BBa_J23119_0</sbol:displayId>
+        <sbol:definition rdf:resource="https://synbiohub.org/public/igem/BBa_J23119/1"/>
+      </sbol:Component>
+    </sbol:component>
+    <sbol:sequenceConstraint>
+      <sbol:SequenceConstraint rdf:about="http://example.org/ComponentDefinition/ffl_gene_circuit_0d5455f1-199d-4354-9972-5e983f6fafb6/constraint_5/1">
+        <sbol:subject rdf:resource="http://example.org/ComponentDefinition/ffl_gene_circuit_0d5455f1-199d-4354-9972-5e983f6fafb6/BBa_J23100_1/1"/>
+        <sbol:displayId>constraint_5</sbol:displayId>
+        <sbol:restriction rdf:resource="http://sbols.org/v2#precedes"/>
+        <sbol:object rdf:resource="http://example.org/ComponentDefinition/ffl_gene_circuit_0d5455f1-199d-4354-9972-5e983f6fafb6/BBa_J23119_0/1"/>
+        <sbol:version>1</sbol:version>
+        <sbol:persistentIdentity rdf:resource="http://example.org/ComponentDefinition/ffl_gene_circuit_0d5455f1-199d-4354-9972-5e983f6fafb6/constraint_5"/>
+      </sbol:SequenceConstraint>
+    </sbol:sequenceConstraint>
+    <sbol:version>1</sbol:version>
+    <sbol:type rdf:resource="http://www.biopax.org/release/biopax-level3.owl#DnaRegion"/>
+    <sbol:component>
+      <sbol:Component rdf:about="http://example.org/ComponentDefinition/ffl_gene_circuit_0d5455f1-199d-4354-9972-5e983f6fafb6/BBa_J23119_1/1">
+        <sbol:access rdf:resource="http://sbols.org/v2#public"/>
+        <sbol:definition rdf:resource="https://synbiohub.org/public/igem/BBa_J23119/1"/>
+        <sbol:displayId>BBa_J23119_1</sbol:displayId>
+        <sbol:version>1</sbol:version>
+        <sbol:persistentIdentity rdf:resource="http://example.org/ComponentDefinition/ffl_gene_circuit_0d5455f1-199d-4354-9972-5e983f6fafb6/BBa_J23119_1"/>
+      </sbol:Component>
+    </sbol:component>
+    <sbol:component>
+      <sbol:Component rdf:about="http://example.org/ComponentDefinition/ffl_gene_circuit_0d5455f1-199d-4354-9972-5e983f6fafb6/BBa_B0015_0/1">
+        <sbol:version>1</sbol:version>
+        <sbol:persistentIdentity rdf:resource="http://example.org/ComponentDefinition/ffl_gene_circuit_0d5455f1-199d-4354-9972-5e983f6fafb6/BBa_B0015_0"/>
+        <sbol:definition rdf:resource="https://synbiohub.org/public/igem/BBa_B0015/1"/>
+        <sbol:displayId>BBa_B0015_0</sbol:displayId>
+        <sbol:access rdf:resource="http://sbols.org/v2#public"/>
+      </sbol:Component>
+    </sbol:component>
+    <sbol:sequenceConstraint>
+      <sbol:SequenceConstraint rdf:about="http://example.org/ComponentDefinition/ffl_gene_circuit_0d5455f1-199d-4354-9972-5e983f6fafb6/constraint_1/1">
+        <sbol:displayId>constraint_1</sbol:displayId>
+        <sbol:object rdf:resource="http://example.org/ComponentDefinition/ffl_gene_circuit_0d5455f1-199d-4354-9972-5e983f6fafb6/BBa_J23119_2/1"/>
+        <sbol:restriction rdf:resource="http://sbols.org/v2#precedes"/>
+        <sbol:version>1</sbol:version>
+        <sbol:subject rdf:resource="http://example.org/ComponentDefinition/ffl_gene_circuit_0d5455f1-199d-4354-9972-5e983f6fafb6/BBa_B0034_3/1"/>
+        <sbol:persistentIdentity rdf:resource="http://example.org/ComponentDefinition/ffl_gene_circuit_0d5455f1-199d-4354-9972-5e983f6fafb6/constraint_1"/>
+      </sbol:SequenceConstraint>
+    </sbol:sequenceConstraint>
+    <sbol:sequenceConstraint>
+      <sbol:SequenceConstraint rdf:about="http://example.org/ComponentDefinition/ffl_gene_circuit_0d5455f1-199d-4354-9972-5e983f6fafb6/constraint_3/1">
+        <sbol:object rdf:resource="http://example.org/ComponentDefinition/ffl_gene_circuit_0d5455f1-199d-4354-9972-5e983f6fafb6/BBa_B0034_2/1"/>
+        <sbol:subject rdf:resource="http://example.org/ComponentDefinition/ffl_gene_circuit_0d5455f1-199d-4354-9972-5e983f6fafb6/BBa_J23119_1/1"/>
+        <sbol:persistentIdentity rdf:resource="http://example.org/ComponentDefinition/ffl_gene_circuit_0d5455f1-199d-4354-9972-5e983f6fafb6/constraint_3"/>
+        <sbol:version>1</sbol:version>
+        <sbol:restriction rdf:resource="http://sbols.org/v2#precedes"/>
+        <sbol:displayId>constraint_3</sbol:displayId>
+      </sbol:SequenceConstraint>
+    </sbol:sequenceConstraint>
+    <sbol:sequenceConstraint>
+      <sbol:SequenceConstraint rdf:about="http://example.org/ComponentDefinition/ffl_gene_circuit_0d5455f1-199d-4354-9972-5e983f6fafb6/constraint_2/1">
+        <sbol:subject rdf:resource="http://example.org/ComponentDefinition/ffl_gene_circuit_0d5455f1-199d-4354-9972-5e983f6fafb6/BBa_J23119_2/1"/>
+        <sbol:persistentIdentity rdf:resource="http://example.org/ComponentDefinition/ffl_gene_circuit_0d5455f1-199d-4354-9972-5e983f6fafb6/constraint_2"/>
+        <sbol:restriction rdf:resource="http://sbols.org/v2#precedes"/>
+        <sbol:version>1</sbol:version>
+        <sbol:object rdf:resource="http://example.org/ComponentDefinition/ffl_gene_circuit_0d5455f1-199d-4354-9972-5e983f6fafb6/BBa_J23119_1/1"/>
+        <sbol:displayId>constraint_2</sbol:displayId>
+      </sbol:SequenceConstraint>
+    </sbol:sequenceConstraint>
+    <sbol:component>
+      <sbol:Component rdf:about="http://example.org/ComponentDefinition/ffl_gene_circuit_0d5455f1-199d-4354-9972-5e983f6fafb6/BBa_B0034_1/1">
+        <sbol:access rdf:resource="http://sbols.org/v2#public"/>
+        <sbol:displayId>BBa_B0034_1</sbol:displayId>
+        <sbol:persistentIdentity rdf:resource="http://example.org/ComponentDefinition/ffl_gene_circuit_0d5455f1-199d-4354-9972-5e983f6fafb6/BBa_B0034_1"/>
+        <sbol:version>1</sbol:version>
+        <sbol:definition rdf:resource="https://synbiohub.org/public/igem/BBa_B0034/1"/>
+      </sbol:Component>
+    </sbol:component>
+    <sbol:component>
+      <sbol:Component rdf:about="http://example.org/ComponentDefinition/ffl_gene_circuit_0d5455f1-199d-4354-9972-5e983f6fafb6/BBa_B0034_3/1">
+        <sbol:definition rdf:resource="https://synbiohub.org/public/igem/BBa_B0034/1"/>
+        <sbol:persistentIdentity rdf:resource="http://example.org/ComponentDefinition/ffl_gene_circuit_0d5455f1-199d-4354-9972-5e983f6fafb6/BBa_B0034_3"/>
+        <sbol:displayId>BBa_B0034_3</sbol:displayId>
+        <sbol:access rdf:resource="http://sbols.org/v2#public"/>
+        <sbol:version>1</sbol:version>
+      </sbol:Component>
+    </sbol:component>
+    <sbol:sequenceConstraint>
+      <sbol:SequenceConstraint rdf:about="http://example.org/ComponentDefinition/ffl_gene_circuit_0d5455f1-199d-4354-9972-5e983f6fafb6/constraint_8/1">
+        <sbol:displayId>constraint_8</sbol:displayId>
+        <sbol:persistentIdentity rdf:resource="http://example.org/ComponentDefinition/ffl_gene_circuit_0d5455f1-199d-4354-9972-5e983f6fafb6/constraint_8"/>
+        <sbol:version>1</sbol:version>
+        <sbol:subject rdf:resource="http://example.org/ComponentDefinition/ffl_gene_circuit_0d5455f1-199d-4354-9972-5e983f6fafb6/BBa_C0040_0/1"/>
+        <sbol:restriction rdf:resource="http://sbols.org/v2#precedes"/>
+        <sbol:object rdf:resource="http://example.org/ComponentDefinition/ffl_gene_circuit_0d5455f1-199d-4354-9972-5e983f6fafb6/BBa_B0015_0/1"/>
+      </sbol:SequenceConstraint>
+    </sbol:sequenceConstraint>
+    <sbol:component>
+      <sbol:Component rdf:about="http://example.org/ComponentDefinition/ffl_gene_circuit_0d5455f1-199d-4354-9972-5e983f6fafb6/BBa_B0034_0/1">
+        <sbol:access rdf:resource="http://sbols.org/v2#public"/>
+        <sbol:persistentIdentity rdf:resource="http://example.org/ComponentDefinition/ffl_gene_circuit_0d5455f1-199d-4354-9972-5e983f6fafb6/BBa_B0034_0"/>
+        <sbol:version>1</sbol:version>
+        <sbol:definition rdf:resource="https://synbiohub.org/public/igem/BBa_B0034/1"/>
+        <sbol:displayId>BBa_B0034_0</sbol:displayId>
+      </sbol:Component>
+    </sbol:component>
+    <sbol:persistentIdentity rdf:resource="http://example.org/ComponentDefinition/ffl_gene_circuit_0d5455f1-199d-4354-9972-5e983f6fafb6"/>
+    <sbol:component>
+      <sbol:Component rdf:about="http://example.org/ComponentDefinition/ffl_gene_circuit_0d5455f1-199d-4354-9972-5e983f6fafb6/BBa_J23119_3/1">
+        <sbol:displayId>BBa_J23119_3</sbol:displayId>
+        <sbol:version>1</sbol:version>
+        <sbol:definition rdf:resource="https://synbiohub.org/public/igem/BBa_J23119/1"/>
+        <sbol:persistentIdentity rdf:resource="http://example.org/ComponentDefinition/ffl_gene_circuit_0d5455f1-199d-4354-9972-5e983f6fafb6/BBa_J23119_3"/>
+        <sbol:access rdf:resource="http://sbols.org/v2#public"/>
+      </sbol:Component>
+    </sbol:component>
+    <sbol:sequenceConstraint>
+      <sbol:SequenceConstraint rdf:about="http://example.org/ComponentDefinition/ffl_gene_circuit_0d5455f1-199d-4354-9972-5e983f6fafb6/constraint_9/1">
+        <sbol:version>1</sbol:version>
+        <sbol:object rdf:resource="http://example.org/ComponentDefinition/ffl_gene_circuit_0d5455f1-199d-4354-9972-5e983f6fafb6/BBa_J23100_0/1"/>
+        <sbol:restriction rdf:resource="http://sbols.org/v2#precedes"/>
+        <sbol:displayId>constraint_9</sbol:displayId>
+        <sbol:persistentIdentity rdf:resource="http://example.org/ComponentDefinition/ffl_gene_circuit_0d5455f1-199d-4354-9972-5e983f6fafb6/constraint_9"/>
+        <sbol:subject rdf:resource="http://example.org/ComponentDefinition/ffl_gene_circuit_0d5455f1-199d-4354-9972-5e983f6fafb6/BBa_B0015_0/1"/>
+      </sbol:SequenceConstraint>
+    </sbol:sequenceConstraint>
+    <sbol:sequenceConstraint>
+      <sbol:SequenceConstraint rdf:about="http://example.org/ComponentDefinition/ffl_gene_circuit_0d5455f1-199d-4354-9972-5e983f6fafb6/constraint_6/1">
+        <sbol:persistentIdentity rdf:resource="http://example.org/ComponentDefinition/ffl_gene_circuit_0d5455f1-199d-4354-9972-5e983f6fafb6/constraint_6"/>
+        <sbol:subject rdf:resource="http://example.org/ComponentDefinition/ffl_gene_circuit_0d5455f1-199d-4354-9972-5e983f6fafb6/BBa_J23119_0/1"/>
+        <sbol:displayId>constraint_6</sbol:displayId>
+        <sbol:version>1</sbol:version>
+        <sbol:object rdf:resource="http://example.org/ComponentDefinition/ffl_gene_circuit_0d5455f1-199d-4354-9972-5e983f6fafb6/BBa_B0034_1/1"/>
+        <sbol:restriction rdf:resource="http://sbols.org/v2#precedes"/>
+      </sbol:SequenceConstraint>
+    </sbol:sequenceConstraint>
+  </sbol:ComponentDefinition>
+  <sbol:ComponentDefinition rdf:about="http://example.org/ComponentDefinition/ffl_gene_circuit_d36aa749-3384-4989-920a-910fe6d04f71/1">
+    <sbol:sequenceConstraint>
+      <sbol:SequenceConstraint rdf:about="http://example.org/ComponentDefinition/ffl_gene_circuit_d36aa749-3384-4989-920a-910fe6d04f71/constraint_4/1">
+        <sbol:version>1</sbol:version>
+        <sbol:displayId>constraint_4</sbol:displayId>
+        <sbol:restriction rdf:resource="http://sbols.org/v2#precedes"/>
+        <sbol:persistentIdentity rdf:resource="http://example.org/ComponentDefinition/ffl_gene_circuit_d36aa749-3384-4989-920a-910fe6d04f71/constraint_4"/>
+        <sbol:subject rdf:resource="http://example.org/ComponentDefinition/ffl_gene_circuit_d36aa749-3384-4989-920a-910fe6d04f71/BBa_B0034_2/1"/>
+        <sbol:object rdf:resource="http://example.org/ComponentDefinition/ffl_gene_circuit_d36aa749-3384-4989-920a-910fe6d04f71/BBa_J23119_1/1"/>
+      </sbol:SequenceConstraint>
+    </sbol:sequenceConstraint>
+    <sbol:version>1</sbol:version>
+    <sbol:component>
+      <sbol:Component rdf:about="http://example.org/ComponentDefinition/ffl_gene_circuit_d36aa749-3384-4989-920a-910fe6d04f71/BBa_B0015_0/1">
+        <sbol:access rdf:resource="http://sbols.org/v2#public"/>
+        <sbol:definition rdf:resource="https://synbiohub.org/public/igem/BBa_B0015/1"/>
+        <sbol:persistentIdentity rdf:resource="http://example.org/ComponentDefinition/ffl_gene_circuit_d36aa749-3384-4989-920a-910fe6d04f71/BBa_B0015_0"/>
+        <sbol:displayId>BBa_B0015_0</sbol:displayId>
+        <sbol:version>1</sbol:version>
+      </sbol:Component>
+    </sbol:component>
+    <sbol:type rdf:resource="http://www.biopax.org/release/biopax-level3.owl#DnaRegion"/>
+    <sbol:sequenceConstraint>
+      <sbol:SequenceConstraint rdf:about="http://example.org/ComponentDefinition/ffl_gene_circuit_d36aa749-3384-4989-920a-910fe6d04f71/constraint_3/1">
+        <sbol:displayId>constraint_3</sbol:displayId>
+        <sbol:object rdf:resource="http://example.org/ComponentDefinition/ffl_gene_circuit_d36aa749-3384-4989-920a-910fe6d04f71/BBa_B0034_2/1"/>
+        <sbol:subject rdf:resource="http://example.org/ComponentDefinition/ffl_gene_circuit_d36aa749-3384-4989-920a-910fe6d04f71/BBa_J23100_1/1"/>
+        <sbol:version>1</sbol:version>
+        <sbol:persistentIdentity rdf:resource="http://example.org/ComponentDefinition/ffl_gene_circuit_d36aa749-3384-4989-920a-910fe6d04f71/constraint_3"/>
+        <sbol:restriction rdf:resource="http://sbols.org/v2#precedes"/>
+      </sbol:SequenceConstraint>
+    </sbol:sequenceConstraint>
+    <sbol:sequenceConstraint>
+      <sbol:SequenceConstraint rdf:about="http://example.org/ComponentDefinition/ffl_gene_circuit_d36aa749-3384-4989-920a-910fe6d04f71/constraint_5/1">
+        <sbol:restriction rdf:resource="http://sbols.org/v2#precedes"/>
+        <sbol:version>1</sbol:version>
+        <sbol:persistentIdentity rdf:resource="http://example.org/ComponentDefinition/ffl_gene_circuit_d36aa749-3384-4989-920a-910fe6d04f71/constraint_5"/>
+        <sbol:object rdf:resource="http://example.org/ComponentDefinition/ffl_gene_circuit_d36aa749-3384-4989-920a-910fe6d04f71/BBa_J23100_0/1"/>
+        <sbol:subject rdf:resource="http://example.org/ComponentDefinition/ffl_gene_circuit_d36aa749-3384-4989-920a-910fe6d04f71/BBa_J23119_1/1"/>
+        <sbol:displayId>constraint_5</sbol:displayId>
+      </sbol:SequenceConstraint>
+    </sbol:sequenceConstraint>
+    <sbol:type rdf:resource="http://identifiers.org/so/SO:0000987"/>
+    <sbol:persistentIdentity rdf:resource="http://example.org/ComponentDefinition/ffl_gene_circuit_d36aa749-3384-4989-920a-910fe6d04f71"/>
+    <sbol:sequenceConstraint>
+      <sbol:SequenceConstraint rdf:about="http://example.org/ComponentDefinition/ffl_gene_circuit_d36aa749-3384-4989-920a-910fe6d04f71/constraint_7/1">
+        <sbol:displayId>constraint_7</sbol:displayId>
+        <sbol:persistentIdentity rdf:resource="http://example.org/ComponentDefinition/ffl_gene_circuit_d36aa749-3384-4989-920a-910fe6d04f71/constraint_7"/>
+        <sbol:version>1</sbol:version>
+        <sbol:subject rdf:resource="http://example.org/ComponentDefinition/ffl_gene_circuit_d36aa749-3384-4989-920a-910fe6d04f71/BBa_B0034_1/1"/>
+        <sbol:restriction rdf:resource="http://sbols.org/v2#precedes"/>
+        <sbol:object rdf:resource="http://example.org/ComponentDefinition/ffl_gene_circuit_d36aa749-3384-4989-920a-910fe6d04f71/BBa_E0040_0/1"/>
+      </sbol:SequenceConstraint>
+    </sbol:sequenceConstraint>
+    <sbol:component>
+      <sbol:Component rdf:about="http://example.org/ComponentDefinition/ffl_gene_circuit_d36aa749-3384-4989-920a-910fe6d04f71/BBa_B0034_1/1">
+        <sbol:access rdf:resource="http://sbols.org/v2#public"/>
+        <sbol:displayId>BBa_B0034_1</sbol:displayId>
+        <sbol:persistentIdentity rdf:resource="http://example.org/ComponentDefinition/ffl_gene_circuit_d36aa749-3384-4989-920a-910fe6d04f71/BBa_B0034_1"/>
+        <sbol:version>1</sbol:version>
+        <sbol:definition rdf:resource="https://synbiohub.org/public/igem/BBa_B0034/1"/>
+      </sbol:Component>
+    </sbol:component>
+    <sbol:sequenceConstraint>
+      <sbol:SequenceConstraint rdf:about="http://example.org/ComponentDefinition/ffl_gene_circuit_d36aa749-3384-4989-920a-910fe6d04f71/constraint_0/1">
+        <sbol:restriction rdf:resource="http://sbols.org/v2#precedes"/>
+        <sbol:version>1</sbol:version>
+        <sbol:displayId>constraint_0</sbol:displayId>
+        <sbol:persistentIdentity rdf:resource="http://example.org/ComponentDefinition/ffl_gene_circuit_d36aa749-3384-4989-920a-910fe6d04f71/constraint_0"/>
+        <sbol:object rdf:resource="http://example.org/ComponentDefinition/ffl_gene_circuit_d36aa749-3384-4989-920a-910fe6d04f71/BBa_B0034_3/1"/>
+        <sbol:subject rdf:resource="http://example.org/ComponentDefinition/ffl_gene_circuit_d36aa749-3384-4989-920a-910fe6d04f71/BBa_J23100_3/1"/>
+      </sbol:SequenceConstraint>
+    </sbol:sequenceConstraint>
+    <sbol:sequenceConstraint>
+      <sbol:SequenceConstraint rdf:about="http://example.org/ComponentDefinition/ffl_gene_circuit_d36aa749-3384-4989-920a-910fe6d04f71/constraint_9/1">
+        <sbol:persistentIdentity rdf:resource="http://example.org/ComponentDefinition/ffl_gene_circuit_d36aa749-3384-4989-920a-910fe6d04f71/constraint_9"/>
+        <sbol:displayId>constraint_9</sbol:displayId>
+        <sbol:restriction rdf:resource="http://sbols.org/v2#precedes"/>
+        <sbol:subject rdf:resource="http://example.org/ComponentDefinition/ffl_gene_circuit_d36aa749-3384-4989-920a-910fe6d04f71/BBa_B0015_0/1"/>
+        <sbol:version>1</sbol:version>
+        <sbol:object rdf:resource="http://example.org/ComponentDefinition/ffl_gene_circuit_d36aa749-3384-4989-920a-910fe6d04f71/BBa_J23119_0/1"/>
+      </sbol:SequenceConstraint>
+    </sbol:sequenceConstraint>
+    <sbol:component>
+      <sbol:Component rdf:about="http://example.org/ComponentDefinition/ffl_gene_circuit_d36aa749-3384-4989-920a-910fe6d04f71/BBa_J23119_1/1">
+        <sbol:version>1</sbol:version>
+        <sbol:persistentIdentity rdf:resource="http://example.org/ComponentDefinition/ffl_gene_circuit_d36aa749-3384-4989-920a-910fe6d04f71/BBa_J23119_1"/>
+        <sbol:definition rdf:resource="https://synbiohub.org/public/igem/BBa_J23119/1"/>
+        <sbol:access rdf:resource="http://sbols.org/v2#public"/>
+        <sbol:displayId>BBa_J23119_1</sbol:displayId>
+      </sbol:Component>
+    </sbol:component>
+    <sbol:component>
+      <sbol:Component rdf:about="http://example.org/ComponentDefinition/ffl_gene_circuit_d36aa749-3384-4989-920a-910fe6d04f71/BBa_J23119_0/1">
+        <sbol:definition rdf:resource="https://synbiohub.org/public/igem/BBa_J23119/1"/>
+        <sbol:access rdf:resource="http://sbols.org/v2#public"/>
+        <sbol:version>1</sbol:version>
+        <sbol:persistentIdentity rdf:resource="http://example.org/ComponentDefinition/ffl_gene_circuit_d36aa749-3384-4989-920a-910fe6d04f71/BBa_J23119_0"/>
+        <sbol:displayId>BBa_J23119_0</sbol:displayId>
+      </sbol:Component>
+    </sbol:component>
+    <sbol:sequenceConstraint>
+      <sbol:SequenceConstraint rdf:about="http://example.org/ComponentDefinition/ffl_gene_circuit_d36aa749-3384-4989-920a-910fe6d04f71/constraint_10/1">
+        <sbol:version>1</sbol:version>
+        <sbol:persistentIdentity rdf:resource="http://example.org/ComponentDefinition/ffl_gene_circuit_d36aa749-3384-4989-920a-910fe6d04f71/constraint_10"/>
+        <sbol:displayId>constraint_10</sbol:displayId>
+        <sbol:restriction rdf:resource="http://sbols.org/v2#precedes"/>
+        <sbol:subject rdf:resource="http://example.org/ComponentDefinition/ffl_gene_circuit_d36aa749-3384-4989-920a-910fe6d04f71/BBa_J23119_0/1"/>
+        <sbol:object rdf:resource="http://example.org/ComponentDefinition/ffl_gene_circuit_d36aa749-3384-4989-920a-910fe6d04f71/BBa_B0034_0/1"/>
+      </sbol:SequenceConstraint>
+    </sbol:sequenceConstraint>
+    <sbol:component>
+      <sbol:Component rdf:about="http://example.org/ComponentDefinition/ffl_gene_circuit_d36aa749-3384-4989-920a-910fe6d04f71/BBa_J23100_1/1">
+        <sbol:version>1</sbol:version>
+        <sbol:definition rdf:resource="https://synbiohub.org/public/igem/BBa_J23100/1"/>
+        <sbol:persistentIdentity rdf:resource="http://example.org/ComponentDefinition/ffl_gene_circuit_d36aa749-3384-4989-920a-910fe6d04f71/BBa_J23100_1"/>
+        <sbol:access rdf:resource="http://sbols.org/v2#public"/>
+        <sbol:displayId>BBa_J23100_1</sbol:displayId>
+      </sbol:Component>
+    </sbol:component>
+    <sbol:component>
+      <sbol:Component rdf:about="http://example.org/ComponentDefinition/ffl_gene_circuit_d36aa749-3384-4989-920a-910fe6d04f71/BBa_B0034_3/1">
+        <sbol:displayId>BBa_B0034_3</sbol:displayId>
+        <sbol:access rdf:resource="http://sbols.org/v2#public"/>
+        <sbol:version>1</sbol:version>
+        <sbol:persistentIdentity rdf:resource="http://example.org/ComponentDefinition/ffl_gene_circuit_d36aa749-3384-4989-920a-910fe6d04f71/BBa_B0034_3"/>
+        <sbol:definition rdf:resource="https://synbiohub.org/public/igem/BBa_B0034/1"/>
+      </sbol:Component>
+    </sbol:component>
+    <sbol:sequenceConstraint>
+      <sbol:SequenceConstraint rdf:about="http://example.org/ComponentDefinition/ffl_gene_circuit_d36aa749-3384-4989-920a-910fe6d04f71/constraint_2/1">
+        <sbol:object rdf:resource="http://example.org/ComponentDefinition/ffl_gene_circuit_d36aa749-3384-4989-920a-910fe6d04f71/BBa_J23100_1/1"/>
+        <sbol:subject rdf:resource="http://example.org/ComponentDefinition/ffl_gene_circuit_d36aa749-3384-4989-920a-910fe6d04f71/BBa_J23100_2/1"/>
+        <sbol:displayId>constraint_2</sbol:displayId>
+        <sbol:persistentIdentity rdf:resource="http://example.org/ComponentDefinition/ffl_gene_circuit_d36aa749-3384-4989-920a-910fe6d04f71/constraint_2"/>
+        <sbol:version>1</sbol:version>
+        <sbol:restriction rdf:resource="http://sbols.org/v2#precedes"/>
+      </sbol:SequenceConstraint>
+    </sbol:sequenceConstraint>
+    <sbol:component>
+      <sbol:Component rdf:about="http://example.org/ComponentDefinition/ffl_gene_circuit_d36aa749-3384-4989-920a-910fe6d04f71/BBa_E0040_0/1">
+        <sbol:displayId>BBa_E0040_0</sbol:displayId>
+        <sbol:access rdf:resource="http://sbols.org/v2#public"/>
+        <sbol:version>1</sbol:version>
+        <sbol:persistentIdentity rdf:resource="http://example.org/ComponentDefinition/ffl_gene_circuit_d36aa749-3384-4989-920a-910fe6d04f71/BBa_E0040_0"/>
+        <sbol:definition rdf:resource="https://synbiohub.org/public/igem/BBa_E0040/1"/>
+      </sbol:Component>
+    </sbol:component>
+    <sbol:sequenceConstraint>
+      <sbol:SequenceConstraint rdf:about="http://example.org/ComponentDefinition/ffl_gene_circuit_d36aa749-3384-4989-920a-910fe6d04f71/constraint_8/1">
+        <sbol:version>1</sbol:version>
+        <sbol:restriction rdf:resource="http://sbols.org/v2#precedes"/>
+        <sbol:object rdf:resource="http://example.org/ComponentDefinition/ffl_gene_circuit_d36aa749-3384-4989-920a-910fe6d04f71/BBa_B0015_0/1"/>
+        <sbol:subject rdf:resource="http://example.org/ComponentDefinition/ffl_gene_circuit_d36aa749-3384-4989-920a-910fe6d04f71/BBa_E0040_0/1"/>
+        <sbol:displayId>constraint_8</sbol:displayId>
+        <sbol:persistentIdentity rdf:resource="http://example.org/ComponentDefinition/ffl_gene_circuit_d36aa749-3384-4989-920a-910fe6d04f71/constraint_8"/>
+      </sbol:SequenceConstraint>
+    </sbol:sequenceConstraint>
+    <sbol:component>
+      <sbol:Component rdf:about="http://example.org/ComponentDefinition/ffl_gene_circuit_d36aa749-3384-4989-920a-910fe6d04f71/BBa_B0034_2/1">
+        <sbol:access rdf:resource="http://sbols.org/v2#public"/>
+        <sbol:version>1</sbol:version>
+        <sbol:definition rdf:resource="https://synbiohub.org/public/igem/BBa_B0034/1"/>
+        <sbol:displayId>BBa_B0034_2</sbol:displayId>
+        <sbol:persistentIdentity rdf:resource="http://example.org/ComponentDefinition/ffl_gene_circuit_d36aa749-3384-4989-920a-910fe6d04f71/BBa_B0034_2"/>
+      </sbol:Component>
+    </sbol:component>
+    <sbol:component>
+      <sbol:Component rdf:about="http://example.org/ComponentDefinition/ffl_gene_circuit_d36aa749-3384-4989-920a-910fe6d04f71/BBa_J23100_3/1">
+        <sbol:version>1</sbol:version>
+        <sbol:definition rdf:resource="https://synbiohub.org/public/igem/BBa_J23100/1"/>
+        <sbol:persistentIdentity rdf:resource="http://example.org/ComponentDefinition/ffl_gene_circuit_d36aa749-3384-4989-920a-910fe6d04f71/BBa_J23100_3"/>
+        <sbol:access rdf:resource="http://sbols.org/v2#public"/>
+        <sbol:displayId>BBa_J23100_3</sbol:displayId>
+      </sbol:Component>
+    </sbol:component>
+    <sbol:displayId>ffl_gene_circuit_d36aa749-3384-4989-920a-910fe6d04f71</sbol:displayId>
+    <sbol:sequenceConstraint>
+      <sbol:SequenceConstraint rdf:about="http://example.org/ComponentDefinition/ffl_gene_circuit_d36aa749-3384-4989-920a-910fe6d04f71/constraint_6/1">
+        <sbol:restriction rdf:resource="http://sbols.org/v2#precedes"/>
+        <sbol:displayId>constraint_6</sbol:displayId>
+        <sbol:object rdf:resource="http://example.org/ComponentDefinition/ffl_gene_circuit_d36aa749-3384-4989-920a-910fe6d04f71/BBa_B0034_1/1"/>
+        <sbol:persistentIdentity rdf:resource="http://example.org/ComponentDefinition/ffl_gene_circuit_d36aa749-3384-4989-920a-910fe6d04f71/constraint_6"/>
+        <sbol:subject rdf:resource="http://example.org/ComponentDefinition/ffl_gene_circuit_d36aa749-3384-4989-920a-910fe6d04f71/BBa_J23100_0/1"/>
+        <sbol:version>1</sbol:version>
+      </sbol:SequenceConstraint>
+    </sbol:sequenceConstraint>
+    <sbol:component>
+      <sbol:Component rdf:about="http://example.org/ComponentDefinition/ffl_gene_circuit_d36aa749-3384-4989-920a-910fe6d04f71/BBa_B0034_0/1">
+        <sbol:access rdf:resource="http://sbols.org/v2#public"/>
+        <sbol:version>1</sbol:version>
+        <sbol:persistentIdentity rdf:resource="http://example.org/ComponentDefinition/ffl_gene_circuit_d36aa749-3384-4989-920a-910fe6d04f71/BBa_B0034_0"/>
+        <sbol:definition rdf:resource="https://synbiohub.org/public/igem/BBa_B0034/1"/>
+        <sbol:displayId>BBa_B0034_0</sbol:displayId>
+      </sbol:Component>
+    </sbol:component>
+    <sbol:component>
+      <sbol:Component rdf:about="http://example.org/ComponentDefinition/ffl_gene_circuit_d36aa749-3384-4989-920a-910fe6d04f71/BBa_J23100_0/1">
+        <sbol:persistentIdentity rdf:resource="http://example.org/ComponentDefinition/ffl_gene_circuit_d36aa749-3384-4989-920a-910fe6d04f71/BBa_J23100_0"/>
+        <sbol:access rdf:resource="http://sbols.org/v2#public"/>
+        <sbol:displayId>BBa_J23100_0</sbol:displayId>
+        <sbol:version>1</sbol:version>
+        <sbol:definition rdf:resource="https://synbiohub.org/public/igem/BBa_J23100/1"/>
+      </sbol:Component>
+    </sbol:component>
+    <sbol:sequenceConstraint>
+      <sbol:SequenceConstraint rdf:about="http://example.org/ComponentDefinition/ffl_gene_circuit_d36aa749-3384-4989-920a-910fe6d04f71/constraint_1/1">
+        <sbol:persistentIdentity rdf:resource="http://example.org/ComponentDefinition/ffl_gene_circuit_d36aa749-3384-4989-920a-910fe6d04f71/constraint_1"/>
+        <sbol:restriction rdf:resource="http://sbols.org/v2#precedes"/>
+        <sbol:version>1</sbol:version>
+        <sbol:object rdf:resource="http://example.org/ComponentDefinition/ffl_gene_circuit_d36aa749-3384-4989-920a-910fe6d04f71/BBa_J23100_2/1"/>
+        <sbol:subject rdf:resource="http://example.org/ComponentDefinition/ffl_gene_circuit_d36aa749-3384-4989-920a-910fe6d04f71/BBa_B0034_3/1"/>
+        <sbol:displayId>constraint_1</sbol:displayId>
+      </sbol:SequenceConstraint>
+    </sbol:sequenceConstraint>
+    <sbol:component>
+      <sbol:Component rdf:about="http://example.org/ComponentDefinition/ffl_gene_circuit_d36aa749-3384-4989-920a-910fe6d04f71/BBa_J23100_2/1">
+        <sbol:version>1</sbol:version>
+        <sbol:persistentIdentity rdf:resource="http://example.org/ComponentDefinition/ffl_gene_circuit_d36aa749-3384-4989-920a-910fe6d04f71/BBa_J23100_2"/>
+        <sbol:definition rdf:resource="https://synbiohub.org/public/igem/BBa_J23100/1"/>
+        <sbol:displayId>BBa_J23100_2</sbol:displayId>
+        <sbol:access rdf:resource="http://sbols.org/v2#public"/>
+      </sbol:Component>
+    </sbol:component>
+  </sbol:ComponentDefinition>
+</rdf:RDF>
