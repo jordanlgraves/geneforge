@@ -9,7 +9,7 @@ def run_scraper(data_dir, file_types=["sbol", "gb", "fasta"]):
     base_url = 'https://synbiohub.org/public/igem'
     collection_name = 'igem_collection'
     batch_size = 10
-    max_items = 50  # Set this to None to scrape all items
+    max_items = 1000  # Set this to None to scrape all items
 
     # Scrape metadata
     metadata_scraper = SynBioHubMetadataScraper(base_url, collection_name, data_dir, batch_size, max_items)
@@ -30,16 +30,17 @@ def run_annotation(input_dir, output_dir):
     annotate_sbol_directory(input_dir, output_dir)
 
 def main():
-    scraped_dir = 'data/syn_bio_hub/scraped'
-    validated_dir = 'data/syn_bio_hub/validated/sbol'
-    normalized_dir = 'data/syn_bio_hub/sbol/normalized'
-    annotated_dir = 'data/syn_bio_hub/sbol/annotated'
+    root = 'data/syn_bio_hub'
+    scraped_dir = f'{root}/scraped'
+    validated_dir = f'{root}/validated/sbol'
+    normalized_dir = f'{root}/sbol/normalized'
+    annotated_dir = f'{root}/sbol/annotated'
 
     # Step 1: Run Scraper
-    run_scraper(scraped_dir)
+    #run_scraper(scraped_dir)
 
     # Step 2: Run Validation
-    scraped_sbol_dir = 'data/syn_bio_hub/scraped/sbol'
+    scraped_sbol_dir = f'{root}/scraped/sbol'
     # run_validation(scraped_sbol_dir, validated_dir)
 
     # Step 3: Run Normalization

@@ -31,6 +31,15 @@ def extract_component_data(documents):
                         'types': [_.split('/')[-1] for _ in obj.types] if obj.types else ['unknown'],
                         'roles': [_.split('/')[-1] for _ in obj.roles] if obj.roles else ['unknown'],
                     })
+                # for sequence in obj.sequences:                    
+                    # physical_parts_count += 1
+                    # object_data.append({
+                    #     'name': sequence.name,
+                    #     'display_id': sequence.displayId,
+                    #     'description': sequence.description,
+                    #     'types': [_.split('/')[-1] for _ in sequence.types] if sequence.types else ['unknown'],
+                    #     'roles': [_.split('/')[-1] for _ in sequence.roles] if sequence.roles else ['unknown'],
+                    # })
             elif isinstance(obj, sbol2.ModuleDefinition):
                 # Extract information from ModuleDefinition
                 for fc in obj.functionalComponents:
@@ -62,15 +71,15 @@ def extract_component_data(documents):
                     'types': [_.split('/')[-1] for _ in obj.definition.types] if obj.definition.types else ['unknown'],
                     'roles': [_.split('/')[-1] for _ in obj.definition.roles] if obj.definition.roles else ['unknown'],
                 })
-            elif isinstance(obj, sbol2.Sequence):
-                # Extract information from Sequence
-                object_data.append({
-                    'name': obj.displayId,
-                    'display_id': obj.displayId,
-                    'description': 'Sequence',
-                    'types': ['sequence'],
-                    'roles': ['sequence'],
-                })
+            # elif isinstance(obj, sbol2.Sequence):
+            #     # Extract information from Sequence
+            #     object_data.append({
+            #         'name': obj.displayId,
+            #         'display_id': obj.displayId,
+            #         'description': 'Sequence',
+            #         'types': ['sequence'],
+            #         'roles': ['sequence'],
+            #     })
             # Add more cases as needed for other SBOL classes
         document_metadata.append({
             'display_id': doc.displayId,
@@ -98,9 +107,17 @@ def plot_distribution(data, column, title, xlabel, ylabel, output_file):
 
 def analyze_component_types(data, out_dir='.'):
     plot_distribution(data, 'types', 'Distribution of Component Types', 'Component Type', 'Count', os.path.join(out_dir, 'component_type_distribution.png'))
+    # Save list of unique types and their counts to CSV
+    types = data['types'].explode().value_counts().reset_index()
+    types.columns = ['type', 'count']
+    types.to_csv(os.path.join(out_dir, 'component_types.csv'), index=False)
 
 def analyze_component_roles(data, out_dir='.'):
     plot_distribution(data, 'roles', 'Distribution of Component Roles', 'Component Role', 'Count', os.path.join(out_dir, 'component_role_distribution.png'))
+    # Save list of unique roles and their counts to CSV
+    roles = data['roles'].explode().value_counts().reset_index()
+    roles.columns = ['role', 'count']
+    roles.to_csv(os.path.join(out_dir, 'component_roles.csv'), index=False)
 
 def analyze_component_counts(data, out_dir='.'):
     component_counts = data['name'].value_counts()
@@ -143,5 +160,10 @@ def main():
     analyze_component_counts(component_data, out_dir)
     analyze_document_metadata(document_metadata, out_dir)
 
+    # Save dataframes to CSV
+    os.makedirs(out_dir, exist_ok=True)
+    component_data.to_csv(os.path.join(out_dir, 'component_data.csv'), index=False)
+    document_metadata.to_csv(os.path.join(out_dir, 'document_metadata.csv'), index=False)
+    
 if __name__ == '__main__':
     main()
