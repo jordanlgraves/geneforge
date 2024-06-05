@@ -1,58 +1,35 @@
 import json
 import os
 
+from rdflib import Graph
 import sbol2
 
-from src.data.io import read_sbol_file
+from src.data.io import read_sbol_file, write_sbol_file
 
-def extract_structured_data(doc):
+def sbol_to_json(sbol_file, output_file):
     """
     Extract and structure data from the SBOL document.
     """
-    structured_data = []
-    
-    for obj in doc.SBOLObjects.values():
-        if isinstance(obj, sbol2.ComponentDefinition):
-            component_data = {
-                'name': obj.name,
-                'display_id': obj.displayId,
-                'description': obj.description,
-                'types': [_.split('/')[-1] for _ in obj.types] if obj.types else ['unknown'],
-                'roles': [_.split('/')[-1] for _ in obj.roles] if obj.roles else ['unknown'],
-                'components': [],
-                'sequence_constraints': []
-            }
-            for component in obj.components:
-                # component definition should be the parent of the component
-                comp_def_parent = component.parent
-                assert(isinstance(comp_def_parent, sbol2.ComponentDefinition))
-                component_data['components'].append({
-                    'name': component.name,
-                    'display_id': component.displayId,
-                    'definition': comp_def_parent.displayId,
-                    'roles': [_.split('/')[-1] for _ in component.roles] if component.roles else ['unknown']
-                })
-            for sc in obj.sequenceConstraints:
-                component_data['sequence_constraints'].append({
-                    'subject': sc.subject,
-                    'object': sc.object,
-                    'restriction': sc.restriction
-                })
-            structured_data.append(component_data)
-    return structured_data
+    graph = Graph()
+    graph.parse(sbol_file, format='xml')
+    graph.serialize(destination=output_file, format='json-ld', indent=4)
 
-def extract_and_structure_sbol_files(directory):
+def jsonld_to_sbol(jsonld_file, output_file):
+    graph = Graph()
+    graph.parse(source=jsonld_file, format='json-ld')
+    graph.serialize(destination=output_file, format='xml')
+
+def convert_sbol_files_to_json(in_directory, out_directory):
     """
     Extract and structure data from all SBOL files in a directory.
     """
-    structured_dataset = []
-    for filename in os.listdir(directory):
+    os.makedirs(out_directory, exist_ok=True)
+    for filename in os.listdir(in_directory):
         if filename.endswith('.xml') or filename.endswith('.sbol'):
-            file_path = os.path.join(directory, filename)
-            doc = read_sbol_file(file_path)
-            structured_data = extract_structured_data(doc)
-            structured_dataset.extend(structured_data) # BBa_I721006
-    return structured_dataset
+            new_filename = filename.split('.')[0] + '.json'
+            file_path = os.path.join(in_directory, new_filename)
+            sbol_to_json(file_path, os.path.join(out_directory, new_filename))
+    
 
 if __name__ == '__main__':
     # input_dir = 'data/syn_bio_hub/sbol/normalized'
@@ -60,9 +37,17 @@ if __name__ == '__main__':
     # with open('data/structured_dataset.json', 'w') as f:
     #     json.dump(structured_data, f, indent=2)
 
-    input_file = 'data/syn_bio_hub/scraped/sbol/BBa_I721006.sbol'
-    doc = read_sbol_file(input_file)
-    structured_data = extract_structured_data(doc)
-    os.makedirs('data/syn_bio_hub/sbol/structured', exist_ok=True)
-    with open('data/syn_bio_hub/sbol/structured/BBa_I721006.json', 'w') as f:
-        json.dump(structured_data, f, indent=2)
+    input_file = 'data/syn_bio_hub/sbol/normalized/BBa_I721006.sbol'
+    output_file = 'data/syn_bio_hub/sbol/structued/BBa_I721006.json'
+
+    os.makedirs(os.path.dirname(output_file), exist_ok=True)
+
+    sbol_to_json(input_file, output_file)
+    json_data = json.load(open(output_file))
+
+    structued_to_sbol_path = 'data/syn_bio_hub/sbol/structued_to_sbol/BBa_I721006.sbol'
+    os.makedirs(os.path.dirname(structued_to_sbol_path), exist_ok=True)
+
+    jsonld_to_sbol(output_file, structued_to_sbol_path)
+    doc = read_sbol_file(structued_to_sbol_path)
+    write_sbol_file(doc, structued_to_sbol_path)

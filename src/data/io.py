@@ -42,6 +42,7 @@ def write_sbol_file(doc, file_path):
     Write the SBOL document to a file, ensuring that endedAtTime is set to None.
     """
     # Clear the endedAtTime field for all Activity objects. The time zone is not formatted correctly.
+    # Not doing this leads to errors when importing the file with other programs (e.g. SBOLCanvas)
     for obj in doc.SBOLObjects.values():
         if isinstance(obj, sbol2.Activity):
             obj.endedAtTime = None
