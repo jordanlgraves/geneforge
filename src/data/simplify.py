@@ -3,22 +3,28 @@ from rdflib import Graph
 from sbol2 import *
 
 from src.data.io import write_sbol_file
-from src.data.ontology import SO_OPERATOR, SYNBIO_TERMS_URL, SYNBIOHUB_IGEM_URL, URIS_TO_SIMPLE_NAMES
+from src.data.ontology import PURL_URL, SO_OPERATOR, SYNBIO_TERMS_HTTP_URL, SYNBIO_TERMS_HTTPS_URL, SYNBIOHUB_IGEM_URL, URIS_TO_SIMPLE_NAMES
 
 def remove_keys(json_data):
     if isinstance(json_data, list):
         for item in json_data:
             remove_keys(item)
     if isinstance(json_data, dict):
-        for key, value in json_data.items():
-            if isinstance(value, dict):
+        items = list(json_data.items())
+        for key, value in items:
+            if key.startswith(PROV_URI) \
+                    or key.startswith(SYNBIO_TERMS_HTTPS_URL) \
+                    or key.startswith(SYNBIO_TERMS_HTTP_URL) \
+                    or key.startswith(IGEM_URI) \
+                    or key.startswith(SYNBIOHUB_IGEM_URL) \
+                    or key.startswith(PURL_URL):
+                    del json_data[key]
+            elif isinstance(value, dict):
                 remove_keys(value)
             elif isinstance(value, list):
                 remove_keys(value)
-            else:
-                if key.startswith(PROV_URI) \
-                    or key.startswith(SYNBIO_TERMS_URL):
-                    del json_data[key]
+            
+                
 
 # Simplify the URIs
 def simplify_uris(json_data):

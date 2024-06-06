@@ -3,7 +3,9 @@ import sbol2
 from sbol2 import *
 
 SYNBIOHUB_IGEM_URL = 'https://synbiohub.org/public/igem/'
-SYNBIO_TERMS_URL = 'https://wiki.synbiohub.org/wiki/Terms/synbiohub#'
+SYNBIO_TERMS_HTTPS_URL = 'https://wiki.synbiohub.org/wiki/Terms/synbiohub#'
+SYNBIO_TERMS_HTTP_URL = 'http://wiki.synbiohub.org/wiki/Terms/synbiohub#'
+PURL_URL = 'http://purl.org/dc'
 
 # ADDED TERMS NOT IN SBOL2
 BIOPAX_URI = "http://www.biopax.org/release/biopax-level3.owl#"
@@ -23,6 +25,13 @@ SO_GENERIC = 'http://identifiers.org/so/SO:0000001'
 SO_ENGINEERED_REGION = 'http://identifiers.org/so/SO:0000804'
 SO_TAG = 'http://identifiers.org/so/SO:0000324'
 SO_POLYA = 'http://identifiers.org/so/SO:0000553'
+SO_ENGINEERED_TAG = 'http://identifiers.org/so/SO:0000807'
+SO_SIGNATURE = 'http://identifiers.org/so/SO:0001978'
+SO_NC_CONSERVERED_REGION = 'http://identifiers.org/so/SO:0000334'
+SO_CONSERVED_REGION = 'http://identifiers.org/so/SO:0000330'
+SO_STOP_CODON = 'http://identifiers.org/so/SO:0000319'
+SO_START_CODON = 'http://identifiers.org/so/SO:0000318'
+
 
 SBO_STIMULATION = 'http://identifiers.org/biomodels.sbo/SBO:0000170'
 SBO_INHIBITION = 'http://identifiers.org/biomodels.sbo/SBO:0000169'
@@ -44,9 +53,9 @@ SBO_GENERIC = 'http://identifiers.org/biomodels.sbo/SBO:0000000'
 # http://wiki.synbiohub.org/wiki/Terms/synbiohub#ownedBy
 # http://wiki.synbiohub.org/wiki/Terms/synbiohub#bookmark
 # http://wiki.synbiohub.org/wiki/Terms/synbiohub#star
-SYNBIO_MUTABLE_PROVENANCE = SYNBIO_TERMS_URL + 'mutableProvenance'
-SYNBIO_MUTABLE_NOTES = SYNBIO_TERMS_URL + 'mutableNotes'
-SYNBIO_MUTABLE_DESCRIPTION = SYNBIO_TERMS_URL + 'mutableDescription'
+SYNBIO_MUTABLE_PROVENANCE = SYNBIO_TERMS_HTTPS_URL + 'mutableProvenance'
+SYNBIO_MUTABLE_NOTES = SYNBIO_TERMS_HTTPS_URL + 'mutableNotes'
+SYNBIO_MUTABLE_DESCRIPTION = SYNBIO_TERMS_HTTPS_URL + 'mutableDescription'
 
 IGEM_DIRECTION_URI = IGEM_URI + '#direction'
 IGEM_DIRECTION_REVERSE = IGEM_DIRECTION_URI + '/reverse'
@@ -79,6 +88,13 @@ VALID_ROLES = {
     'SO:0000804': SO_ENGINEERED_REGION,
     'SO:0000324': SO_TAG,
     'SO:0000553': SO_POLYA,
+    'SO:0000807': SO_ENGINEERED_TAG,
+    'SO:0001978': SO_SIGNATURE,
+    'SO:0001091': SO_BINDING,
+    'SO:0000334': SO_NC_CONSERVERED_REGION,
+    'SO:0000330': SO_CONSERVED_REGION,
+    'SO:0000319': SO_STOP_CODON,
+    'SO:0000318': SO_START_CODON,
     'SBO:0000170': SBO_STIMULATION,
     'SBO:0000169': SBO_INHIBITION,
     'SBO:0000019': SBO_CONTROLLER,
@@ -100,6 +116,7 @@ ROLE_MAPPING = {
     'Terminator': SO_TERMINATOR,
     'Inverter': SO_GENERIC,
     'Coding': SO_CDS,
+    'CDS': SO_CDS,
     'Plasmid': BIOPAX_DNA,
     'Regulatory': SO_PROMOTER,
     'RNA': BIOPAX_RNA,
@@ -119,7 +136,20 @@ ROLE_MAPPING = {
     'Tag': SO_TAG,
     'Protein': BIOPAX_PROTEIN,
     'Engineered Region': SO_ENGINEERED_REGION,
-    'PolyA': SO_POLYA
+    'PolyA': SO_POLYA,
+    'Engineered Tag': SO_ENGINEERED_TAG,
+    'Signature': SO_SIGNATURE,
+    'Non-coding Conserved Region': SO_NC_CONSERVERED_REGION,
+    'Conserved Region': SO_CONSERVED_REGION,
+    'Inhibitor': SBO_INHIBITION,
+    'Stimulator': SBO_STIMULATION,
+    'Controller': SBO_CONTROLLER,
+    'Controlled': SBO_CONTROLLED,
+    'Modifier': SBO_MODIFIER,
+    'Modified': SBO_MODIFIED,
+    'Generic': SBO_GENERIC,
+    'Stop Codon': SO_STOP_CODON,
+    'Start Codon': SO_START_CODON
 }
 
 # LIST OF URIS FOR MAPPING TO AND FROM SIMPLE NAMES
@@ -278,7 +308,15 @@ SO_URIS = [
     SO_STEM_LOOP,
     SO_BINDING,
     SO_GENERIC,
-    SO_ENGINEERED_REGION
+    SO_ENGINEERED_REGION,
+    SO_TAG,
+    SO_POLYA,
+    SO_ENGINEERED_TAG,
+    SO_SIGNATURE,
+    SO_NC_CONSERVERED_REGION,
+    SO_CONSERVED_REGION,
+    SO_STOP_CODON,
+    SO_START_CODON
 ]
 
 BIOPAX_URIS = [
