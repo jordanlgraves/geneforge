@@ -1,3 +1,5 @@
 torch_geometric
 cell-gears
 bs4
+rdflib-jsonld
+rdflib

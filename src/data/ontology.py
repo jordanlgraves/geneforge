@@ -1,19 +1,15 @@
 # Predefined ontology terms for types
 import sbol2
-sbol2.SO_PROMOTER
+from sbol2 import *
 
-BIOPAX_DNA = 'http://www.biopax.org/release/biopax-level3.owl#Dna'
-BIOPAX_RNA = 'http://www.biopax.org/release/biopax-level3.owl#Rna'
-BIOPAX_PROTEIN = 'http://www.biopax.org/release/biopax-level3.owl#Protein'
-BIOPAX_SMALL_MOLECULE = 'http://www.biopax.org/release/biopax-level3.owl#SmallMolecule'
-BIOPAX_COMPLEX = 'http://www.biopax.org/release/biopax-level3.owl#Complex'
-BIOPAX_GENERIC = 'http://www.biopax.org/release/biopax-level3.owl#PhysicalEntity'
+SYNBIOHUB_IGEM_URL = 'https://synbiohub.org/public/igem/'
+SYNBIO_TERMS_URL = 'https://wiki.synbiohub.org/wiki/Terms/synbiohub#'
+
+# ADDED TERMS NOT IN SBOL2
+BIOPAX_URI = "http://www.biopax.org/release/biopax-level3.owl#"
+BIOPAX_GENERIC = BIOPAX_URI + 'PhysicalEntity'
 
 # Predefined ontology terms for roles
-SO_PROMOTER = 'http://identifiers.org/so/SO:0000167'
-SO_CDS = 'http://identifiers.org/so/SO:0000316'
-SO_TERMINATOR = 'http://identifiers.org/so/SO:0000141'
-SO_RBS = 'http://identifiers.org/so/SO:0000139'
 SO_ORIGIN_OF_REPLICATION = 'http://identifiers.org/so/SO:0000296'
 SO_OPERATOR = 'http://identifiers.org/so/SO:0000057'
 SO_ENHANCER = 'http://identifiers.org/so/SO:0000165'
@@ -21,7 +17,12 @@ SO_INSULATOR = 'http://identifiers.org/so/SO:0000627'
 SO_REPORTER = 'http://identifiers.org/so/SO:0000628'
 SO_SPACER = 'http://identifiers.org/so/SO:0001624'
 SO_PRIMER = 'http://identifiers.org/so/SO:0000112'
+SO_STEM_LOOP = 'http://identifiers.org/so/SO:0000313'
+SO_BINDING = 'http://identifiers.org/so/SO:0001091'
 SO_GENERIC = 'http://identifiers.org/so/SO:0000001'
+SO_ENGINEERED_REGION = 'http://identifiers.org/so/SO:0000804'
+SO_TAG = 'http://identifiers.org/so/SO:0000324'
+SO_POLYA = 'http://identifiers.org/so/SO:0000553'
 
 SBO_STIMULATION = 'http://identifiers.org/biomodels.sbo/SBO:0000170'
 SBO_INHIBITION = 'http://identifiers.org/biomodels.sbo/SBO:0000169'
@@ -31,7 +32,27 @@ SBO_MODIFIER = 'http://identifiers.org/biomodels.sbo/SBO:0000019'
 SBO_MODIFIED = 'http://identifiers.org/biomodels.sbo/SBO:0000644'
 SBO_GENERIC = 'http://identifiers.org/biomodels.sbo/SBO:0000000'
 
-# Dictionary of valid types and roles
+# USEFUL SYNBIOHUB keys
+# http://wiki.synbiohub.org/wiki/Terms/synbiohub#mutableProvenance
+# http://wiki.synbiohub.org/wiki/Terms/synbiohub#mutableNotes
+# http://wiki.synbiohub.org/wiki/Terms/synbiohub#mutableDescription
+
+# NONUSEFUL SYNBIOHUB keys
+# http://wiki.synbiohub.org/wiki/Terms/synbiohub#ownedBy
+# http://wiki.synbiohub.org/wiki/Terms/synbiohub#topLevel
+# http://wiki.synbiohub.org/wiki/Terms/synbiohub#ownedBy
+# http://wiki.synbiohub.org/wiki/Terms/synbiohub#ownedBy
+# http://wiki.synbiohub.org/wiki/Terms/synbiohub#bookmark
+# http://wiki.synbiohub.org/wiki/Terms/synbiohub#star
+SYNBIO_MUTABLE_PROVENANCE = SYNBIO_TERMS_URL + 'mutableProvenance'
+SYNBIO_MUTABLE_NOTES = SYNBIO_TERMS_URL + 'mutableNotes'
+SYNBIO_MUTABLE_DESCRIPTION = SYNBIO_TERMS_URL + 'mutableDescription'
+
+IGEM_DIRECTION_URI = IGEM_URI + '#direction'
+IGEM_DIRECTION_REVERSE = IGEM_DIRECTION_URI + '/reverse'
+IGEM_DIRECTION_FORWARD = IGEM_DIRECTION_URI + '/forward'
+
+# Dictionary of valid types and roles allows in stanrdardization/normalization
 VALID_TYPES = {
     'biopax-level3.owl#Dna': BIOPAX_DNA,
     'biopax-level3.owl#Rna': BIOPAX_RNA,
@@ -52,14 +73,19 @@ VALID_ROLES = {
     'SO:0000628': SO_REPORTER,
     'SO:0001624': SO_SPACER,
     'SO:0000112': SO_PRIMER,
+    'SO:0000313': SO_STEM_LOOP,
     'SO:0000001': SO_GENERIC,
+    'SO:0001091': SO_BINDING,
+    'SO:0000804': SO_ENGINEERED_REGION,
+    'SO:0000324': SO_TAG,
+    'SO:0000553': SO_POLYA,
     'SBO:0000170': SBO_STIMULATION,
     'SBO:0000169': SBO_INHIBITION,
     'SBO:0000019': SBO_CONTROLLER,
     'SBO:0000645': SBO_CONTROLLED,
     'SBO:0000019': SBO_MODIFIER,
     'SBO:0000644': SBO_MODIFIED,
-    'SBO:0000000': SBO_GENERIC,
+    'SBO:0000000': SBO_GENERIC
 }
 
 # Role mapping to standardize roles
@@ -80,5 +106,220 @@ ROLE_MAPPING = {
     'DNA': BIOPAX_DNA,
     'Temporary': SO_GENERIC,
     'Project': SO_GENERIC,
-    'Other': SO_GENERIC
+    'Other': SO_GENERIC,
+    'RBS': SO_RBS,
+    'Spacer': SO_SPACER,
+    'Insulator': SO_INSULATOR,
+    'Operator': SO_OPERATOR,
+    'Enhancer': SO_ENHANCER,
+    'Primer': SO_PRIMER,
+    'Origin of Replication': SO_ORIGIN_OF_REPLICATION,
+    'Stem Loop': SO_STEM_LOOP,
+    'Binding': SO_BINDING,
+    'Tag': SO_TAG,
+    'Protein': BIOPAX_PROTEIN,
+    'Engineered Region': SO_ENGINEERED_REGION,
+    'PolyA': SO_POLYA
 }
+
+# LIST OF URIS FOR MAPPING TO AND FROM SIMPLE NAMES
+SBOL_URIS = [
+    SBOL_DOCUMENT,
+    SBOL_IDENTIFIED,
+    SBOL_DOCUMENTED,
+    SBOL_TOP_LEVEL,
+    SBOL_GENERIC_TOP_LEVEL,
+    SBOL_SEQUENCE_ANNOTATION,
+    SBOL_COMPONENT,
+    SBOL_FUNCTIONAL_COMPONENT,
+    SBOL_COMPONENT_DEFINITION,
+    SBOL_SEQUENCE,
+    SBOL_MODULE_DEFINITION,
+    SBOL_MODULE,
+    SBOL_MODEL,
+    SBOL_MAPS_TO,
+    SBOL_INTERACTION,
+    SBOL_PARTICIPATION,
+    SBOL_SEQUENCE_CONSTRAINT,
+    SBOL_LOCATION,
+    SBOL_RANGE,
+    SBOL_CUT,
+    SBOL_COLLECTION,
+    SBOL_GENERIC_LOCATION,
+    SBOL_VARIABLE_COMPONENT,
+    SBOL_COMBINATORIAL_DERIVATION,
+    SBOL_ATTACHMENT,
+    SBOL_IMPLEMENTATION,
+    SBOL_EXPERIMENT,
+    SBOL_EXPERIMENTAL_DATA,
+    UNDEFINED,
+    SBOL_IDENTITY,
+    SBOL_PERSISTENT_IDENTITY,
+    SBOL_VERSION,
+    SBOL_DISPLAY_ID,
+    SBOL_TYPES,
+    SBOL_START,
+    SBOL_END,
+    SBOL_SEQUENCE_ANNOTATIONS,
+    SBOL_COMPONENTS,
+    SBOL_COMPONENT_PROPERTY,
+    SBOL_ROLES,
+    SBOL_ELEMENTS,
+    SBOL_ENCODING,
+    SBOL_SEQUENCE_PROPERTY,
+    SBOL_DEFINITION,
+    SBOL_ACCESS,
+    SBOL_DIRECTION,
+    SBOL_MODELS,
+    SBOL_MODULES,
+    SBOL_FUNCTIONAL_COMPONENTS,
+    SBOL_INTERACTIONS,
+    SBOL_MAPS_TOS,
+    SBOL_PARTICIPATIONS,
+    SBOL_PARTICIPANT,
+    SBOL_LOCAL,
+    SBOL_REMOTE,
+    SBOL_REFINEMENT,
+    SBOL_SOURCE,
+    SBOL_LANGUAGE,
+    SBOL_FRAMEWORK,
+    SBOL_SEQUENCE_CONSTRAINTS,
+    SBOL_SUBJECT,
+    SBOL_OBJECT,
+    SBOL_RESTRICTION,
+    SBOL_ORIENTATION,
+    SBOL_LOCATIONS,
+    SBOL_SOURCE_LOCATIONS,
+    SBOL_ROLE_INTEGRATION,
+    SBOL_MEMBERS,
+    SBOL_AT,
+    SBOL_OPERATOR,
+    SBOL_VARIABLE_COMPONENTS,
+    SBOL_VARIABLE,
+    SBOL_VARIANTS,
+    SBOL_VARIANT_COLLECTIONS,
+    SBOL_VARIANT_DERIVATIONS,
+    SBOL_STRATEGY,
+    SBOL_TEMPLATE,
+    SBOL_ATTACHMENTS,
+    SBOL_MEASUREMENTS,
+    SBOL_UNIT,
+    SBOL_VALUE,
+    SBOL_ACCESS_PRIVATE,
+    SBOL_ACCESS_PUBLIC,
+    SBOL_DIRECTION_IN,
+    SBOL_DIRECTION_OUT,
+    SBOL_DIRECTION_IN_OUT,
+    SBOL_DIRECTION_NONE,
+    SBOL_RESTRICTION_PRECEDES,
+    SBOL_RESTRICTION_SAME_ORIENTATION_AS,
+    SBOL_RESTRICTION_OPPOSITE_ORIENTATION_AS,
+    SBOL_ORIENTATION_INLINE,
+    SBOL_ORIENTATION_REVERSE_COMPLEMENT,
+    SBOL_REFINEMENT_USE_REMOTE,
+    SBOL_REFINEMENT_USE_LOCAL,
+    SBOL_REFINEMENT_VERIFY_IDENTICAL,
+    SBOL_REFINEMENT_MERGE,
+    SBOL_ROLE_INTEGRATION_MERGE,
+    SBOL_ROLE_INTEGRATION_OVERRIDE,
+    SBOL_DESIGN,
+    SBOL_BUILD,
+    SBOL_TEST,
+    SBOL_LEARN
+]
+
+SBO_URIS = [
+    SBO_INTERACTION,
+    SBO_INHIBITION,
+    SBO_GENETIC_PRODUCTION,
+    SBO_NONCOVALENT_BINDING,
+    SBO_STIMULATION,
+    SBO_DEGRADATION,
+    SBO_CONTROL,
+    SBO_BIOCHEMICAL_REACTION,
+    SBO_STIMULATED,
+    SBO_CONVERSION,
+    SBO_PROMOTER,
+    SBO_GENE,
+    SBO_INHIBITOR,
+    SBO_INHIBITED,
+    SBO_STIMULATOR,
+    SBO_REACTANT,
+    SBO_PRODUCT,
+    SBO_LIGAND,
+    SBO_NONCOVALENT_COMPLEX,
+    SBO_BINDING_SITE,
+    SBO_SUBSTRATE,
+    SBO_COFACTOR,
+    SBO_SIDEPRODUCT,
+    SBO_ENZYME,
+    SBO_CONTINUOUS,
+    SBO_DISCRETE
+]
+
+SO_URIS = [
+    SO_MISC,
+    SO_GENE,
+    SO_PROMOTER,
+    SO_CDS,
+    SO_RBS,
+    SO_TERMINATOR,
+    SO_SGRNA,
+    SO_LINEAR,
+    SO_CIRCULAR,
+    SO_PLASMID,
+    SO_ORIGIN_OF_REPLICATION,
+    SO_OPERATOR,
+    SO_ENHANCER,
+    SO_INSULATOR,
+    SO_REPORTER,
+    SO_SPACER,
+    SO_PRIMER,
+    SO_STEM_LOOP,
+    SO_BINDING,
+    SO_GENERIC,
+    SO_ENGINEERED_REGION
+]
+
+BIOPAX_URIS = [
+    BIOPAX_DNA,
+    BIOPAX_RNA,
+    BIOPAX_PROTEIN,
+    BIOPAX_SMALL_MOLECULE,
+    BIOPAX_COMPLEX,
+    BIOPAX_GENERIC
+]
+
+PURL_URI = [
+    SBOL_NAME,
+    SBOL_DESCRIPTION
+]
+
+IGEM_URIS = [
+    IGEM_DIRECTION_REVERSE,
+    IGEM_DIRECTION_FORWARD
+]
+
+SYNBIO_TERMS_URIS = [
+    SYNBIO_MUTABLE_PROVENANCE,
+    SYNBIO_MUTABLE_NOTES,
+    SYNBIO_MUTABLE_DESCRIPTION
+]
+
+SBOL_URIS_TO_NAMES = {k: k.split('#')[-1] for k in SBOL_URIS}
+SO_URIS_TO_NAMES = {k: k.split('/')[-1] for k in SO_URIS}
+BIOPAX_URIS_TO_NAMES = {k: k.split('#')[-1] for k in BIOPAX_URIS}
+PURL_URIS_TO_NAMES = {k: k.split('/')[-1] for k in PURL_URI}
+IGEM_URIS_TO_NAMES = {k: k.split('#')[-1] for k in IGEM_URIS}
+SYNBIO_TERMS_URIS_TO_NAMES = {k: k.split('#')[-1] for k in SYNBIO_TERMS_URIS}
+
+URIS_TO_SIMPLE_NAMES = {
+    **SBOL_URIS_TO_NAMES, 
+    **SO_URIS_TO_NAMES, 
+    **BIOPAX_URIS_TO_NAMES, 
+    **PURL_URIS_TO_NAMES,
+    **IGEM_URIS_TO_NAMES,
+    **SYNBIO_TERMS_URIS_TO_NAMES
+}
+SIMPLE_NAMES_TO_URIS = {v: k for k, v in URIS_TO_SIMPLE_NAMES.items()}
+assert(len(URIS_TO_SIMPLE_NAMES) == len(SIMPLE_NAMES_TO_URIS))

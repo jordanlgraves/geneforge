@@ -7,9 +7,6 @@ from sbol2.constants import *
 from xml.etree import ElementTree as ET
 
 
-# Define SO_ENGINEERED_REGION as a fallback
-SO_ENGINEERED_REGION = 'http://identifiers.org/so/SO:0000804'
-BIOPAX_URI = "http://www.biopax.org/release/biopax-level3.owl#"
 # Mapping for non-standard roles to standard roles
 ROLE_MAPPING = {
     "Regulatory": SO_PROMOTER,
@@ -23,7 +20,12 @@ ROLE_MAPPING = {
     "RNA": BIOPAX_RNA,
     "Protein": BIOPAX_PROTEIN,
     "Plasmid": SO_PLASMID,
-    # Add other mappings as necessary
+    "Spacer": SO_SPACER,
+    "Insulator": SO_INSULATOR,
+    "Operator": SO_OPERATOR,
+    "Enhancer": SO_ENHANCER,
+    "Primer": SO_PRIMER,
+    "Origin of Replication": SO_ORIGIN_OF_REPLICATION
 }
 
 # Mapping for non-standard types to standard types
@@ -97,7 +99,13 @@ def apply_standard_ontologies(doc):
     
     Types and roles are applied based on the component name or other criteria using predefined ontology terms.
     """
+    to_remove = []
     for obj in doc.SBOLObjects.values():
+        if isinstance(obj, sbol2.Activity):
+            # remove the activity objects
+            to_remove.append(obj)
+            continue
+
         if isinstance(obj, sbol2.ComponentDefinition) or isinstance(obj, sbol2.FunctionalComponent) or isinstance(obj, sbol2.Component):
             # Apply type ontologies based on component name or other criteria
             obj.types = map_types(obj.types)
@@ -163,6 +171,8 @@ def apply_standard_ontologies(doc):
                 elif 'controlled' in obj.roles:
                     add_role_if_empty(obj, SBO_CONTROLLED)
 
+    for obj in to_remove:
+        doc.SBOLObjects.pop(obj)
     return doc
 
 def remove_unused_namespaces(doc):
