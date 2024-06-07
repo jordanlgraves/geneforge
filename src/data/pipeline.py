@@ -1,6 +1,7 @@
 import os
 import asyncio
 from src.data.scraper import SynBioHubMetadataScraper, SynBioHubSBOLScraper
+from src.data.simplify import simplify_json_files
 from src.data.structure import convert_sbol_files_to_json
 from src.data.validation import validate_sbol_directory
 from src.data.normalization import normalize_sbol_directory
@@ -33,6 +34,9 @@ def run_annotation(input_dir, output_dir):
 def run_structure(input_dir, output_dir):
     convert_sbol_files_to_json(input_dir, output_dir)
 
+def run_simplification(input_dir, output_dir):
+    simplify_json_files(input_dir, output_dir)
+
 def main():
     root = 'data/syn_bio_hub'
     scraped_dir = f'{root}/scraped'
@@ -41,6 +45,7 @@ def main():
     normalized_dir = f'{root}/sbol/normalized'
     annotated_dir = f'{root}/sbol/annotated'
     structured_dir = f'{root}/sbol/structured'
+    simplified_dir = f'{root}/sbol/simplified'
     
     # Step 1: Run Scraper
     #run_scraper(scraped_dir)
@@ -53,7 +58,9 @@ def main():
 
     # Step 4: Run Structuring
     
-    run_structure(normalized_dir, structured_dir)
+    # run_structure(normalized_dir, structured_dir)
+
+    run_simplification(structured_dir, simplified_dir)
     
 
 if __name__ == '__main__':

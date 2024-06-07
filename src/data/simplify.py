@@ -1,4 +1,5 @@
 import json
+import os
 from rdflib import Graph
 from sbol2 import *
 
@@ -12,6 +13,7 @@ def remove_keys(json_data):
     if isinstance(json_data, dict):
         items = list(json_data.items())
         for key, value in items:
+            # These are assumed to be useless keys (e.g. ownedBy, createdAt, etc.)
             if key.startswith(PROV_URI) \
                     or key.startswith(SYNBIO_TERMS_HTTPS_URL) \
                     or key.startswith(SYNBIO_TERMS_HTTP_URL) \
@@ -51,6 +53,21 @@ def json_to_simplified_json(json_data):
     simplified_json = simplify_uris(json_data)
     return simplified_json
 
+def simplify_json_files(input_dir, output_dir):
+    """
+    Simplify URIs in all JSON files in a directory.
+    """
+    os.makedirs(output_dir, exist_ok=True)
+    for filename in os.listdir(input_dir):
+        if filename.endswith('.json'):
+            input_file_path = os.path.join(input_dir, filename)
+            output_file_path = os.path.join(output_dir, filename)
+            
+            json_data = json.load(open(input_file_path))
+            simplified_json = simplify_uris(json_data)
+            with (open(output_file_path, 'w')) as f:
+                json.dump(simplified_json, f, indent=2)
+
 
 def simplified_json_to_sbol(simplified_json):
     def expand_uris(item):
@@ -83,5 +100,5 @@ if __name__ == "__main__":
     with (open(simplified_json_file, 'w')) as f:
         json.dump(json_simplified, f, indent=2)
 
-    sbol_document = simplified_json_to_sbol(json_data)
+    sbol_document = simplified_json_to_sbol(json_simplified)
     write_sbol_file(sbol_document, output_sbol_file)

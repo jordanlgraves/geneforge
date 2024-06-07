@@ -3,3 +3,7 @@ cell-gears
 bs4
 rdflib-jsonld
 rdflib
+transformers
+datasets
+torch
+scikit-learn

@@ -1,0 +1,111 @@
+import os
+import json
+from sklearn.model_selection import train_test_split
+from transformers import T5Tokenizer, T5ForConditionalGeneration, Trainer, TrainingArguments, DataCollatorForSeq2Seq
+import torch
+from datasets import Dataset
+
+
+def load_json_files(directory):
+    json_files = []
+    for filename in os.listdir(directory):
+        if filename.endswith('.json'):
+            file_path = os.path.join(directory, filename)
+            with open(file_path, 'r') as file:
+                data = json.load(file)
+                json_files.append(data)
+    return json_files
+
+def find_main_component_definition(doc):
+    max_components = 0
+    main_component = None
+    for item in doc:
+        if "ComponentDefinition" in item["@type"]:
+            num_components = len(item.get("component", []))
+            if num_components > max_components:
+                max_components = num_components
+                main_component = item
+    return main_component
+
+def preprocess_data(json_files):
+    descriptions = []
+    circuits = []
+    for doc in json_files:
+        components = []
+        main_component = find_main_component_definition(doc)
+        if main_component:
+            try:
+                descriptions.append(main_component.get("description", [""])[0]["@value"])
+                components.append(main_component)
+                # Adding components referenced by main_component
+                for item in doc:
+                    if item["@id"] in [comp["@id"] for comp in main_component.get("component", [])]:
+                        components.append(item)
+            except:
+                print("Error processing doc.")
+                continue
+            circuits.append(json.dumps(components))
+    return descriptions, circuits
+
+def format_data_for_model(descriptions, components):
+    data = {'input_text': descriptions, 'target_text': components}
+    return Dataset.from_dict(data)
+
+def train(data_dir, results_dir):
+    # Load and preprocess data
+    json_files = load_json_files(data_dir)
+    descriptions, components = preprocess_data(json_files)
+
+    # Format data for the model
+    dataset = format_data_for_model(descriptions, components)
+    train_dataset, eval_dataset = train_test_split(dataset, test_size=0.2)
+
+    # Load pre-trained model and tokenizer
+    model_name = "t5-small"
+    tokenizer = T5Tokenizer.from_pretrained(model_name)
+    model = T5ForConditionalGeneration.from_pretrained(model_name)
+
+    # Tokenize the datasets
+    def tokenize_function(examples):
+        inputs = tokenizer(examples['input_text'], max_length=100000, truncation=True)
+        targets = tokenizer(examples['target_text'], max_length=100000, truncation=True)
+        return {'input_ids': inputs['input_ids'], 'attention_mask': inputs['attention_mask'], 'labels': targets['input_ids']}
+
+    train_dataset = train_dataset.map(tokenize_function, batched=True)
+    eval_dataset = eval_dataset.map(tokenize_function, batched=True)
+
+    # Define data collator
+    data_collator = DataCollatorForSeq2Seq(tokenizer, model=model)
+
+    # Define training arguments
+    training_args = TrainingArguments(
+        output_dir=os.path.join(results_dir, 'output'),
+        evaluation_strategy='epoch',
+        learning_rate=2e-5,
+        per_device_train_batch_size=8,
+        per_device_eval_batch_size=8,
+        num_train_epochs=3,
+        weight_decay=0.01,
+        logging_dir=os.path.join(results_dir, 'logs'),
+    )
+
+    # Create Trainer instance
+    trainer = Trainer(
+        model=model,
+        args=training_args,
+        train_dataset=train_dataset,
+        eval_dataset=eval_dataset,
+        data_collator=data_collator,
+    )
+
+    # Train the model
+    trainer.train()
+
+
+if __name__ == "__main__":
+    # import argparse
+    # parser = argparse.ArgumentParser()
+    # parser.add_argument('--data_dir', type=str, required=True)
+
+    train('/Users/admin/repos/geneforge/data/syn_bio_hub/sbol/simplified', 
+          '/Users/admin/repos/geneforge/training_results')
