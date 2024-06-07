@@ -57,9 +57,9 @@ def main():
     # run_normalization(scraped_sbol_dir, normalized_dir)
 
     # Step 4: Run Structuring
-    
     # run_structure(normalized_dir, structured_dir)
 
+    # Step 5: Run Simplification
     run_simplification(structured_dir, simplified_dir)
     
 
