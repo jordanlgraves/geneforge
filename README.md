@@ -2,7 +2,7 @@
 
 ## Overview
 
-GeneForge is an innovative project aimed at developing a robust framework for generating and modeling genetic circuits. The ultimate goal is to create a model capable of designing genetic circuits given an initial and target cell state, based on expression data (e.g., RNA-seq). This project encompasses several steps, including data collection, model training, and circuit simulation.
+GeneForge is a project aimed at developing a robust framework for generating and modeling genetic circuits. The ultimate goal is to create a model capable of designing and editing genetic circuits given an initial and target cell states, based on expression data (e.g., RNA-seq). This project encompasses several steps, including data collection, model training, and circuit and expression perturbation simulation.
 
 ## Project Structure
 
