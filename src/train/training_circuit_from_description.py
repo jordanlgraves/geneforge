@@ -63,7 +63,7 @@ def train(data_dir, results_dir):
     dataset = format_data_for_model(descriptions, components)
     train_dataset, eval_dataset = train_test_split(dataset, test_size=0.2)
 
-    
+
     # Load pre-trained model and tokenizer
     # Define a small T5 configuration
     tokenizer = T5Tokenizer.from_pretrained("t5-small")
