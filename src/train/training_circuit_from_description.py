@@ -1,7 +1,10 @@
 import os
 import json
 from sklearn.model_selection import train_test_split
-from transformers import T5Tokenizer, T5ForConditionalGeneration, Trainer, TrainingArguments, DataCollatorForSeq2Seq
+from transformers import T5Tokenizer, T5ForConditionalGeneration
+from transformers import Trainer, TrainingArguments, DataCollatorForSeq2Seq
+from transformers import GPT2Tokenizer, GPT2LMHeadModel
+from transformers import T5Config, T5Tokenizer, T5ForConditionalGeneration
 import torch
 from datasets import Dataset
 
@@ -60,10 +63,25 @@ def train(data_dir, results_dir):
     dataset = format_data_for_model(descriptions, components)
     train_dataset, eval_dataset = train_test_split(dataset, test_size=0.2)
 
+    
     # Load pre-trained model and tokenizer
-    model_name = "t5-small"
-    tokenizer = T5Tokenizer.from_pretrained(model_name)
-    model = T5ForConditionalGeneration.from_pretrained(model_name)
+    # Define a small T5 configuration
+    tokenizer = T5Tokenizer.from_pretrained("t5-small")
+    
+    config = T5Config(
+        d_model=8,  # Hidden size
+        d_ff=24,  # Feed-forward layer size
+        num_layers=2,  # Number of encoder/decoder layers
+        num_heads=2,  # Number of attention heads
+        vocab_size=32128,  # Vocabulary size
+        d_kv=32,  # Size of key/value vectors
+        dropout_rate=0.1,  # Dropout rate
+        num_decoder_layers=1,  # Number of decoder layers
+        decoder_start_token_id=tokenizer.pad_token_id,
+    )
+
+    # Create the model
+    model = T5ForConditionalGeneration(config)
 
     # Tokenize the datasets
     def tokenize_function(examples):
@@ -71,7 +89,9 @@ def train(data_dir, results_dir):
         targets = tokenizer(examples['target_text'], max_length=100000, truncation=True)
         return {'input_ids': inputs['input_ids'], 'attention_mask': inputs['attention_mask'], 'labels': targets['input_ids']}
 
+    train_dataset = Dataset.from_dict((train_dataset))
     train_dataset = train_dataset.map(tokenize_function, batched=True)
+    eval_dataset = Dataset.from_dict((eval_dataset))
     eval_dataset = eval_dataset.map(tokenize_function, batched=True)
 
     # Define data collator
