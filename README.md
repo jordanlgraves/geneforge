@@ -13,7 +13,7 @@ GeneForge is a project aimed at developing a robust framework for generating and
 │   ├── repositories/ # for interacting with parts repos
 │   ├── train/        # training scripts
 ├── notebooks/
-├── docs/
+├── docs/             # references and background material
 ├── .gitignore
 ├── README.md
 ├── requirements.txt
@@ -57,6 +57,10 @@ Train models for genetic circuit design and masked component modeling.
 python src/train/training_circuit_from_description.py
 python src/train/training_masked_component_modeling.py
 ```
+
+## References and Background Material
+
+A bibliography of related publications can be found {root}/docs/bibliography.txt
 
 ## Future Work
 - Experiment with graph representations and GNNs
