@@ -22,12 +22,14 @@ GeneForge is a project aimed at developing a robust framework for generating and
 ## Goals
 Develop a Model for Genetic Circuit Design:
 
-Train models to learn and generate valid genetic circuits using parts repositories such as SynBioHub and iGEM.
-Validate the ability to model and generate circuits accurately.
+- Train models to learn and generate valid genetic circuits using parts repositories such as SynBioHub and iGEM.
+- Validate the ability to model and generate circuits accurately.
+
 Generate Circuits Based on Initial and Target Cell States:
 
-Use expression data (e.g., RNA-seq) to design genetic circuits that transition an initial cell state to a target cell state.
-Generate synthetic data by simulating the circuits and their effects on cell states using circuit simulation libraries and perturbation simulations (e.g., GEARS or GeneFormer).
+- Use expression data (e.g., RNA-seq) to design genetic circuits that transition an initial cell state to a target cell state.
+- Generate synthetic data by simulating the circuits and their effects on cell states using circuit simulation libraries and perturbation simulations (e.g., GEARS or GeneFormer).
+ 
 ## Installation
 Clone the Repository:
 ```
