@@ -54,7 +54,7 @@ def format_data_for_model(descriptions, components):
     data = {'input_text': descriptions, 'target_text': components}
     return Dataset.from_dict(data)
 
-def train(data_dir, results_dir):
+def run(data_dir, results_dir):
     # Load and preprocess data
     json_files = load_json_files(data_dir)
     descriptions, components = preprocess_data(json_files)
@@ -127,5 +127,5 @@ if __name__ == "__main__":
     # parser = argparse.ArgumentParser()
     # parser.add_argument('--data_dir', type=str, required=True)
 
-    train('/Users/admin/repos/geneforge/data/syn_bio_hub/sbol/simplified', 
+    run('/Users/admin/repos/geneforge/data/syn_bio_hub/sbol/simplified', 
           '/Users/admin/repos/geneforge/training_results')

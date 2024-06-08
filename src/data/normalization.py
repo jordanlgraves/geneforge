@@ -25,7 +25,7 @@ ROLE_MAPPING = {
     "Operator": SO_OPERATOR,
     "Enhancer": SO_ENHANCER,
     "Primer": SO_PRIMER,
-    "Origin of Replication": SO_ORIGIN_OF_REPLICATION
+    "Origin of Replication": SO_ORIGIN_OF_REPLICATION,
 }
 
 # Mapping for non-standard types to standard types
@@ -37,6 +37,7 @@ TYPE_MAPPING = {
     "Complex": BIOPAX_COMPLEX,
     # Add other mappings as necessary
 }
+DEFAULT_TYPE = BIOPAX_DNA
 
 def add_role_if_empty(component, role):
     """
@@ -52,17 +53,25 @@ def add_type_if_empty(component, type_uri):
     if not component.types:
         component.types = [type_uri]
 
-def map_roles(roles):
+# check if role in standard ontology (starts with one of the above)
+# if not, check if role in ROLE_MAPPING
+def map_role_to_standard_ontology(role, default=None):
+    """
+    Map a role to a standard ontology term based on the ROLE_MAPPING.
+    """
+    role_key = role.split('/')[-1]
+    if role_key in ROLE_MAPPING:
+        return ROLE_MAPPING[role_key]
+    return default
+
+
+def map_roles_to_standard_ontology(roles):
     """
     Map roles to standard ontology terms based on the ROLE_MAPPING.
     """
     mapped_roles = []
     standardized_roles = []
     for role in roles:
-        # http://www.biopax.org/release/biopax-level3.owl#
-        # http://identifiers.org/so/SO:
-        # http://identifiers.org/biomodels.sbo/SBO:
-        # http://sbols.org/v2#
         uris = [SBOL_URI, SO, BIOPAX_URI]
         role_key = None
         for uri in uris:
@@ -70,26 +79,25 @@ def map_roles(roles):
                 role_key = role
                 standardized_roles.append(role)
                 break
-            
-        # check if role in standard ontology (starts with one of the above)
-        # if not, check if role in ROLE_MAPPING
-        if role_key is None:
-            role_key = role.split('/')[-1]
-            if role_key in ROLE_MAPPING:
-                standardized_role = ROLE_MAPPING[role_key]
+
+    if not standardized_roles:
+        # Try determine getting a standard ontology term from the role
+        for role in roles:
+            standardized_role = map_role_to_standard_ontology(role, default=None)
+            if standardized_role is not None:
                 standardized_roles.append(standardized_role)
 
     if not standardized_roles:
         standardized_roles.append(SO_ENGINEERED_REGION)
     return list(set(standardized_roles))  # Remove duplicates
 
-def map_types(types):
+def map_types_to_standardized_ontology(types):
     """
     Map types to standard ontology terms based on the TYPE_MAPPING.
     """
     mapped_types = []
     for type_uri in types:
-        standardized_type = TYPE_MAPPING.get(type_uri.split('/')[-1], BIOPAX_DNA)
+        standardized_type = TYPE_MAPPING.get(type_uri.split('/')[-1], DEFAULT_TYPE)
         mapped_types.append(standardized_type)
     return list(set(mapped_types))  # Remove duplicates
 
@@ -106,9 +114,12 @@ def apply_standard_ontologies(doc):
             to_remove.append(obj)
             continue
 
-        if isinstance(obj, sbol2.ComponentDefinition) or isinstance(obj, sbol2.FunctionalComponent) or isinstance(obj, sbol2.Component):
+        if isinstance(obj, sbol2.ComponentDefinition) \
+            or isinstance(obj, sbol2.FunctionalComponent) \
+            or isinstance(obj, sbol2.Component) \
+            or isinstance(obj, sbol2.SequenceAnnotation):
             # Apply type ontologies based on component name or other criteria
-            obj.types = map_types(obj.types)
+            obj.types = map_types_to_standardized_ontology(obj.types)
             if not obj.types:
                 if 'dna' in obj.name.lower() or 'plasmid' in obj.name.lower():
                     add_type_if_empty(obj, BIOPAX_DNA)
@@ -122,7 +133,7 @@ def apply_standard_ontologies(doc):
                     add_type_if_empty(obj, BIOPAX_COMPLEX)
             
             # Apply role ontologies based on component name or other criteria
-            obj.roles = map_roles(obj.roles)
+            obj.roles = map_roles_to_standard_ontology(obj.roles)
             if not obj.roles:
                 if 'promoter' in obj.name.lower():
                     add_role_if_empty(obj, SO_PROMOTER)
@@ -155,16 +166,22 @@ def apply_standard_ontologies(doc):
 
         elif isinstance(obj, sbol2.Interaction):
             # Apply ontology terms to Interaction
-            obj.types = map_types(obj.types)
+            obj.types = map_types_to_standardized_ontology(obj.types)
             if not obj.types:
                 if 'activation' in obj.name.lower():
                     add_type_if_empty(obj, SBO_STIMULATION)
                 elif 'inhibition' in obj.name.lower():
                     add_type_if_empty(obj, SBO_INHIBITION)
+                elif 'degradation' in obj.name.lower():
+                    add_type_if_empty(obj, SBO_DEGRADATION)
+                elif 'genetic production' in obj.name.lower():
+                    add_type_if_empty(obj, SBO_GENETIC_PRODUCTION)
+                elif 'control' in obj.name.lower():
+                    add_type_if_empty(obj, SBO_CONTROL)
 
         elif isinstance(obj, sbol2.Participation):
             # Apply ontology terms to Participation roles
-            obj.roles = map_roles(obj.roles)
+            obj.roles = map_roles_to_standard_ontology(obj.roles)
             if not obj.roles:
                 if 'controller' in obj.roles:
                     add_role_if_empty(obj, SBO_CONTROLLER)
@@ -233,7 +250,8 @@ def normalize_sbol_directory(input_dir, output_dir):
             write_sbol_file(normalized_doc, output_path)
 
 if __name__ == "__main__":
-    file_name = 'data/syn_bio_hub/scraped/sbol/BBa_I721006.sbol'
+    file_id = 'BBa_I719003'
+    file_name = f'data/syn_bio_hub/scraped/sbol/{file_id}.sbol'
     doc = read_sbol_file(file_name)
     normalized_doc = normalize_sbol_document(doc)
-    write_sbol_file(doc, 'data/syn_bio_hub/sbol/normalized/BBa_I721006.sbol')
+    write_sbol_file(doc, f'data/syn_bio_hub/sbol/normalized/{file_id}.sbol')

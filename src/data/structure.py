@@ -37,15 +37,15 @@ if __name__ == '__main__':
     # with open('data/structured_dataset.json', 'w') as f:
     #     json.dump(structured_data, f, indent=2)
 
-    input_file = 'data/syn_bio_hub/sbol/normalized/BBa_I721006.sbol'
-    output_file = 'data/syn_bio_hub/sbol/structured/BBa_I721006.json'
+    input_file = 'data/syn_bio_hub/sbol/normalized/BBa_I719003.sbol'
+    output_file = 'data/syn_bio_hub/sbol/structured/BBa_I719003.json'
 
     os.makedirs(os.path.dirname(output_file), exist_ok=True)
 
     sbol_to_json(input_file, output_file)
     json_data = json.load(open(output_file))
 
-    structued_to_sbol_path = 'data/syn_bio_hub/sbol/structured_to_sbol/BBa_I721006.sbol'
+    structued_to_sbol_path = 'data/syn_bio_hub/sbol/structured_to_sbol/BBa_I719003.sbol'
     os.makedirs(os.path.dirname(structued_to_sbol_path), exist_ok=True)
 
     jsonld_to_sbol(output_file, structued_to_sbol_path)

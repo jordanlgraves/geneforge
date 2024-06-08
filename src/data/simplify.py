@@ -4,7 +4,7 @@ from rdflib import Graph
 from sbol2 import *
 
 from src.data.io import write_sbol_file
-from src.data.ontology import PURL_URL, SO_OPERATOR, SYNBIO_TERMS_HTTP_URL, SYNBIO_TERMS_HTTPS_URL, SYNBIOHUB_IGEM_URL, URIS_TO_SIMPLE_NAMES
+from src.data.ontology import PURL_URL, SO_OPERATOR, SYNBIO_TERMS_HTTP_URL, SYNBIO_TERMS_HTTPS_URL, SYNBIOHUB_IGEM_URL, URIS_TO_SIMPLE_NAMES, VALID_ROLES
 
 def remove_keys(json_data):
     if isinstance(json_data, list):
@@ -26,10 +26,45 @@ def remove_keys(json_data):
             elif isinstance(value, list):
                 remove_keys(value)
             
-                
+def sort_objects(objects_list):
+    # Sort/order the objects by type
+    sorted_objects = []
+    obj_order = ['ComponentDefinition', 
+                 'Component', 
+                 'SequenceAnnotation', 
+                 'SequenceConstraint', 
+                 'Sequence', 
+                 'Range', 
+                 'Location']
+
+    for next_type_in_order in obj_order:
+        object_sorted_by_type_and_role = []
+        obj_w_recognized_types = []
+        for obj in objects_list:
+            if next_type_in_order in obj['@type']:
+                obj_w_recognized_types.append(obj)
+
+        for role in VALID_ROLES:
+            for obj in obj_w_recognized_types:
+                if 'role' in obj and {'@id': role} in obj['role']:
+                    object_sorted_by_type_and_role.append(obj)
+
+        # add those with missing roles
+        for obj in obj_w_recognized_types:
+            if role in obj and obj['role']['@id'] not in VALID_ROLES:
+                object_sorted_by_type_and_role.append(obj)
+            if 'role' not in obj:
+                object_sorted_by_type_and_role.append(obj)
+        
+        sorted_objects.extend(object_sorted_by_type_and_role)
+
+    for obj in objects_list:
+        if obj not in sorted_objects:
+            print('Object was removed:', obj['@type'])
+    return sorted_objects
 
 # Simplify the URIs
-def simplify_uris(json_data):
+def simplify_json(json_data):
     # convert the json to a string and replace the uris with the simplified names
     item_str = json.dumps(json_data)
     
@@ -42,15 +77,18 @@ def simplify_uris(json_data):
     # remove the synbiohub igem url
     item_str = item_str.replace(SYNBIOHUB_IGEM_URL, '')
     
-    simple_item = json.loads(item_str)
+    transformed_json = json.loads(item_str)
     
     # remove the unnecessary keys
-    remove_keys(simple_item)
+    remove_keys(transformed_json)
 
-    return simple_item
+    # sort the different object by type
+    transformed_json = sort_objects(transformed_json)
+
+    return transformed_json
         
 def json_to_simplified_json(json_data):
-    simplified_json = simplify_uris(json_data)
+    simplified_json = simplify_json(json_data)
     return simplified_json
 
 def simplify_json_files(input_dir, output_dir):
@@ -64,7 +102,8 @@ def simplify_json_files(input_dir, output_dir):
             output_file_path = os.path.join(output_dir, filename)
             
             json_data = json.load(open(input_file_path))
-            simplified_json = simplify_uris(json_data)
+            print(f'Simplifying {input_file_path}...')
+            simplified_json = simplify_json(json_data)
             with (open(output_file_path, 'w')) as f:
                 json.dump(simplified_json, f, indent=2)
 
@@ -89,14 +128,14 @@ def simplified_json_to_sbol(simplified_json):
 
 if __name__ == "__main__":
     import sbol2 
-    item = 'BBa_I721006'
+    item = 'BBa_I719003' # 'BBa_I721006'
     input_json = f'/Users/admin/repos/geneforge/data/syn_bio_hub/sbol/structured/{item}.json'
     simplified_json_file = f'/Users/admin/repos/geneforge/data/syn_bio_hub/sbol/simplified/{item}.json'
     output_sbol_file = f'/Users/admin/repos/geneforge/data/syn_bio_hub/sbol/simplified_to_sbol/{item}.sbol'
 
     json_data = json.load(open(input_json))
 
-    json_simplified = simplify_uris(json_data)
+    json_simplified = simplify_json(json_data)
     with (open(simplified_json_file, 'w')) as f:
         json.dump(json_simplified, f, indent=2)
 

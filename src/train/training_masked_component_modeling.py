@@ -3,7 +3,9 @@ import json
 import random
 import torch
 from transformers import AutoTokenizer, AutoModelForMaskedLM, Trainer, TrainingArguments
+from transformers import DataCollatorForLanguageModeling
 from datasets import Dataset, DatasetDict
+from transformers import BertConfig, BertForMaskedLM
 
 def load_json_files(directory):
     json_files = []
@@ -25,7 +27,7 @@ def find_main_component_definition(doc):
                 main_component = item
     return main_component
 
-def mask_components(main_component, mask_token="[MASK]", mask_prob=0.15):
+def mask_components(doc, main_component, mask_token="[MASK]", mask_prob=0.15):
     # Mask components in the main_component with a specified probability.
     components = main_component.get("component", [])
     masked_components = []
@@ -34,9 +36,9 @@ def mask_components(main_component, mask_token="[MASK]", mask_prob=0.15):
     for comp in components:
         if random.random() < mask_prob:
             masked_components.append(mask_token)
-            target_components.append(comp["@id"])
+            target_components.append(str(comp))
         else:
-            masked_components.append(comp["@id"])
+            masked_components.append(str(comp))
             target_components.append(None)
     
     return masked_components, target_components
@@ -48,16 +50,13 @@ def preprocess_data(json_files, mask_token="[MASK]", mask_prob=0.15):
     for doc in json_files:
         main_component = find_main_component_definition(doc)
         if main_component:
-            masked_components, target_components = mask_components(main_component, mask_token, mask_prob)
+            masked_components, target_components = mask_components(doc, main_component, mask_token, mask_prob)
             input_sequences.append(str(masked_components))
             target_sequences.append(str(target_components))
     
     return input_sequences, target_sequences
 
-if __name__ == "__main__":
-    # Load JSON files from the directory
-    data_dir = '/Users/admin/repos/geneforge/data/syn_bio_hub/sbol/simplified'
-    results_dir = '/Users/admin/repos/geneforge/training_results'
+def run(data_dir, results_dir):
     json_files = load_json_files(data_dir)
 
     # Preprocess the data for MLM
@@ -71,7 +70,6 @@ if __name__ == "__main__":
 
     # Example of using a pre-trained model for MLM
     # Define a small BERT model configuration
-    from transformers import BertConfig, BertForMaskedLM
     small_bert_config = BertConfig(
         vocab_size=30522,
         hidden_size=16,
@@ -81,18 +79,13 @@ if __name__ == "__main__":
         max_position_embeddings=128
     )
 
-    # Initialize the tokenizer and model
     tokenizer = AutoTokenizer.from_pretrained("bert-base-uncased")
     model = BertForMaskedLM(small_bert_config)
 
-    # Tokenize the data
     def tokenize_function(examples):
         return tokenizer(examples["input_sequences"], truncation=True, padding=True, max_length=512)
 
     tokenized_datasets = dataset.map(tokenize_function, batched=True)
-
-    # Data collator for masked language modeling
-    from transformers import DataCollatorForLanguageModeling
 
     data_collator = DataCollatorForLanguageModeling(
         tokenizer=tokenizer,
@@ -100,7 +93,6 @@ if __name__ == "__main__":
         mlm_probability=0.15
     )
 
-    # Training arguments
     training_args = TrainingArguments(
         output_dir=os.path.join(results_dir, 'output'),
         num_train_epochs=3,
@@ -112,7 +104,6 @@ if __name__ == "__main__":
         logging_steps=10,
     )
 
-    # Trainer
     trainer = Trainer(
         model=model,
         args=training_args,
@@ -121,5 +112,9 @@ if __name__ == "__main__":
         data_collator=data_collator
     )
 
-    # Training
     trainer.train()
+
+if __name__ == "__main__":
+    data_dir = '/Users/admin/repos/geneforge/data/syn_bio_hub/sbol/simplified'
+    results_dir = '/Users/admin/repos/geneforge/training_results'
+    run(data_dir, results_dir)

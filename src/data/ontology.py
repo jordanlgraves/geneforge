@@ -31,7 +31,13 @@ SO_NC_CONSERVERED_REGION = 'http://identifiers.org/so/SO:0000334'
 SO_CONSERVED_REGION = 'http://identifiers.org/so/SO:0000330'
 SO_STOP_CODON = 'http://identifiers.org/so/SO:0000319'
 SO_START_CODON = 'http://identifiers.org/so/SO:0000318'
-
+SO_MISC = 'http://identifiers.org/so/SO:0000110'
+SO_POINT_MUTATION = 'http://identifiers.org/so/SO:1000008'
+SO_ORIGIN_OF_TRANSFER = "http://identifiers.org/so/SO:0000724"
+SO_MATURE_TRANSCRIPT = "http://identifiers.org/so/SO:0000834"
+SO_MUTATION = "http://identifiers.org/so/SO:0001059"
+SO_CHROMOSOME = "http://identifiers.org/so/SO:0000340"
+SO_PRIMER_BINDING_SITE = "http://identifiers.org/so/SO:0005850"
 
 SBO_STIMULATION = 'http://identifiers.org/biomodels.sbo/SBO:0000170'
 SBO_INHIBITION = 'http://identifiers.org/biomodels.sbo/SBO:0000169'
@@ -40,6 +46,7 @@ SBO_CONTROLLED = 'http://identifiers.org/biomodels.sbo/SBO:0000645'
 SBO_MODIFIER = 'http://identifiers.org/biomodels.sbo/SBO:0000019'
 SBO_MODIFIED = 'http://identifiers.org/biomodels.sbo/SBO:0000644'
 SBO_GENERIC = 'http://identifiers.org/biomodels.sbo/SBO:0000000'
+SO_NUCLEOTIDE_BS = 'http://identifiers.org/so/SO:0001655'
 
 # USEFUL SYNBIOHUB keys
 # http://wiki.synbiohub.org/wiki/Terms/synbiohub#mutableProvenance
@@ -95,6 +102,15 @@ VALID_ROLES = {
     'SO:0000330': SO_CONSERVED_REGION,
     'SO:0000319': SO_STOP_CODON,
     'SO:0000318': SO_START_CODON,
+    'SO:0000110': SO_MISC,
+    'SO:1000008': SO_POINT_MUTATION,
+    'SO:0000724': SO_ORIGIN_OF_TRANSFER,
+    'SO:0000155': SO_PLASMID,
+    'SO:0000834': SO_MATURE_TRANSCRIPT,
+    'SO:0001059': SO_MUTATION,
+    'SO:0000340': SO_CHROMOSOME,
+    'SO:0001655': SO_NUCLEOTIDE_BS,
+    'SO:0005850': SO_PRIMER_BINDING_SITE,
     'SBO:0000170': SBO_STIMULATION,
     'SBO:0000169': SBO_INHIBITION,
     'SBO:0000019': SBO_CONTROLLER,
@@ -139,6 +155,7 @@ ROLE_MAPPING = {
     'PolyA': SO_POLYA,
     'Engineered Tag': SO_ENGINEERED_TAG,
     'Signature': SO_SIGNATURE,
+    'SO_SEQUENCE_FEATURE': SO_MISC,
     'Non-coding Conserved Region': SO_NC_CONSERVERED_REGION,
     'Conserved Region': SO_CONSERVED_REGION,
     'Inhibitor': SBO_INHIBITION,
@@ -149,7 +166,15 @@ ROLE_MAPPING = {
     'Modified': SBO_MODIFIED,
     'Generic': SBO_GENERIC,
     'Stop Codon': SO_STOP_CODON,
-    'Start Codon': SO_START_CODON
+    'Start Codon': SO_START_CODON,
+    'Misc': SO_MISC,
+    'Point Mutation': SO_POINT_MUTATION,
+    'Transfer Initiation Region': SO_ORIGIN_OF_TRANSFER,
+    'Mature Transcript': SO_MATURE_TRANSCRIPT,
+    'Mutation': SO_MUTATION,
+    'Chromosome': SO_CHROMOSOME,
+    'Nucleotide Binding Site': SO_NUCLEOTIDE_BS,
+    'Primer Binding Site': SO_PRIMER_BINDING_SITE
 }
 
 # LIST OF URIS FOR MAPPING TO AND FROM SIMPLE NAMES
@@ -316,7 +341,16 @@ SO_URIS = [
     SO_NC_CONSERVERED_REGION,
     SO_CONSERVED_REGION,
     SO_STOP_CODON,
-    SO_START_CODON
+    SO_START_CODON,
+    SO_POINT_MUTATION,
+    SO_MISC,
+    SO_ORIGIN_OF_TRANSFER,
+    SO_OPERATOR,
+    SO_MATURE_TRANSCRIPT,
+    SO_MUTATION,
+    SO_CHROMOSOME,
+    SO_NUCLEOTIDE_BS,
+    SO_PRIMER_BINDING_SITE
 ]
 
 BIOPAX_URIS = [
