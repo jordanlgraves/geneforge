@@ -38,6 +38,8 @@ SO_MATURE_TRANSCRIPT = "http://identifiers.org/so/SO:0000834"
 SO_MUTATION = "http://identifiers.org/so/SO:0001059"
 SO_CHROMOSOME = "http://identifiers.org/so/SO:0000340"
 SO_PRIMER_BINDING_SITE = "http://identifiers.org/so/SO:0005850"
+SO_NUCLEOTIDE_BS = 'http://identifiers.org/so/SO:0001655'
+SO_POLYPEPTIDE_DOMAIN = 'http://identifiers.org/so/SO:0000417'
 
 SBO_STIMULATION = 'http://identifiers.org/biomodels.sbo/SBO:0000170'
 SBO_INHIBITION = 'http://identifiers.org/biomodels.sbo/SBO:0000169'
@@ -46,7 +48,7 @@ SBO_CONTROLLED = 'http://identifiers.org/biomodels.sbo/SBO:0000645'
 SBO_MODIFIER = 'http://identifiers.org/biomodels.sbo/SBO:0000019'
 SBO_MODIFIED = 'http://identifiers.org/biomodels.sbo/SBO:0000644'
 SBO_GENERIC = 'http://identifiers.org/biomodels.sbo/SBO:0000000'
-SO_NUCLEOTIDE_BS = 'http://identifiers.org/so/SO:0001655'
+
 
 # USEFUL SYNBIOHUB keys
 # http://wiki.synbiohub.org/wiki/Terms/synbiohub#mutableProvenance
@@ -111,6 +113,7 @@ VALID_ROLES = {
     'SO:0000340': SO_CHROMOSOME,
     'SO:0001655': SO_NUCLEOTIDE_BS,
     'SO:0005850': SO_PRIMER_BINDING_SITE,
+    'SO:0000417': SO_POLYPEPTIDE_DOMAIN,
     'SBO:0000170': SBO_STIMULATION,
     'SBO:0000169': SBO_INHIBITION,
     'SBO:0000019': SBO_CONTROLLER,
@@ -174,7 +177,8 @@ ROLE_MAPPING = {
     'Mutation': SO_MUTATION,
     'Chromosome': SO_CHROMOSOME,
     'Nucleotide Binding Site': SO_NUCLEOTIDE_BS,
-    'Primer Binding Site': SO_PRIMER_BINDING_SITE
+    'Primer Binding Site': SO_PRIMER_BINDING_SITE,
+    'Polypeptide Domain': SO_POLYPEPTIDE_DOMAIN
 }
 
 # LIST OF URIS FOR MAPPING TO AND FROM SIMPLE NAMES
@@ -350,7 +354,8 @@ SO_URIS = [
     SO_MUTATION,
     SO_CHROMOSOME,
     SO_NUCLEOTIDE_BS,
-    SO_PRIMER_BINDING_SITE
+    SO_PRIMER_BINDING_SITE,
+    SO_POLYPEPTIDE_DOMAIN
 ]
 
 BIOPAX_URIS = [

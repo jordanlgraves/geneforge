@@ -7,12 +7,16 @@ from src.data.validation import validate_sbol_directory
 from src.data.normalization import normalize_sbol_directory
 from src.data.annotation import annotate_sbol_directory
 
-def run_scraper(data_dir, file_types=["sbol", "gb", "fasta"]):
-    base_url = 'https://synbiohub.org/public/igem'
-    collection_name = 'igem_collection'
-    batch_size = 10
-    max_items = 1000  # Set this to None to scrape all items
-
+def run_synbiohub_scraper(data_dir, 
+                base_url="https://synbiohub.org/public/igem",
+                collection_name="igem_collection",
+                file_types=["sbol", "gb", "fasta"],
+                batch_size=10,
+                max_items=1000):
+    """
+    Scrape metadata and SBOL documents from the SynBioHub iGEM collection.
+    set max_items to None to scrape all items.
+    """
     # Scrape metadata
     metadata_scraper = SynBioHubMetadataScraper(base_url, collection_name, data_dir, batch_size, max_items)
     asyncio.get_event_loop().run_until_complete(metadata_scraper.scrape())
@@ -48,7 +52,7 @@ def main():
     simplified_dir = f'{root}/sbol/simplified'
     
     # Step 1: Run Scraper
-    #run_scraper(scraped_dir)
+    run_synbiohub_scraper(scraped_dir)
 
     # Step 2: Run Validation
     # run_validation(scraped_sbol_dir, validated_dir)
