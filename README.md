@@ -20,15 +20,16 @@ GeneForge is a project aimed at developing a robust framework for generating and
 ```
 
 ## Goals
-Develop a Model for Genetic Circuit Design:
+Develop a Generative Model for Genetic Circuit Design:
 
-- Train models to learn and generate valid genetic circuits using parts repositories such as SynBioHub and iGEM.
-- Validate the ability to model and generate circuits accurately.
+- Train models to learn and generate valid genetic circuits using parts repositories such as SynBioHub and iGEM and language modeling techniques.
+- Validate the ability to model and generate valid circuits.
 
 Generate Circuits Based on Initial and Target Cell States:
 
-- Use expression data (e.g., RNA-seq) to design genetic circuits that transition an initial cell state to a target cell state.
-- Generate synthetic data by simulating the circuits and their effects on cell states using circuit simulation libraries and perturbation simulations (e.g., GEARS or GeneFormer).
+- Use expression data (e.g., RNA-seq) to design genetic circuits that transition a cell from an initial expression state to a target expression state.
+- Generate a large quantity of pseudo-random circuit design.
+- Combine circuit design simulations (e.g. libSBML) with perturbation simulations (e.g., GEARs, GeneFormer).
  
 ## Installation
 Clone the Repository:
@@ -63,10 +64,11 @@ python src/train/training_masked_component_modeling.py
 A bibliography of related publications can be found {root}/docs/bibliography.txt
 
 ## Future Work
-- Experiment with graph representations and GNNs
-- Simplified JSON to SBOL converter
-- Integrate additional datasets from other repositories and collections to enhance training data.
-- Implement circuit simulations and validate conversion on SBOL to SBML.
-- Integrate circuit simulation outputs into perturbation-seq simulations.
-- Generate dataset of circuit, intitial and final cell states fro training and refining circuit generation.
-- Explore advanced training strategies to refine the model's ability to design complex genetic circuits.
+- Integrate context into part defintions by using embeddings from part descriptions as model input.
+- Experiment with graph representations of circuits and GNNs.
+- Script to convert simplified json circuit to SBOL.
+- Integrate additional datasets from other repositories and collections.
+- Implement circuit simulations and validate conversion of SBOL to SBML.
+- Pipe circuit simulation outputs into perturbation-seq simulation as inputs.
+- From simualtions, derive a dataset of sample (circuit + intitial cell state + final cell states).
+- Use derived dataset to train circuit generation conditioned on initial and desired cell state.
