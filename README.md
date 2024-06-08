@@ -1,4 +1,4 @@
-# GeneForge: A Framework for Genetic Circuit Design and Modeling
+# GeneForge: Generative AI for Genetic Circuit Design and Modeling
 
 ## Overview
 
