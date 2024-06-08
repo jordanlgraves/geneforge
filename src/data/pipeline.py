@@ -58,10 +58,10 @@ def main():
     # run_validation(scraped_sbol_dir, validated_dir)
 
     # Step 3: Run Normalization
-    # run_normalization(scraped_sbol_dir, normalized_dir)
+    run_normalization(scraped_sbol_dir, normalized_dir)
 
     # Step 4: Run Structuring
-    # run_structure(normalized_dir, structured_dir)
+    run_structure(normalized_dir, structured_dir)
 
     # Step 5: Run Simplification
     run_simplification(structured_dir, simplified_dir)
