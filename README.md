@@ -66,12 +66,10 @@ python src/train/training_masked_component_modeling.py
 A bibliography of related publications can be found {root}/docs/bibliography.txt
 
 ## Future Work
-- Integrate context into part defintions by using embeddings from part descriptions as model input.
-- Learning/tuning scheme for component parameters optimization (e.g. binding constants, degradation and production rates)
-- Experiment with graph representations of circuits and GNNs.
-- Script to convert simplified json circuit to SBOL.
+- Joint embeddings 
+- Encode part definitions
+- Learning/tuning scheme for component parameter optimization (e.g. binding constants, degradation and production rates)
+- Graph representations and graph kernels
+- Simplified json circuit to SBOL.
 - Integrate additional datasets from other repositories and collections.
-- Implement circuit simulations and validate conversion of SBOL to SBML.
-- Pipe circuit simulation outputs into perturbation-seq simulation as inputs.
-- From simualtions, derive a dataset of sample (circuit + intitial cell state + final cell states).
-- Use derived dataset to train circuit generation conditioned on initial and desired cell state.
+- Circuit simulations -> perturbation-seq simulations
