@@ -66,10 +66,10 @@ python src/train/training_masked_component_modeling.py
 A bibliography of related publications can be found {root}/docs/bibliography.txt
 
 ## Future Work
-- Joint embeddings 
-- Encode part definitions
+- Joint embeddings for circuit diagrams (jpgs) and circuit specifications (json)
+- Encode part definitions using pretrained text model
 - Learning/tuning scheme for component parameter optimization (e.g. binding constants, degradation and production rates)
 - Graph representations and graph kernels
-- Simplified json circuit to SBOL.
-- Integrate additional datasets from other repositories and collections.
+- Simplified json circuit to SBOL
+- Integrate additional datasets from other repositories and collections
 - Circuit simulations -> perturbation-seq simulations
