@@ -1,4 +1,4 @@
-# GeneForge: Generative AI for Genetic Circuit Design
+# GeneForge: AI Driven Genetic Circuit Design
 
 ## Overview
 
