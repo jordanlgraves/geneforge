@@ -70,11 +70,11 @@ def run(data_dir, results_dir):
     
     config = T5Config(
         d_model=8,  # Hidden size
-        d_ff=24,  # Feed-forward layer size
+        d_ff=12,  # Feed-forward layer size
         num_layers=2,  # Number of encoder/decoder layers
         num_heads=2,  # Number of attention heads
         vocab_size=32128,  # Vocabulary size
-        d_kv=32,  # Size of key/value vectors
+        d_kv=16,  # Size of key/value vectors
         dropout_rate=0.1,  # Dropout rate
         num_decoder_layers=1,  # Number of decoder layers
         decoder_start_token_id=tokenizer.pad_token_id,
@@ -85,8 +85,8 @@ def run(data_dir, results_dir):
 
     # Tokenize the datasets
     def tokenize_function(examples):
-        inputs = tokenizer(examples['input_text'], max_length=100000, truncation=True)
-        targets = tokenizer(examples['target_text'], max_length=100000, truncation=True)
+        inputs = tokenizer(examples['input_text'], max_length=1000, truncation=False)
+        targets = tokenizer(examples['target_text'], max_length=1000, truncation=False)
         return {'input_ids': inputs['input_ids'], 'attention_mask': inputs['attention_mask'], 'labels': targets['input_ids']}
 
     train_dataset = Dataset.from_dict((train_dataset))
@@ -100,10 +100,10 @@ def run(data_dir, results_dir):
     # Define training arguments
     training_args = TrainingArguments(
         output_dir=os.path.join(results_dir, 'output'),
-        evaluation_strategy='epoch',
+        eval_strategy='epoch',
         learning_rate=2e-5,
-        per_device_train_batch_size=8,
-        per_device_eval_batch_size=8,
+        per_device_train_batch_size=4,
+        per_device_eval_batch_size=4,
         num_train_epochs=3,
         weight_decay=0.01,
         logging_dir=os.path.join(results_dir, 'logs'),
@@ -129,3 +129,15 @@ if __name__ == "__main__":
 
     run('/Users/admin/repos/geneforge/data/syn_bio_hub/sbol/simplified', 
           '/Users/admin/repos/geneforge/training_results')
+
+    # prompt: # retrieve files from git repo
+
+    # !git init
+    # !git remote add origin https://github.com/jordanlgraves/geneforge.git
+    # !git fetch origin master
+    # !git checkout master
+    # !git pull origin main
+    # !pip install -r requirements.txt
+    # from src.train.training_circuit_from_description import run
+    # run('/content/drive/MyDrive/Geneforge/data/syn_bio_hub/sbol/simplified', 
+    #     '/content/drive/MyDrive/Geneforge/training_results')

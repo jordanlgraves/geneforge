@@ -13,6 +13,7 @@ import matplotlib.pyplot as plt
 
 from src.repositories.synbiohub import create_component
 
+
 # Function to create an FFL with specific interaction types and components
 def create_ffl(doc, components, interactions):
     upstream = create_component(doc, 'promoter_' + components['upstream'], components['upstream'], sbol2.SO_PROMOTER)

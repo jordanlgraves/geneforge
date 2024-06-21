@@ -107,6 +107,7 @@ def apply_standard_ontologies(doc):
     
     Types and roles are applied based on the component name or other criteria using predefined ontology terms.
     """
+    unique_ids = set()
     to_remove = []
     for obj in doc.SBOLObjects.values():
         if isinstance(obj, sbol2.Activity):
@@ -188,8 +189,11 @@ def apply_standard_ontologies(doc):
                 elif 'controlled' in obj.roles:
                     add_role_if_empty(obj, SBO_CONTROLLED)
 
+        unique_ids.add(obj.identity)
+
     for obj in to_remove:
         doc.SBOLObjects.pop(obj)
+        
     return doc
 
 def remove_unused_namespaces(doc):
@@ -226,11 +230,36 @@ def remove_unused_namespaces(doc):
 
     return new_doc
 
+def standardize_ids(doc):
+    # replace all ids with "component_type_{counter}"
+    # be sure to handle all references to SBOLObjects from other objects
+    id_map = {}
+    for obj in doc.SBOLObjects:
+        obj_type = type(obj)
+        if obj_type not in id_map:
+            id_map[obj_type] = 0
+        counter = id_map[obj_type]
+        obj.identity = f"component_type_{counter}"
+        counter += 1
+        id_map[obj_type] = counter
+
+        # replace all references from other objects
+        for obj2 in doc.SBOLObjects:
+            if obj is not obj2:
+                # find all references to obj in obj2
+                
+
+
+
+    return doc
+
 def normalize_sbol_document(doc):
     """
     Normalize and apply standard ontologies to the SBOL document, then validate it.
     """
     doc = apply_standard_ontologies(doc)
+    # standardize ids
+    doc = standardize_ids(doc)
     # validate_sbol_document(doc)
     return doc
 

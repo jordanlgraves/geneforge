@@ -2,7 +2,7 @@
 
 ## Overview
 
-GeneForge is a project aimed at developing a robust framework for generating and modeling genetic circuits. The ultimate goal is to create a model capable of designing and editing genetic circuits given an initial and target cell states (e.g. from RNA-seq data). This project encompasses several steps, including data collection, model training, and circuit and expression perturbation simulation.
+GeneForge is a project aimed at developing a robust framework for generating and modeling genetic circuits. The ultimate goal is to create a model capable of designing and editing genetic circuits given an initial and target cell states (e.g. from RNA-seq data). 
 
 ![Geneforge](docs/geneforge.png)
 
@@ -10,16 +10,18 @@ GeneForge is a project aimed at developing a robust framework for generating and
 
 ```plaintext
 ├── src/
-│   ├── circuits/     # for generating circuits
-│   ├── data/         # for downloading and processing datasets
-│   ├── repositories/ # for interacting with parts repos
-│   ├── train/        # training scripts
+│   ├── circuits/         # for generating circuits
+│   ├── sboll_llm/        # sub-project for generating sbol compliant circuits designs from natural language
+|       ├── data/         # for downloading and processing datasets
+│       ├── repositories/ # for interacting with parts repos
+│       ├── train/        # training scripts
 ├── notebooks/
 ├── docs/             # references and background material
 ├── .gitignore
 ├── README.md
 ├── requirements.txt
 ```
+
 
 ## Goals
 Develop a Generative Model for Genetic Circuit Design:
@@ -63,7 +65,7 @@ python src/train/training_masked_component_modeling.py
 
 ## References and Background Material
 
-A bibliography of related publications can be found {root}/docs/bibliography.txt
+A bibliography of related publications can be found [in the docs  folder.](docs/bibliography.txt)
 
 ## Future Work
 - Joint embeddings for circuit diagrams (jpgs) and circuit specifications (json)

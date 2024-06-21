@@ -5,7 +5,7 @@ import sbol2
 
 from src.data.io import read_sbol_file
 
-def read_sbol_files(directory):
+def read_sbol_files_from_directory(directory):
     documents = []
     for filename in os.listdir(directory):
         if filename.endswith('.xml') or filename.endswith('.sbol'):
@@ -14,7 +14,7 @@ def read_sbol_files(directory):
             documents.append(doc)
     return documents
 
-def extract_component_data(documents):
+def extract_component_data_from_sbol_documents(documents):
     object_data = []
     document_metadata = []
     for doc in documents:
@@ -71,23 +71,46 @@ def extract_component_data(documents):
                     'types': [_.split('/')[-1] for _ in obj.definition.types] if obj.definition.types else ['unknown'],
                     'roles': [_.split('/')[-1] for _ in obj.definition.roles] if obj.definition.roles else ['unknown'],
                 })
-            # elif isinstance(obj, sbol2.Sequence):
-            #     # Extract information from Sequence
-            #     object_data.append({
-            #         'name': obj.displayId,
-            #         'display_id': obj.displayId,
-            #         'description': 'Sequence',
-            #         'types': ['sequence'],
-            #         'roles': ['sequence'],
-            #     })
-            # Add more cases as needed for other SBOL classes
-        document_metadata.append({
-            'display_id': doc.displayId,
-            'name': doc.name,
-            'description': doc.description,
-            'physical_parts_count': physical_parts_count,
-        })
-    return pd.DataFrame(object_data), pd.DataFrame(document_metadata)
+            elif isinstance(obj, sbol2.Sequence):
+                # Extract information from Sequence
+                object_data.append({
+                    'name': obj.displayId,
+                    'display_id': obj.displayId,
+                    'description': 'Sequence',
+                    'types': ['sequence'],
+                    'roles': ['sequence'],
+                })
+            elif isinstance(obj, sbol2.SequenceAnnotation):
+                # Extract information from SequenceAnnotation
+                object_data.append({
+                    'name': obj.component.name,
+                    'display_id': obj.component.displayId,
+                    'description': obj.component.description,
+                    'types': [_.split('/')[-1] for _ in obj.component.types] if obj.component.types else ['unknown'],
+                    'roles': [_.split('/')[-1] for _ in obj.component.roles] if obj.component.roles else ['unknown'],
+                })
+            elif isinstance(obj, sbol2.Range):
+                # Extract information from Range
+                object_data.append({
+                    'name': obj.displayId,
+                    'display_id': obj.displayId,
+                    'description': 'Range',
+                    'types': ['range'],
+                    'roles': ['range'],
+                })
+            elif isinstance(obj, sbol2.Location):
+                # Extract information from Location
+                object_data.append({
+                    'name': obj.displayId,
+                    'display_id': obj.displayId,
+                    'description': 'Location',
+                    'types': ['location'],
+                    'roles': ['location'],
+                })
+            
+        document_metadata.append(physical_parts_count)
+        
+    return pd.DataFrame(object_data), document_metadata
 
 def plot_distribution(data, column, title, xlabel, ylabel, output_file):
     # Explode the lists into individual rows
@@ -143,27 +166,30 @@ def analyze_document_metadata(metadata, out_dir='.'):
     # plt.show()
 
 def main():
-    step = "scraped"
+    step = "normalized"
     
     sbol_dir = f'data/syn_bio_hub/scraped/sbol' if step == 'scraped' else f'data/syn_bio_hub/sbol/{step}/'
     out_dir = f'reports/syn_bio_hub_{step}_sbol'
 
     # Read and parse SBOL files
-    documents = read_sbol_files(sbol_dir)
-    
+    filenames = os.listdir(sbol_dir)
+    documents = read_sbol_files_from_directory(sbol_dir)
+
     # Extract component data and document metadata
-    component_data, document_metadata = extract_component_data(documents)
+    component_data, num_parts_per_document = extract_component_data_from_sbol_documents(documents)
+    # document_metadata = pd.DataFrame({'physical_parts_count': num_parts_per_document,
+                                    #   'file_names': filenames})
     
     # Analyze and plot distributions
     analyze_component_types(component_data, out_dir)
     analyze_component_roles(component_data, out_dir)
     analyze_component_counts(component_data, out_dir)
-    analyze_document_metadata(document_metadata, out_dir)
+    # analyze_document_metadata(document_metadata, out_dir)
 
     # Save dataframes to CSV
     os.makedirs(out_dir, exist_ok=True)
     component_data.to_csv(os.path.join(out_dir, 'component_data.csv'), index=False)
-    document_metadata.to_csv(os.path.join(out_dir, 'document_metadata.csv'), index=False)
+    # document_metadata.to_csv(os.path.join(out_dir, 'document_metadata.csv'), index=False)
     
 if __name__ == '__main__':
     main()

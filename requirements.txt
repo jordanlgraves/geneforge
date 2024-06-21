@@ -1,5 +1,4 @@
 torch_geometric
-cell-gears
 bs4
 rdflib-jsonld
 rdflib
@@ -8,3 +7,15 @@ datasets
 torch
 scikit-learn
 accelerate
+pygraphviz
+
+# expression and perturbation simulation
+cmake  # Cmake is required to install pinetree
+pinetree
+cell-gears
+pertpy
+# https://github.com/PayamDiba/SERGIO
+pyscenic
+
+# circuit simulations
+bioscrape
