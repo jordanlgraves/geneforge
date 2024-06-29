@@ -1,6 +1,6 @@
 import os
 
-from src.data.io import read_sbol_file, write_sbol_file
+from geneforge.data.io import read_sbol_file, write_sbol_file
 
 def validate_sbol_document(doc):
     validation_errors = doc.validate()

@@ -3,7 +3,7 @@ import os
 
 import sbol2
 
-from src.data.io import write_sbol_file
+from geneforge.data.io import write_sbol_file
 
 def create_component_definition(component_data, doc):
     """

@@ -1,17 +1,10 @@
-import os
 import uuid
 import sbol2
-import requests
 import random
 import sbol2
-import requests
 import random
-import libsbml
-import tellurium as te
-import numpy as np
-import matplotlib.pyplot as plt
 
-from src.repositories.synbiohub import create_component
+from geneforge.sbol_llm.repositories.synbiohub import create_component
 
 
 # Function to create an FFL with specific interaction types and components

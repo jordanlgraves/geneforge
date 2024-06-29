@@ -1,11 +1,11 @@
 import os
 import asyncio
-from src.data.scraper import SynBioHubMetadataScraper, SynBioHubSBOLScraper
-from src.data.simplify import simplify_json_files
-from src.data.structure import convert_sbol_files_to_json
-from src.data.validation import validate_sbol_directory
-from src.data.normalization import normalize_sbol_directory
-from src.data.annotation import annotate_sbol_directory
+from geneforge.data.scraper import SynBioHubMetadataScraper, SynBioHubSBOLScraper
+from geneforge.data.simplify import simplify_json_files
+from geneforge.data.structure import convert_sbol_files_to_json
+from geneforge.data.validation import validate_sbol_directory
+from geneforge.data.normalization import normalize_sbol_directory
+from geneforge.data.annotation import annotate_sbol_directory
 
 def run_synbiohub_scraper(data_dir, 
                 base_url="https://synbiohub.org/public/igem",

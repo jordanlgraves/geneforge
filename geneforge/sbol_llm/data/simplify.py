@@ -3,8 +3,8 @@ import os
 from rdflib import Graph
 from sbol2 import *
 
-from src.data.io import write_sbol_file
-from src.data.ontology import PURL_URL, SO_OPERATOR, SYNBIO_TERMS_HTTP_URL, SYNBIO_TERMS_HTTPS_URL, SYNBIOHUB_IGEM_URL, URIS_TO_SIMPLE_NAMES, VALID_ROLES
+from geneforge.sbol_llm.data.io import write_sbol_file
+from geneforge.sbol_llm.data.ontology import PURL_URL, SO_OPERATOR, SYNBIO_TERMS_HTTP_URL, SYNBIO_TERMS_HTTPS_URL, SYNBIOHUB_IGEM_URL, URIS_TO_SIMPLE_NAMES, VALID_ROLES
 
 def remove_keys(json_data):
     if isinstance(json_data, list):
@@ -63,6 +63,45 @@ def sort_objects(objects_list):
             print('Object was removed:', obj['@type'])
     return sorted_objects
 
+def replace_ids(json_data):
+    id_map = {}
+    counters = {}
+
+    # First pass: create mapping of old IDs to new standardized IDs
+    for item in json_data:
+        obj_type = item['@type'][0]
+        if obj_type not in counters:
+            counters[obj_type] = 0
+        new_id = f"{obj_type}{counters[obj_type]}"
+        id_map[item['@id']] = new_id
+        counters[obj_type] += 1
+
+    # Second pass: update all references and IDs
+    for item in json_data:
+        # Update object's own ID
+        item['@id'] = id_map[item['@id']]
+        
+        # Update displayId
+        if 'displayId' in item:
+            item['displayId'][0]['@value'] = item['@id']
+
+        # Update persistentIdentity
+        if 'persistentIdentity' in item:
+            old_persistent = item['persistentIdentity'][0]['@id']
+            item['persistentIdentity'][0]['@id'] = id_map.get(old_persistent, old_persistent)
+
+        # Update references in other attributes
+        for attr, value in item.items():
+            if isinstance(value, list):
+                for val in value:
+                    if isinstance(val, dict) and '@id' in val:
+                        val['@id'] = id_map.get(val['@id'], val['@id'])
+    # TODO: Fix
+    return json_data
+
+
+
+
 # Simplify the URIs
 def simplify_json(json_data):
     # convert the json to a string and replace the uris with the simplified names
@@ -82,8 +121,15 @@ def simplify_json(json_data):
     # remove the unnecessary keys
     remove_keys(transformed_json)
 
-    # sort the different object by type
+    
+    replace_ids(transformed_json)
+    
+
+    
     transformed_json = sort_objects(transformed_json)
+
+    # REPLACE NAMES AND IDS WITH SIMPLE NAMES
+
 
     return transformed_json
         

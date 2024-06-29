@@ -1,8 +1,9 @@
 import sbol2
 import os
+from sbol2 import TextProperty
 
-from src.data.io import read_sbol_file, write_sbol_file
-from src.data.ontology import *
+from geneforge.sbol_llm.data.io import read_sbol_file, write_sbol_file
+from geneforge.sbol_llm.data.ontology import *
 from sbol2.constants import *
 from xml.etree import ElementTree as ET
 
@@ -230,36 +231,11 @@ def remove_unused_namespaces(doc):
 
     return new_doc
 
-def standardize_ids(doc):
-    # replace all ids with "component_type_{counter}"
-    # be sure to handle all references to SBOLObjects from other objects
-    id_map = {}
-    for obj in doc.SBOLObjects:
-        obj_type = type(obj)
-        if obj_type not in id_map:
-            id_map[obj_type] = 0
-        counter = id_map[obj_type]
-        obj.identity = f"component_type_{counter}"
-        counter += 1
-        id_map[obj_type] = counter
-
-        # replace all references from other objects
-        for obj2 in doc.SBOLObjects:
-            if obj is not obj2:
-                # find all references to obj in obj2
-                
-
-
-
-    return doc
-
 def normalize_sbol_document(doc):
     """
     Normalize and apply standard ontologies to the SBOL document, then validate it.
     """
     doc = apply_standard_ontologies(doc)
-    # standardize ids
-    doc = standardize_ids(doc)
     # validate_sbol_document(doc)
     return doc
 

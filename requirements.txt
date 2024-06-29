@@ -8,8 +8,9 @@ torch
 scikit-learn
 accelerate
 pygraphviz
+networkx
 
-# expression and perturbation simulation
+# simulation
 cmake  # Cmake is required to install pinetree
 pinetree
 cell-gears
@@ -17,5 +18,6 @@ pertpy
 # https://github.com/PayamDiba/SERGIO
 pyscenic
 
-# circuit simulations
 bioscrape
+simplesbml
+tellurium

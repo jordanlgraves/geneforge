@@ -3,7 +3,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import sbol2
 
-from src.data.io import read_sbol_file
+from geneforge.data.io import read_sbol_file
 
 def read_sbol_files_from_directory(directory):
     documents = []

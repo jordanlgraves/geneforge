@@ -4,7 +4,7 @@ import os
 from rdflib import Graph
 import sbol2
 sbol2.SO_PLASMID
-from src.data.io import read_sbol_file, write_sbol_file
+from geneforge.data.io import read_sbol_file, write_sbol_file
 
 def sbol_to_json(sbol_file, output_file):
     """

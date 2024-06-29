@@ -1,9 +1,9 @@
 import sbol2
 import os
 from sbol2.constants import *
-from src.data.io import read_sbol_file, write_sbol_file
-from src.data.ontology import SO_ENHANCER, SO_INSULATOR, SO_ORIGIN_OF_REPLICATION, SO_PRIMER, SO_SPACER
-from src.data.validation import validate_sbol_document
+from geneforge.data.io import read_sbol_file, write_sbol_file
+from geneforge.data.ontology import SO_ENHANCER, SO_INSULATOR, SO_ORIGIN_OF_REPLICATION, SO_PRIMER, SO_SPACER
+from geneforge.data.validation import validate_sbol_document
 
 def enrich_component_description(component, additional_description):
     """
