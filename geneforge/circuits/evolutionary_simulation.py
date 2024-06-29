@@ -19,7 +19,7 @@ def NAND(a, b):
     return int(not (a and b))
 
 # Circuit class to represent circuits as genomes
-class Circuit:
+class GenomeCircuit:
     def __init__(self, num_inputs, num_gates):
         self.num_inputs = num_inputs
         self.num_gates = num_gates
@@ -119,13 +119,14 @@ class Circuit:
         plt.axis('off')
         plt.show()
 
-class LayeredCircuit(Circuit):
+class LayeredCircuit(GenomeCircuit):
     def __init__(self, num_inputs, num_gates, num_layers, gates_per_layer=None):
         super().__init__(num_inputs, num_gates)
         self.num_layers = num_layers
         self.gates_per_layer = gates_per_layer or [num_gates // num_layers] * num_layers
         self.gates_per_layer[-1] += num_gates % num_layers  # Assign remaining gates to last layer
         self.initialize_layered_circuit()
+        
     def initialize_layered_circuit(self):
         self.gates = []
         input_nodes = list(range(self.num_inputs))
@@ -205,7 +206,7 @@ def fitness_function(circuit, goal):
 
 # Simulate evolution with constant goal
 def evolve_constant_goal(goal, population_size, mutation_rate, max_generations, num_inputs, num_gates):
-    population = [Circuit(num_inputs, num_gates) for _ in range(population_size)]
+    population = [GenomeCircuit(num_inputs, num_gates) for _ in range(population_size)]
     for circuit in population:
         circuit.visualize()
     best_fitnesses = []
@@ -228,7 +229,7 @@ def evolve_constant_goal(goal, population_size, mutation_rate, max_generations, 
 
 # Simulate evolution with modularly varying goals (MVG)
 def evolve_mvg(goals, population_size, mutation_rate, max_generations, num_inputs, num_gates, switch_period):
-    population = [Circuit(num_inputs, num_gates) for _ in range(population_size)]
+    population = [GenomeCircuit(num_inputs, num_gates) for _ in range(population_size)]
     best_fitnesses = []
     best_modularities = []
     entropies = []
@@ -261,7 +262,7 @@ def apply_mutations(circuits, mutation_rate):
     mutated_circuits = []
     for circuit in circuits:
         if random.random() < mutation_rate:
-            mutated_circuit = Circuit(circuit.num_inputs, circuit.num_gates)
+            mutated_circuit = GenomeCircuit(circuit.num_inputs, circuit.num_gates)
             mutated_circuit.gates = circuit.gates.copy()
             
             # Implement different types of mutations
@@ -289,7 +290,7 @@ def repopulate(circuits, population_size, num_inputs, num_gates):
         # Recombination (crossover)
         crossover_point = random.randint(0, len(parent1.gates))
         child_gates = parent1.gates[:crossover_point] + parent2.gates[crossover_point:]
-        child = Circuit(num_inputs, num_gates)
+        child = GenomeCircuit(num_inputs, num_gates)
         child.gates = child_gates
         child.output_gate = random.randint(0, num_gates - 1)
         
