@@ -1,0 +1,26 @@
+__pycache__/
+*.pyc
+*.log
+.env
+venv/
+.DS_Store
+logs/
+outputs/
+
+# External repositories
+ext_repos/
+
+# Outputs and artifacts
+outputs/
+artifacts/
+
+# vs code
+.vscode/
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.pyw
+*.pyz
