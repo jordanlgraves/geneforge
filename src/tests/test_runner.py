@@ -179,13 +179,13 @@ def main():
 
     print("\n-- Running Cello Integration Tests --")
     print("\n1. Testing Basic Circuit Design")
-    # test_cello_basic_circuit(client)
+    test_cello_basic_circuit(client)
     
     # print("\n2. Testing Advanced Circuit Design")
     # test_cello_advanced_circuit(client)
     
     # print("\n3. Testing Iterative Design Process")
-    test_cello_iterative_design(client)
+    # test_cello_iterative_design(client)
 
 if __name__ == "__main__":
     main()

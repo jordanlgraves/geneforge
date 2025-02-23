@@ -61,10 +61,16 @@ class TestUCFRetrieval(unittest.TestCase):
             with self.assertRaises(ValueError):
                 load_ecoli_library(ucf_path)
 
-            # Test nonexistent file with guaranteed unique path
-            non_existent_path = os.path.join(temp_dir, f"nonexistent_{uuid.uuid4().hex}.json")
-            with self.assertRaises(FileNotFoundError):
+            # Test nonexistent file - this should raise FileNotFoundError
+            non_existent_path = os.path.join(temp_dir, "definitely_does_not_exist.json")
+            self.assertFalse(os.path.exists(non_existent_path), 
+                            "Test file should not exist")
+            try:
                 load_ecoli_library(non_existent_path)
+                self.fail("Expected FileNotFoundError was not raised")
+            except FileNotFoundError as e:
+                # Test passes - the expected error was raised
+                pass
 
             # Test loading the processed file (should succeed)
             data = load_ecoli_library(processed_path)
