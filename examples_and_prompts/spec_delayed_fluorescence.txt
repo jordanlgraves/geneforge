@@ -1,0 +1,1 @@
+Create a circuit that produces GFP only after a 30-minute delay following the introduction of an inducer.

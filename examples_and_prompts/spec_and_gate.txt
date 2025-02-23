@@ -1,0 +1,1 @@
+Design a 2-input AND gate in E. coli with inputs A, B and output GFP.
