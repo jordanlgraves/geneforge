@@ -222,8 +222,8 @@ class TestLLMBasedLibrarySelector(unittest.TestCase):
         # Check the response
         self.assertIn("success", result)
         self.assertIn("recommendations", result)
-        self.assertIn(result['success'] == False)
-        self.assertIn(result.get('library_id', None) == None)
+        self.assertEqual(result['success'], False)
+        self.assertIsNone(result.get('library_id', None))
         # The response should include an explanation about why no matching library was found
         self.assertTrue(len(result["recommendations"]) > 0)
     
