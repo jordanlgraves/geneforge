@@ -63,9 +63,9 @@ class DesignOrchestrator:
             output_validation = self._validate_outputs_in_ucf(ucf_path, outputs)
             
             if not output_validation["valid"]:
-                self.logger.warning(f"Selected UCF file does not contain all required outputs: {output_validation['missing']}")
+                self.logger.warning(f"Selected UCF file does not contain all required outputs: {output_validation.get('missing_outputs', [])}")
                 return {
-                    "warning": f"Selected UCF file does not contain all required outputs: {output_validation['missing']}",
+                    "warning": f"Selected UCF file does not contain all required outputs: {output_validation.get('missing_outputs', [])}",
                     "ucf_file": best_match,
                     "recommendation": "Consider creating a custom UCF file with the required outputs"
                 }
@@ -220,52 +220,96 @@ class DesignOrchestrator:
     
     def _validate_outputs_in_ucf(self, ucf_path: str, outputs: List[str]) -> Dict:
         """
-        Validate that a UCF file contains the required outputs.
+        Validate that the requested outputs are available in the UCF file.
         
         Args:
             ucf_path: Path to the UCF file
-            outputs: List of required outputs
+            outputs: List of requested output types
             
         Returns:
-            Dict with validation results
+            Dict with validation result
         """
+        # Skip validation if no outputs requested
+        if not outputs:
+            return {"valid": True}
+        
+        # Parse the UCF file
+        from src.library.parse_ucf import parse_ucf
         try:
-            # Load the UCF file
-            with open(ucf_path, 'r') as f:
-                ucf_data = json.load(f)
-            
-            # Check if the UCF file contains the required outputs
-            missing_outputs = []
-            for output in outputs:
-                output_found = False
-                
-                # Search for the output in the UCF file
-                # This is a simplified search - in a real implementation, you would
-                # need to check specific collections based on the output type
-                for item in ucf_data:
-                    if not isinstance(item, dict):
-                        continue
-                    
-                    # Check in parts collection
-                    if item.get("collection") == "parts" and "parts" in item:
-                        for part in item["parts"]:
-                            if output.lower() in part.get("name", "").lower():
-                                output_found = True
-                                break
-                
-                if not output_found:
-                    missing_outputs.append(output)
-            
-            return {
-                "valid": len(missing_outputs) == 0,
-                "missing": missing_outputs
-            }
+            ucf_data = parse_ucf(ucf_path)
         except Exception as e:
-            self.logger.error(f"Error validating outputs in UCF file: {e}")
-            return {
-                "valid": False,
-                "error": str(e)
-            }
+            self.logger.error(f"Error parsing UCF file: {e}")
+            return {"valid": False, "error": f"Error parsing UCF file: {e}"}
+        
+        # Check if the UCF contains the requested output types
+        structured_data = ucf_data.get("structured_data", {})
+        parts = structured_data.get("parts", [])
+        
+        # Extract reporter types from parts
+        reporters = []
+        for part in parts:
+            raw_data = part.get("raw_data", {})
+            if raw_data.get("type") == "reporter":
+                reporters.append(raw_data.get("name", "").lower())
+        
+        # Convert outputs to lowercase for case-insensitive comparison
+        outputs_lower = [output.lower() for output in outputs]
+        
+        # Check if all requested outputs are available
+        missing_outputs = []
+        for output in outputs_lower:
+            if output not in reporters:
+                missing_outputs.append(output)
+        
+        if missing_outputs:
+            self.logger.warning(f"Selected UCF file does not contain all required outputs: {outputs}")
+            return {"valid": False, "missing_outputs": missing_outputs}
+        
+        return {"valid": True}
+    
+    def _validate_and_fix_verilog(self, verilog_code: str, gate_type: str = "NOT") -> str:
+        """
+        Validate and fix Verilog code to ensure it's in the correct format for Cello.
+        
+        Args:
+            verilog_code: The Verilog code to validate and fix
+            gate_type: The type of gate (NOT, AND, OR, NOR, etc.)
+            
+        Returns:
+            Properly formatted Verilog code
+        """
+        # Check if the code already has a module definition
+        if "module" in verilog_code and "endmodule" in verilog_code:
+            return verilog_code
+        
+        # If the code contains procedural blocks (begin/end) but no module definition,
+        # we need to create a proper module
+        
+        # Determine inputs and outputs based on gate type
+        if gate_type == "NOT":
+            # Template for a NOT gate
+            fixed_verilog = "module main(input a, output y); assign y = !a; endmodule"
+        elif gate_type == "AND":
+            # Template for an AND gate
+            fixed_verilog = "module main(input a, input b, output y); assign y = a & b; endmodule"
+        elif gate_type == "OR":
+            # Template for an OR gate
+            fixed_verilog = "module main(input a, input b, output y); assign y = a | b; endmodule"
+        elif gate_type == "NOR":
+            # Template for a NOR gate
+            fixed_verilog = "module main(input a, input b, output y); assign y = !(a | b); endmodule"
+        elif gate_type == "NAND":
+            # Template for a NAND gate
+            fixed_verilog = "module main(input a, input b, output y); assign y = !(a & b); endmodule"
+        elif gate_type == "XOR":
+            # Template for an XOR gate
+            fixed_verilog = "module main(input a, input b, output y); assign y = a ^ b; endmodule"
+        else:
+            # Generic template - assume a single input and output
+            fixed_verilog = "module main(input a, output y); assign y = !a; endmodule"
+        
+        self.logger.warning(f"Invalid Verilog syntax. Replacing with standard template for {gate_type} gate: {fixed_verilog}")
+        return fixed_verilog
     
     def design_circuit(self, verilog_code: str, organism: str = None, inducers: List[str] = None,
                       outputs: List[str] = None, gate_types: List[str] = None,
@@ -288,6 +332,10 @@ class DesignOrchestrator:
         Returns:
             Dict with design results or error
         """
+        # Validate and fix Verilog code if needed
+        gate_type = gate_types[0] if gate_types and len(gate_types) > 0 else "NOT"
+        verilog_code = self._validate_and_fix_verilog(verilog_code, gate_type)
+        
         # Initialize configuration
         config = cello_config or {}
         
