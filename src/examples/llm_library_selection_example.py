@@ -84,40 +84,67 @@ def main():
                     print("\nLLM reasoning:")
                     print(llm_result["reasoning"])
     
-    # Demonstrate using the selected library with Cello
-    print_section("Using Selected Library with Cello")
-    
+    # Demonstrate actual integration with Cello (if available)
     try:
-        # Get all available libraries
-        available_libraries = rule_based_selector.library_manager.get_available_libraries()
+        print_section("Integration with Cello")
         
-        if not available_libraries:
-            print("No libraries available. Skipping Cello integration example.")
-            return
+        # Select a library for E. coli
+        result = rule_based_selector.select_library("I want to design a NOT gate for E. coli")
         
-        # Use the first available library for the example
-        example_library = available_libraries[0]
-        print(f"Using library: {example_library}")
-        
-        # Create a Cello integration with the selected library
-        print(f"Creating Cello integration with library: {example_library}")
-        cello = CelloIntegration(library_id=example_library)
-        
-        # Show available libraries
-        print("\nAll available libraries:")
-        all_libraries = cello.get_available_libraries()
-        print(", ".join(all_libraries))
-        
-        # Create a simple Verilog module
-        verilog_code = "module main(input a, output y); assign y = !a; endmodule"
-        print(f"\nVerilog code: {verilog_code}")
-        
-        # Note: We're not actually running Cello here to avoid long computation
-        print("\nTo run Cello with this library, you would use:")
-        result = cello.run_cello(verilog_code='{verilog_code}')
-        
+        if result["success"]:
+            library_id = result["library_id"]
+            print(f"Selected library: {library_id}")
+            
+            # Create a Cello integration with the selected library
+            print(f"Creating Cello integration with library: {library_id}")
+            cello = CelloIntegration(library_id=library_id)
+            
+            # Show available libraries
+            print("\nAvailable libraries:")
+            available_libraries = cello.get_available_libraries()
+            print(", ".join(available_libraries))
+            
+            # Create a simple Verilog module
+            verilog_code = "module main(input a, output y); assign y = !a; endmodule"
+            print(f"\nVerilog code: {verilog_code}")
+            
+            # Run Cello with the selected library
+            print("\nRunning Cello with the selected library...")
+            result = cello.run_cello(verilog_code=verilog_code)
+            
+            if result["success"]:
+                print("\nCello run successful!")
+                print(f"Output path: {result['results']['output_path']}")
+                
+                # List generated files
+                output_path = result['results']['output_path']
+                if os.path.exists(output_path):
+                    print("\nGenerated files:")
+                    for file in os.listdir(output_path):
+                        print(f"  - {file}")
+                else:
+                    print(f"\nOutput directory not found: {output_path}")
+            else:
+                print("\nCello run failed!")
+                print(f"Error: {result.get('error', 'Unknown error')}")
+                
+                # Print a portion of the log for debugging
+                log_lines = result.get('log', '').split('\n')
+                if log_lines:
+                    print("\nLog excerpt (last 10 lines):")
+                    for line in log_lines[-10:]:
+                        print(f"  {line}")
     except Exception as e:
         print(f"Error demonstrating Cello integration: {e}")
+        
+        # Check if the error is related to Yosys
+        if "yosys" in str(e).lower() or "command not found" in str(e).lower():
+            print("\nThis error is likely due to the missing Yosys dependency.")
+            print("Yosys is required for Cello's logic synthesis.")
+            print("Installation instructions:")
+            print("  - macOS: brew install yosys")
+            print("  - Ubuntu/Debian: sudo apt-get install yosys")
+            print("  - Windows: Follow instructions at https://github.com/YosysHQ/yosys")
 
 if __name__ == "__main__":
     main() 

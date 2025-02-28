@@ -4,6 +4,7 @@ import os
 import time
 import atexit
 import logging
+import shutil
 from typing import Dict, Optional, List, Any, Union
 
 # Set up the Python path for Cello
@@ -240,6 +241,24 @@ class CelloIntegration:
             self.logger.error("Failed to create custom UCF")
             return None
 
+    def _check_yosys_dependency(self) -> bool:
+        """
+        Check if Yosys is installed and available in the system PATH.
+        
+        Returns:
+            bool: True if Yosys is available, False otherwise
+        """
+        yosys_available = shutil.which("yosys") is not None
+        if not yosys_available:
+            self.logger.warning("Yosys is not installed or not in the system PATH.")
+            self.logger.warning("Yosys is required for Cello's logic synthesis.")
+            self.logger.warning("Installation instructions:")
+            self.logger.warning("  - macOS: brew install yosys")
+            self.logger.warning("  - Ubuntu/Debian: sudo apt-get install yosys")
+            self.logger.warning("  - Windows: Follow instructions at https://github.com/YosysHQ/yosys")
+            self.logger.warning("Please install Yosys and ensure it's in your system PATH.")
+        return yosys_available
+
     def run_cello(self, verilog_code: str = None, custom_ucf: Dict[str, Any] = None) -> Dict:
         """
         Run Cello with configured parameters and return results
@@ -259,6 +278,15 @@ class CelloIntegration:
             - results: Dict (Cello results including DNA design)
         """
         try:
+            # Check for Yosys dependency
+            yosys_available = self._check_yosys_dependency()
+            if not yosys_available:
+                return {
+                    'success': False,
+                    'log': '\n'.join(self.log_buffer),
+                    'error': "Yosys is not installed or not in the system PATH. Yosys is required for Cello's logic synthesis."
+                }
+            
             # Process Verilog code if provided
             if verilog_code:
                 # Save verilog code to temporary file

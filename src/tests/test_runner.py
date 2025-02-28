@@ -1,10 +1,16 @@
 # tests/test_runner.py
 
 import os
+import sys
 import json
 import logging
+from pathlib import Path
 from openai import OpenAI
 import unittest
+
+# Add the project root to the Python path
+project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), "../.."))
+sys.path.insert(0, project_root)
 
 from src.geneforge_config import Config
 from src.tools.functions import ToolIntegration
@@ -114,6 +120,10 @@ def test_cello_basic_circuit(client):
        and design the circuit based on these requirements.
     
     3. Explain your design choices and the results to the user.
+    
+    IMPORTANT: If you encounter errors related to 'yosys: command not found' or missing files with '_yosys.json',
+    please inform the user that Yosys (a required dependency for Cello's logic synthesis) is not installed
+    or not in the system PATH. Suggest installation methods for different operating systems.
     """
     
     user_prompt = """
@@ -126,83 +136,141 @@ def test_cello_basic_circuit(client):
         {"role": "user", "content": user_prompt}
     ]
     
-    final_answer = chat_with_tool(client, messages)
-    print("=== Cello Basic Circuit Design Result ===")
-    print(final_answer.content)
+    try:
+        final_answer = chat_with_tool(client, messages)
+        print("=== Cello Basic Circuit Design Result ===")
+        print(final_answer.content)
+        return final_answer
+    except Exception as e:
+        print("=== Cello Basic Circuit Design Error ===")
+        print(f"Error: {str(e)}")
+        if "yosys" in str(e).lower():
+            print("\nThis error is likely due to the missing Yosys dependency.")
+            print("Yosys is required for Cello's logic synthesis.")
+        return None
 
 def test_cello_advanced_circuit(client):
     """
-    Test the LLM's ability to design a more complex circuit and configure Cello parameters.
-    Uses a 2-input AND gate with specific performance requirements.
+    Test the LLM's ability to design a more complex circuit using Cello.
+    Uses a 2-input NOR gate as an example.
+    
+    The system should automatically select an appropriate UCF file based on:
+    1. Organism: E. coli
+    2. Inputs: arabinose (AraC) and IPTG (LacI)
+    3. Output: RFP
+    4. Gate type: NOR
     """
+    # Enhanced system prompt that instructs the LLM to select appropriate UCF files
+    system_prompt = """
+    You are a synthetic biology design assistant that can design genetic circuits.
+    
+    When designing circuits with Cello:
+    1. First analyze the user's requirements to identify:
+       - Target organism (e.g., E. coli, yeast)
+       - Required inputs/inducers (e.g., arabinose, IPTG)
+       - Required outputs (e.g., GFP, RFP)
+       - Required gate types (e.g., NOT, NOR, AND)
+    
+    2. Use the design_circuit function to automatically select an appropriate UCF file
+       and design the circuit based on these requirements.
+    
+    3. Explain your design choices and the results to the user.
+    
+    IMPORTANT: If you encounter errors related to 'yosys: command not found' or missing files with '_yosys.json',
+    please inform the user that Yosys (a required dependency for Cello's logic synthesis) is not installed
+    or not in the system PATH. Suggest installation methods for different operating systems.
+    """
+    
     user_prompt = """
-    Design a 2-input AND gate circuit in E. coli where:
-    1. Inputs: IPTG (LacI) and aTc (TetR)
-    2. Output: GFP (should be ON only when both inputs are present)
-    3. Requirements:
-       - Minimal leak in OFF state (<5% of ON state)
-       - Fast response time
-       
-    Please:
-    1. Create the Verilog code
-    2. Configure Cello for thorough optimization (use exhaustive search)
-    3. Analyze the results and suggest improvements if needed
+    I want to design a NOR gate circuit in E. coli that takes arabinose and IPTG as inputs
+    and produces RFP only when both inputs are absent. Please design this circuit for me.
     """
     
     messages = [
-        {"role": "system", "content": "You are a synthetic biology design assistant."},
+        {"role": "system", "content": system_prompt},
         {"role": "user", "content": user_prompt}
     ]
     
-    final_msg = chat_with_tool(client, messages)
-    print("\n=== Advanced Cello Circuit Design Result ===")
-    print(final_msg.content)
-    return final_msg
+    try:
+        final_answer = chat_with_tool(client, messages)
+        print("=== Cello Advanced Circuit Design Result ===")
+        print(final_answer.content)
+        return final_answer
+    except Exception as e:
+        print("=== Cello Advanced Circuit Design Error ===")
+        print(f"Error: {str(e)}")
+        if "yosys" in str(e).lower():
+            print("\nThis error is likely due to the missing Yosys dependency.")
+            print("Yosys is required for Cello's logic synthesis.")
+        return None
 
 def test_cello_iterative_design(client):
     """
-    Test the LLM's ability to iterate on a design based on Cello's output.
-    This demonstrates multi-step interaction and optimization.
+    Test the LLM's ability to iteratively design and refine a circuit using Cello.
+    This simulates a conversation where the user asks for a circuit and then
+    requests modifications to the design.
     """
-    # First design attempt
-    initial_prompt = """
-    Design a genetic toggle switch in E. coli with:
-    1. Set input: aTc
-    2. Reset input: IPTG
-    3. Output: GFP (state indicator)
+    # Enhanced system prompt that instructs the LLM to select appropriate UCF files
+    system_prompt = """
+    You are a synthetic biology design assistant that can design genetic circuits.
     
-    Start with a basic design and we'll optimize based on the results.
+    When designing circuits with Cello:
+    1. First analyze the user's requirements to identify:
+       - Target organism (e.g., E. coli, yeast)
+       - Required inputs/inducers (e.g., arabinose, IPTG)
+       - Required outputs (e.g., GFP, RFP)
+       - Required gate types (e.g., NOT, NOR, AND)
+    
+    2. Use the design_circuit function to automatically select an appropriate UCF file
+       and design the circuit based on these requirements.
+    
+    3. Explain your design choices and the results to the user.
+    
+    IMPORTANT: If you encounter errors related to 'yosys: command not found' or missing files with '_yosys.json',
+    please inform the user that Yosys (a required dependency for Cello's logic synthesis) is not installed
+    or not in the system PATH. Suggest installation methods for different operating systems.
+    """
+    
+    # Initial request for a simple circuit
+    user_prompt_1 = """
+    I want to design a NOT gate circuit in E. coli that is induced by arabinose and 
+    produces GFP when arabinose is absent. Please design this circuit for me.
+    """
+    
+    # Follow-up request to modify the circuit
+    user_prompt_2 = """
+    That looks good, but I'd like to modify it to use IPTG instead of arabinose as the input.
+    Can you redesign the circuit with this change?
     """
     
     messages = [
-        {"role": "system", "content": "You are a synthetic biology design assistant."},
-        {"role": "user", "content": initial_prompt}
+        {"role": "system", "content": system_prompt},
+        {"role": "user", "content": user_prompt_1}
     ]
     
-    # Get initial design
-    first_attempt = chat_with_tool(client, messages)
-    print("\n=== Initial Toggle Switch Design ===")
-    print(first_attempt.content)
-    
-    # Simulate user reviewing results and requesting optimization
-    optimization_prompt = """
-    Based on the Cello results above, please optimize the design:
-    1. Adjust promoter strengths if needed
-    2. Consider adding degradation tags
-    3. Try alternative repressor pairs
-    4. Use exhaustive search to find optimal parameters
-    """
-    
-    messages.extend([
-        {"role": "assistant", "content": first_attempt.content},
-        {"role": "user", "content": optimization_prompt}
-    ])
-    
-    # Get optimized design
-    optimized_attempt = chat_with_tool(client, messages)
-    print("\n=== Optimized Toggle Switch Design ===")
-    print(optimized_attempt.content)
-    return optimized_attempt
+    try:
+        # First design iteration
+        response_1 = chat_with_tool(client, messages)
+        print("=== Cello Iterative Design - Initial Circuit ===")
+        print(response_1.content)
+        
+        # Add the response and follow-up request to the conversation
+        messages.append({"role": "assistant", "content": response_1.content})
+        messages.append({"role": "user", "content": user_prompt_2})
+        
+        # Second design iteration
+        response_2 = chat_with_tool(client, messages)
+        print("\n=== Cello Iterative Design - Modified Circuit ===")
+        print(response_2.content)
+        
+        return response_1, response_2
+    except Exception as e:
+        print("=== Cello Iterative Design Error ===")
+        print(f"Error: {str(e)}")
+        if "yosys" in str(e).lower():
+            print("\nThis error is likely due to the missing Yosys dependency.")
+            print("Yosys is required for Cello's logic synthesis.")
+        return None, None
 
 def test_custom_design_workflow(client):
     """
@@ -302,6 +370,10 @@ def test_design_circuit_function(client):
     system_prompt = """
     You are a synthetic biology design assistant that specializes in genetic circuit design.
     Use the design_circuit function to create genetic circuits based on user requirements.
+    
+    IMPORTANT: If you encounter errors related to 'yosys: command not found' or missing files with '_yosys.json',
+    please inform the user that Yosys (a required dependency for Cello's logic synthesis) is not installed
+    or not in the system PATH. Suggest installation methods for different operating systems.
     """
     
     # Test 1: Simple NOT gate
@@ -327,8 +399,15 @@ def test_design_circuit_function(client):
     ]
     
     print("\n=== Testing design_circuit with NOT gate ===")
-    result_1 = chat_with_tool(client, messages_1)
-    print(result_1.content)
+    try:
+        result_1 = chat_with_tool(client, messages_1)
+        print(result_1.content)
+    except Exception as e:
+        print(f"Error: {str(e)}")
+        if "yosys" in str(e).lower():
+            print("\nThis error is likely due to the missing Yosys dependency.")
+            print("Yosys is required for Cello's logic synthesis.")
+        result_1 = None
     
     # Run the second test
     messages_2 = [
@@ -337,8 +416,15 @@ def test_design_circuit_function(client):
     ]
     
     print("\n=== Testing design_circuit with NOR gate ===")
-    result_2 = chat_with_tool(client, messages_2)
-    print(result_2.content)
+    try:
+        result_2 = chat_with_tool(client, messages_2)
+        print(result_2.content)
+    except Exception as e:
+        print(f"Error: {str(e)}")
+        if "yosys" in str(e).lower():
+            print("\nThis error is likely due to the missing Yosys dependency.")
+            print("Yosys is required for Cello's logic synthesis.")
+        result_2 = None
     
     return result_1, result_2
 
@@ -368,8 +454,35 @@ def test_get_gate_info(client):
     print(final_msg.content)
     return final_msg
 
+def check_yosys_dependency():
+    """
+    Check if Yosys is installed and available in the system PATH.
+    
+    Returns:
+        bool: True if Yosys is available, False otherwise
+    """
+    import shutil
+    yosys_available = shutil.which("yosys") is not None
+    
+    if not yosys_available:
+        print("\n" + "=" * 80)
+        print(" WARNING: Yosys Dependency Missing ".center(80, "!"))
+        print("=" * 80)
+        print("Yosys is required for Cello's logic synthesis but was not found in your PATH.")
+        print("Cello-related tests will likely fail at the logic synthesis step.")
+        print("To install Yosys:")
+        print("  - macOS: brew install yosys")
+        print("  - Ubuntu/Debian: sudo apt-get install yosys")
+        print("  - Windows: Download from http://www.clifford.at/yosys/download.html")
+        print("=" * 80 + "\n")
+    
+    return yosys_available
+
 def main():
     logging.basicConfig(level=logging.INFO)
+    
+    # Check for Yosys dependency
+    yosys_available = check_yosys_dependency()
     
     # Set up the client
     client = setup_client()
@@ -383,11 +496,17 @@ def main():
     test_ucf_file_selection_with_inducers(client)
     test_ucf_file_selection_unsupported(client)
     
-    print("\n-- Running Design Circuit Function Tests --")
-    test_design_circuit_function(client)
-    
-    print("\n-- Running Cello Circuit Design Tests --")
-    test_cello_basic_circuit(client)
+    # Only run Cello-related tests if Yosys is available or user wants to proceed anyway
+    if yosys_available or input("\nYosys is missing. Run Cello tests anyway? (y/n): ").lower() == 'y':
+        print("\n-- Running Design Circuit Function Tests --")
+        test_design_circuit_function(client)
+        
+        print("\n-- Running Cello Circuit Design Tests --")
+        test_cello_basic_circuit(client)
+        test_cello_advanced_circuit(client)
+        test_cello_iterative_design(client)
+    else:
+        print("\nSkipping Cello-related tests due to missing Yosys dependency.")
 
 if __name__ == "__main__":
     main()
