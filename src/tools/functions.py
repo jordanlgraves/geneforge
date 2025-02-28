@@ -675,19 +675,143 @@ class ToolIntegration:
         }
 
     def call_tool_function(self, function_name, function_args):
+        """
+        Call a tool function with the provided arguments.
+        
+        Args:
+            function_name: Name of the function to call
+            function_args: Arguments for the function
+            
+        Returns:
+            Result of the function call
+        """
         if function_name == "find_gates_by_type":
             gate_type = function_args["gate_type"]
             return self.find_gates_by_type_func(gate_type)
         elif function_name == "get_gate_info":
             gate_id = function_args["gate_id"]
             return self.get_gate_info_func(gate_id)
+        elif function_name == "simulate_circuit":
+            circuit_spec = function_args["circuit_spec"]
+            return self.simulate_circuit_func(circuit_spec)
+        elif function_name == "list_promoters":
+            # Implement the function to list promoters
+            try:
+                from src.library.ucf_retrieval import list_promoters
+                promoters = list_promoters(self.library_data)
+                return {
+                    "promoters": [
+                        {
+                            "id": p.get("id", "unknown"),
+                            "type": p.get("type", "promoter"),
+                            "sequence": p.get("sequence", "")[:50] + "..." if p.get("sequence") and len(p.get("sequence")) > 50 else p.get("sequence", "")
+                        } 
+                        for p in promoters
+                    ],
+                    "count": len(promoters)
+                }
+            except Exception as e:
+                return {"error": f"Error listing promoters: {str(e)}"}
+        elif function_name == "choose_repressor":
+            # Implement the function to choose a repressor
+            try:
+                from src.library.ucf_retrieval import choose_repressor
+                family = function_args.get("family", None)
+                repressors = choose_repressor(self.library_data, family)
+                return {
+                    "repressors": [
+                        {
+                            "id": r.get("id", "unknown"),
+                            "type": r.get("type", "repressor"),
+                            "sequence": r.get("sequence", "")[:50] + "..." if r.get("sequence") and len(r.get("sequence")) > 50 else r.get("sequence", "")
+                        }
+                        for r in repressors
+                    ],
+                    "count": len(repressors)
+                }
+            except Exception as e:
+                return {"error": f"Error choosing repressor: {str(e)}"}
+        elif function_name == "get_dna_part_by_name":
+            # Implement the function to get a DNA part by name
+            try:
+                from src.library.ucf_retrieval import get_dna_part_by_name
+                name = function_args["name"]
+                part = get_dna_part_by_name(self.library_data, name)
+                if part:
+                    return {
+                        "id": part.get("id", "unknown"),
+                        "type": part.get("type", "dna_part"),
+                        "sequence": part.get("sequence", ""),
+                        "raw_data": part.get("raw_data", {})
+                    }
+                else:
+                    return {"error": f"DNA part with name '{name}' not found"}
+            except Exception as e:
+                return {"error": f"Error getting DNA part: {str(e)}"}
+        elif function_name == "list_terminators":
+            # Implement the function to list terminators
+            try:
+                from src.library.ucf_retrieval import list_terminators
+                terminators = list_terminators(self.library_data)
+                return {
+                    "terminators": [
+                        {
+                            "id": t.get("id", "unknown"),
+                            "type": t.get("type", "terminator"),
+                            "sequence": t.get("sequence", "")[:50] + "..." if t.get("sequence") and len(t.get("sequence")) > 50 else t.get("sequence", "")
+                        }
+                        for t in terminators
+                    ],
+                    "count": len(terminators)
+                }
+            except Exception as e:
+                return {"error": f"Error listing terminators: {str(e)}"}
+        elif function_name == "list_misc_items":
+            # Implement the function to list miscellaneous items
+            try:
+                from src.library.ucf_retrieval import list_misc_items
+                items = list_misc_items(self.library_data)
+                return {
+                    "items": [
+                        {
+                            "id": item.get("id", f"item_{i}"),
+                            "type": item.get("type", "unknown"),
+                            "category": item.get("category", "misc")
+                        }
+                        for i, item in enumerate(items)
+                    ],
+                    "count": len(items)
+                }
+            except Exception as e:
+                return {"error": f"Error listing misc items: {str(e)}"}
         elif function_name == "design_with_cello":
             verilog_code = function_args["verilog_code"]
             config = function_args.get("config", None)
             return self.design_with_cello_func(verilog_code, config)
-        elif function_name == "simulate_circuit":
-            circuit_spec = function_args["circuit_spec"]
-            return self.simulate_circuit_func(circuit_spec)
+        elif function_name == "create_custom_ucf":
+            selected_gates = function_args["selected_gates"]
+            selected_parts = function_args["selected_parts"]
+            modified_parts = function_args["modified_parts"]
+            ucf_name = function_args.get("ucf_name", "")
+            return self.create_custom_ucf_func(selected_gates, selected_parts, modified_parts, ucf_name)
+        elif function_name == "predict_promoter_strength":
+            sequence = function_args["sequence"]
+            return self.predict_promoter_strength_func(sequence)
+        elif function_name == "optimize_promoter":
+            seed_sequence = function_args["seed_sequence"]
+            target_strength = function_args["target_strength"]
+            iterations = function_args["iterations"]
+            return self.optimize_promoter_func(seed_sequence, target_strength, iterations)
+        elif function_name == "generate_promoters":
+            count = function_args["count"]
+            min_strength = function_args.get("min_strength", None)
+            max_strength = function_args.get("max_strength", None)
+            return self.generate_promoters_func(count, min_strength, max_strength)
+        elif function_name == "optimize_binding_site":
+            repressor_id = function_args["repressor_id"]
+            starting_site = function_args["starting_site"]
+            target_repression = function_args["target_repression"]
+            return self.optimize_binding_site_func(repressor_id, starting_site, target_repression)
         elif function_name == "find_ucf_file":
             organism = function_args["organism"]
             inducers = function_args.get("inducers", None)
@@ -701,30 +825,6 @@ class ToolIntegration:
             gate_types = function_args.get("gate_types", None)
             config = function_args.get("config", None)
             return self.design_circuit_func(verilog_code, organism, inducers, outputs, gate_types, config)
-        elif function_name == "optimize_promoter":
-            promoter_id = function_args["promoter_id"]
-            target_strength = function_args["target_strength"]
-            
-            promoter_optimizer = PromoterOptimizer()
-            promoters = promoter_optimizer.optimize_promoter(
-                promoter_id=promoter_id,
-                target_strength=target_strength
-            )
-            
-            return promoters
-        elif function_name == "optimize_binding_site":
-            repressor_id = function_args["repressor_id"]
-            starting_site = function_args["starting_site"]
-            target_repression = function_args["target_repression"]
-            
-            repressor_optimizer = RepressorOptimizer()
-            result = repressor_optimizer.optimize_binding_site(
-                repressor_id=repressor_id,
-                starting_site=starting_site,
-                target_repression=target_repression
-            )
-            
-            return result
         elif function_name == "analyze_and_select_library":
             user_request = function_args["user_request"]
             return self.analyze_and_select_library_func(user_request)

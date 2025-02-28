@@ -1,11 +1,13 @@
+import os
 import logging
 import json
-import os
-from openai import OpenAI      
+import time
+from typing import List, Dict, Any, Optional, Callable, Tuple, Union
+from openai import OpenAI
 
-from tools.functions import ToolIntegration, tool_functions
-from library.ucf_retrieval import get_gate_by_id, get_gates_by_type, load_ecoli_library
-from design_module import DesignOrchestrator
+from src.tools.functions import ToolIntegration, tool_functions
+from src.library.ucf_retrieval import get_gate_by_id, get_gates_by_type, load_ecoli_library
+from src.design_module import DesignOrchestrator
 
 LIBRARY_JSON_PATH = "libs/parsed/Eco1C1G1T0_parsed.json"
 library_data = load_ecoli_library(LIBRARY_JSON_PATH)
@@ -14,8 +16,60 @@ library = ToolIntegration(library_data)
 # Initialize the design orchestrator
 design_orchestrator = DesignOrchestrator(library)
 
-def chat_with_tool(client, messages, i=0, model="gpt-4o-mini"):
+# Configure logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
+def chat_with_tool(client, messages, i=0, model="gpt-4o-mini", max_rounds=10):
     logging.info(f"Message round: {i}")
+    
+    # Safety check to prevent infinite loops
+    if i >= max_rounds:
+        logging.warning(f"Maximum number of rounds ({max_rounds}) reached. Breaking out of the loop.")
+        return {
+            "role": "assistant",
+            "content": "I apologize, but I seem to be having trouble completing this task. I've attempted to use several functions but encountered persistent errors. Please check if the required functionality is available or try a different approach."
+        }
+    
+    # Check for repeated errors
+    if i >= 3 and len(messages) >= 4:
+        # Check the last three function calls
+        error_count = 0
+        last_error = None
+        last_function = None
+        
+        for j in range(len(messages) - 1, 0, -2):  # Check every other message (function responses)
+            if j < 3:  # Make sure we don't go out of bounds
+                break
+                
+            if messages[j].get("role") == "function" and messages[j-1].get("role") == "assistant":
+                try:
+                    content = json.loads(messages[j].get("content", "{}"))
+                    function_name = messages[j-1].get("function_call", {}).get("name")
+                    
+                    if "error" in content and function_name:
+                        current_error = content["error"]
+                        
+                        # If this is the same function and error as before
+                        if last_error == current_error and last_function == function_name:
+                            error_count += 1
+                        
+                        last_error = current_error
+                        last_function = function_name
+                        
+                        # If we see the same error 3 times in a row for the same function,
+                        # add a special message to break the loop
+                        if error_count >= 2:  # We've seen it 3 times (this one + 2 previous)
+                            logging.warning(f"Same error detected {error_count+1} times for function {function_name}: {current_error}")
+                            
+                            # Add a special message to help the model understand it should stop trying this function
+                            messages.append({
+                                "role": "system",
+                                "content": f"IMPORTANT: The function '{function_name}' is consistently returning the error: '{current_error}'. Please stop attempting to use this function and provide an alternative solution or a helpful response without it."
+                            })
+                            break
+                except Exception as e:
+                    logging.error(f"Error checking for repeated errors: {e}")
     
     response = client.chat.completions.create(
         model=model,
@@ -54,7 +108,7 @@ def chat_with_tool(client, messages, i=0, model="gpt-4o-mini"):
                 "content": json.dumps(tool_result)
             })
             
-            return chat_with_tool(client, messages, i + 1, model)
+            return chat_with_tool(client, messages, i + 1, model, max_rounds)
             
         except Exception as e:
             logging.error(f"Error calling function {fn_name}: {str(e)}")
@@ -66,7 +120,7 @@ def chat_with_tool(client, messages, i=0, model="gpt-4o-mini"):
                 "content": json.dumps(error_result)
             })
             
-            return chat_with_tool(client, messages, i + 1, model)
+            return chat_with_tool(client, messages, i + 1, model, max_rounds)
     else:
         logging.info("No function call made; returning the model's response.")
         return response.choices[0].message
