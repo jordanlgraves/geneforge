@@ -1,6 +1,48 @@
 import json
+import os
+import logging
+from typing import Dict, List, Any, Optional, Union
 
-def parse_ecoli_ucf(ucf_path):
+# Configure logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger("parse_ucf")
+
+def parse_ucf(ucf_path: str, organism_type: str = None) -> Dict:
+    """
+    Parse a UCF library JSON file. This is a wrapper around organism-specific parsers.
+    
+    Args:
+        ucf_path: Path to the UCF JSON file
+        organism_type: Optional organism type to force a specific parser
+        
+    Returns:
+        Dictionary containing the parsed UCF data
+    """
+    # Determine organism type from filename if not provided
+    if not organism_type:
+        filename = os.path.basename(ucf_path)
+        if filename.startswith("Eco"):
+            organism_type = "ecoli"
+        elif filename.startswith("SC"):
+            organism_type = "yeast"
+        elif filename.startswith("BS"):
+            organism_type = "bacillus"
+        else:
+            # Default to E. coli parser
+            organism_type = "ecoli"
+            logger.warning(f"Could not determine organism type from filename '{filename}'. Using E. coli parser.")
+    
+    # Call the appropriate parser
+    organism_type = organism_type.lower()
+    if organism_type in ["ecoli", "e.coli", "e. coli", "escherichia coli"]:
+        return parse_ecoli_ucf(ucf_path)
+    elif organism_type in ["yeast", "saccharomyces", "s. cerevisiae", "saccharomyces cerevisiae"]:
+        return parse_yeast_ucf(ucf_path)
+    else:
+        logger.warning(f"No specific parser for organism type '{organism_type}'. Using E. coli parser.")
+        return parse_ecoli_ucf(ucf_path)
+
+def parse_ecoli_ucf(ucf_path: str) -> Dict:
     """
     Parse the UCF library JSON (e.g. Eco1C1G1T0.UCF.json).
     Returns:
@@ -18,11 +60,20 @@ def parse_ecoli_ucf(ucf_path):
         }
       }
     """
+    if not os.path.exists(ucf_path):
+        raise FileNotFoundError(f"UCF file not found: {ucf_path}")
 
     with open(ucf_path, 'r', encoding='utf-8') as f:
-        lib = json.load(f)
+        try:
+            lib = json.load(f)
+        except json.JSONDecodeError as e:
+            raise ValueError(f"Invalid JSON in UCF file: {e}")
 
-    # This is the final structure we’ll return
+    # Verify we have a list/array
+    if not isinstance(lib, list):
+        raise ValueError(f"UCF file does not contain a JSON array as expected. Found {type(lib)} instead.")
+
+    # This is the final structure we'll return
     structured_data = {
         "metadata": {},
         "parts": [],
@@ -49,6 +100,10 @@ def parse_ecoli_ucf(ucf_path):
     total_entries = len(lib)
 
     for i, item in enumerate(lib):
+        # Skip non-dict items
+        if not isinstance(item, dict):
+            logger.warning(f"Skipping non-dict item at index {i}: {item}")
+            continue
         # If i == 0, assume library-level metadata
         if i == 0:
             metadata = {k: v for k, v in item.items() if k != 'collection'}
@@ -215,6 +270,17 @@ def parse_ecoli_ucf(ucf_path):
     summary["num_eugene_rules"] = len([x for x in structured_data["misc"] if x.get("category") == "eugene_rules"])
     summary["num_module_locations"] = len([x for x in structured_data["misc"] if x.get("category") == "module_locations"])  
 
+    # Add organism identifier
+    filename = os.path.basename(ucf_path)
+    if filename.startswith("Eco"):
+        summary["organism"] = "Escherichia coli"
+    elif filename.startswith("SC"):
+        summary["organism"] = "Saccharomyces cerevisiae"
+    elif filename.startswith("BS"):
+        summary["organism"] = "Bacillus subtilis"
+    else:
+        summary["organism"] = "Unknown"
+
     final_output = {
         "summary": summary,
         "report": report,
@@ -222,9 +288,49 @@ def parse_ecoli_ucf(ucf_path):
     }
     return final_output
 
+def parse_yeast_ucf(ucf_path: str) -> Dict:
+    """
+    Parse a UCF file for Saccharomyces cerevisiae (yeast).
+    This is currently a stub that calls the E. coli parser, but could be 
+    expanded for yeast-specific parsing logic in the future.
+    
+    Args:
+        ucf_path: Path to the UCF JSON file
+        
+    Returns:
+        Dictionary containing the parsed UCF data
+    """
+    # Currently, we use the same parsing logic as E. coli
+    # but override the organism in the summary
+    parsed_data = parse_ecoli_ucf(ucf_path)
+    parsed_data["summary"]["organism"] = "Saccharomyces cerevisiae"
+    
+    # Add any yeast-specific parsing logic here in the future
+    
+    return parsed_data
+
 def main():
-    ucf_path = "libs/cello-ucf/Eco1C1G1T0.UCF.json"
-    parsed = parse_ecoli_ucf(ucf_path)
+    """
+    Example usage of the UCF parser.
+    """
+    # Try different paths to locate the UCF file
+    potential_paths = [
+        "libs/cello-ucf/Eco1C1G1T0.UCF.json",
+        "ext_repos/Cello-UCF/files/v2/ucf/Eco/Eco1C1G1T0.UCF.json"
+    ]
+    
+    ucf_path = None
+    for path in potential_paths:
+        if os.path.exists(path):
+            ucf_path = path
+            break
+    
+    if not ucf_path:
+        print("Could not find UCF file in expected locations.")
+        return
+    
+    # Parse the UCF file
+    parsed = parse_ucf(ucf_path)
 
     # Print summary
     print("=== UCF Summary ===")
@@ -239,8 +345,26 @@ def main():
     else:
         print("\nNo unrecognized items.")
 
+    # Count part types
+    part_types = {}
+    for part in parsed['structured_data']['parts']:
+        part_type = part.get('type', 'unknown')
+        if part_type in part_types:
+            part_types[part_type] += 1
+        else:
+            part_types[part_type] = 1
+    
+    print("\nPart types:")
+    for t, count in part_types.items():
+        print(f"  {t}: {count}")
+
     # Save the parsed data to a JSON file
-    output_path = "libs/parsed/Eco1C1G1T0_parsed.json"
+    output_dir = "outputs/parsed_ucf"
+    os.makedirs(output_dir, exist_ok=True)
+    
+    filename = os.path.basename(ucf_path)
+    output_path = os.path.join(output_dir, f"{os.path.splitext(filename)[0]}_parsed.json")
+    
     with open(output_path, 'w', encoding='utf-8') as f:
         json.dump(parsed, f, indent=2)
     print(f"\nParsed data saved to {output_path}")

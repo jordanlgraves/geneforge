@@ -22,12 +22,8 @@ class Config:
         self.deepseek_base_url = os.getenv("DEEPSEEK_BASE_URL")
         
         # LLM Settings
-        self.default_model = os.getenv("DEFAULT_MODEL", "gpt-4")
+        self.default_model = os.getenv("DEFAULT_MODEL", "gpt-4o-mini")
         self.client_mode = os.getenv("CLIENT_MODE", "OPENAI")
-        
-        # Integration Settings
-        self.cello_jar_path = os.getenv("CELLO_JAR_PATH", "")
-        self.ibiosim_path = os.getenv("IBIOSIM_PATH", "")
         
         # Validate required paths
         self._validate_paths()

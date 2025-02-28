@@ -1,14 +1,28 @@
 # cello_integration.py
-from core_algorithm.celloAlgo import CELLO3
 import subprocess
 import os
 import time
 import atexit
 import logging
-from typing import Dict, Optional
+from typing import Dict, Optional, List, Any, Union
+
+# Set up the Python path for Cello
+from src.tools.cello_setup import is_setup_successful
+
+# Import CELLO3 after setting up the path
+if is_setup_successful:
+    from core_algorithm.celloAlgo import CELLO3
+else:
+    raise ImportError("Failed to set up Cello path. Cannot import CELLO3.")
+
+from src.library.ucf_customizer import UCFCustomizer  # Import UCFCustomizer for validation
+from src.library.library_manager import LibraryManager
 
 class CelloIntegration:
-    def __init__(self, cello_args: Optional[Dict] = None, cello_config: Optional[Dict] = None):
+    def __init__(self, 
+                cello_args: Optional[Dict] = None, 
+                cello_config: Optional[Dict] = None,
+                library_id: Optional[str] = None):
         # Default configuration that can be overridden
         self.cello_args = {
             'v_name': '0x17.v',
@@ -32,6 +46,14 @@ class CelloIntegration:
         self.java_process = None
         self.log_buffer = []
         self._setup_logging()
+        
+        # Initialize library manager
+        self.library_manager = LibraryManager()
+        
+        # Select library if specified
+        if library_id:
+            self.select_library(library_id)
+            
         self._start_minieugene_server()
 
     def _setup_logging(self):
@@ -49,6 +71,7 @@ class CelloIntegration:
                 self.log_buffer.append(self.format(record))
 
         # Add handlers for both file and memory capture
+        os.makedirs('outputs/cello_outputs', exist_ok=True)
         file_handler = logging.FileHandler('outputs/cello_outputs/cello_run.log')
         capture_handler = LogCaptureHandler(self.log_buffer)
         
@@ -93,14 +116,142 @@ class CelloIntegration:
             except subprocess.TimeoutExpired:
                 self.java_process.kill()
             self.java_process = None
+            
+    def select_library(self, library_id: str) -> bool:
+        """
+        Select a library to use for Cello.
+        
+        Args:
+            library_id: Library identifier (e.g., "Eco1C1G1T1" or "ecoli")
+            
+        Returns:
+            True if library was successfully selected, False otherwise
+        """
+        success = self.library_manager.select_library(library_id)
+        
+        if success:
+            # Update Cello arguments with the selected library
+            library_info = self.library_manager.get_current_library_info()
+            
+            # Process the UCF file
+            if library_info["ucf_path"]:
+                # Extract just the filename for the UCF
+                ucf_filename = os.path.basename(library_info["ucf_path"])
+                
+                # Update the UCF name in Cello args
+                self.cello_args["ucf_name"] = ucf_filename
+                
+                # Copy the UCF file to the Cello constraints directory if needed
+                constraints_dir = self.cello_args["constraints_path"]
+                os.makedirs(constraints_dir, exist_ok=True)
+                
+                target_path = os.path.join(constraints_dir, ucf_filename)
+                if not os.path.exists(target_path):
+                    import shutil
+                    shutil.copy2(library_info["ucf_path"], target_path)
+                    self.logger.info(f"Copied UCF file to {target_path}")
+            else:
+                self.logger.warning(f"Selected library {library_id} has no UCF file")
+                return False
+                
+            # Process the input file if available
+            if library_info["input_path"]:
+                # Extract just the filename for the input file
+                input_filename = os.path.basename(library_info["input_path"])
+                
+                # Update the input name in Cello args
+                self.cello_args["in_name"] = input_filename
+                
+                # Copy the input file to the Cello constraints directory if needed
+                if not os.path.exists(os.path.join(constraints_dir, input_filename)):
+                    import shutil
+                    shutil.copy2(library_info["input_path"], os.path.join(constraints_dir, input_filename))
+                    self.logger.info(f"Copied input file to {os.path.join(constraints_dir, input_filename)}")
+            
+            # Process the output file if available
+            if library_info["output_path"]:
+                # Extract just the filename for the output file
+                output_filename = os.path.basename(library_info["output_path"])
+                
+                # Update the output name in Cello args
+                self.cello_args["out_name"] = output_filename
+                
+                # Copy the output file to the Cello constraints directory if needed
+                if not os.path.exists(os.path.join(constraints_dir, output_filename)):
+                    import shutil
+                    shutil.copy2(library_info["output_path"], os.path.join(constraints_dir, output_filename))
+                    self.logger.info(f"Copied output file to {os.path.join(constraints_dir, output_filename)}")
+            
+            self.logger.info(f"Selected library: {library_id}")
+            self.logger.info(f"  UCF: {self.cello_args.get('ucf_name', 'None')}")
+            self.logger.info(f"  Input: {self.cello_args.get('in_name', 'None')}")
+            self.logger.info(f"  Output: {self.cello_args.get('out_name', 'None')}")
+            return True
+        else:
+            self.logger.error(f"Failed to select library: {library_id}")
+            return False
+            
+    def get_available_libraries(self) -> List[str]:
+        """
+        Get a list of available libraries.
+        
+        Returns:
+            List of library IDs
+        """
+        return self.library_manager.get_available_libraries()
+        
+    def create_custom_ucf(self, 
+                         selected_gates: List[str] = None,
+                         selected_parts: List[str] = None,
+                         modified_parts: Dict[str, Dict] = None,
+                         new_parts: List[Dict] = None,
+                         ucf_name: str = None,
+                         output_dir: str = None) -> Optional[str]:
+        """
+        Create a custom UCF file with selected parts and modifications.
+        
+        Args:
+            selected_gates: List of gate IDs to include
+            selected_parts: List of part IDs to include
+            modified_parts: Dict of part_id -> modified properties
+            new_parts: List of new part definitions to add
+            ucf_name: Optional name for the UCF file
+            output_dir: Optional directory to save the UCF file
+            
+        Returns:
+            Path to the created UCF file or None if creation failed
+        """
+        # Create the custom UCF
+        custom_ucf_path = self.library_manager.create_custom_ucf(
+            selected_gates=selected_gates,
+            selected_parts=selected_parts,
+            modified_parts=modified_parts,
+            new_parts=new_parts,
+            ucf_name=ucf_name,
+            output_dir=output_dir or self.cello_args["constraints_path"]
+        )
+        
+        if custom_ucf_path:
+            # Update Cello args to use the new UCF
+            self.cello_args["ucf_name"] = os.path.basename(custom_ucf_path)
+            self.logger.info(f"Created custom UCF: {custom_ucf_path}")
+            return custom_ucf_path
+        else:
+            self.logger.error("Failed to create custom UCF")
+            return None
 
-    def run_cello(self, verilog_code: str = None) -> Dict:
+    def run_cello(self, verilog_code: str = None, custom_ucf: Dict[str, Any] = None) -> Dict:
         """
         Run Cello with configured parameters and return results
         
         Args:
             verilog_code: Optional Verilog code to process. If provided, saves to temp file.
-        
+            custom_ucf: Optional dictionary with custom UCF parameters:
+                - selected_gates: List of gate IDs to include
+                - selected_parts: List of part IDs to include
+                - modified_parts: Dict of part_id -> modified properties
+                - new_parts: List of new part definitions to add
+            
         Returns:
             Dict containing:
             - success: bool
@@ -108,6 +259,7 @@ class CelloIntegration:
             - results: Dict (Cello results including DNA design)
         """
         try:
+            # Process Verilog code if provided
             if verilog_code:
                 # Save verilog code to temporary file
                 verilog_path = os.path.join(self.cello_args['verilogs_path'], 
@@ -115,6 +267,57 @@ class CelloIntegration:
                 os.makedirs(os.path.dirname(verilog_path), exist_ok=True)
                 with open(verilog_path, 'w') as f:
                     f.write(verilog_code)
+            
+            # Create custom UCF if requested
+            if custom_ucf:
+                custom_ucf_path = self.create_custom_ucf(
+                    selected_gates=custom_ucf.get("selected_gates"),
+                    selected_parts=custom_ucf.get("selected_parts"),
+                    modified_parts=custom_ucf.get("modified_parts"),
+                    new_parts=custom_ucf.get("new_parts"),
+                    ucf_name=custom_ucf.get("ucf_name")
+                )
+                
+                if not custom_ucf_path:
+                    return {
+                        'success': False,
+                        'log': '\n'.join(self.log_buffer),
+                        'error': "Failed to create custom UCF"
+                    }
+            
+            # Validate UCF file before running Cello
+            ucf_path = os.path.join(
+                self.cello_args.get('constraints_path', ''), 
+                self.cello_args.get('ucf_name', '')
+            )
+            
+            if os.path.exists(ucf_path):
+                self.logger.info(f"Validating UCF file: {ucf_path}")
+                try:
+                    ucf_validator = UCFCustomizer(ucf_path)
+                    validation_result = ucf_validator.validate_ucf()
+                    
+                    if not validation_result['valid']:
+                        self.logger.error(f"UCF validation failed: {validation_result['errors']}")
+                        return {
+                            'success': False,
+                            'log': '\n'.join(self.log_buffer),
+                            'error': f"UCF validation failed: {validation_result['errors']}"
+                        }
+                except Exception as e:
+                    self.logger.error(f"UCF validation error: {e}")
+                    return {
+                        'success': False,
+                        'log': '\n'.join(self.log_buffer),
+                        'error': f"UCF validation error: {e}"
+                    }
+            else:
+                self.logger.error(f"UCF file not found at: {ucf_path}")
+                return {
+                    'success': False,
+                    'log': '\n'.join(self.log_buffer),
+                    'error': f"UCF file not found at: {ucf_path}"
+                }
 
             self.logger.info("Starting Cello run with configuration: %s", self.cello_config)
             
@@ -187,22 +390,25 @@ class CelloIntegration:
         return results
 
 if __name__ == "__main__":
-    cello_args = {
-        'v_name': '0x17.v',
-        'ucf_name': 'Eco1C1G1T1.UCF.json',
-        'in_name': 'Eco1C1G1T1.input.json',
-        'out_name': 'Eco1C1G1T1.output.json',
-        'verilogs_path': 'ext_repos/Cello-v2-1-Core/library/verilogs',
-        'constraints_path': 'ext_repos/Cello-v2-1-Core/library/constraints',
-        'out_path': 'outputs/cello_outputs'
+    # Example usage
+    cello = CelloIntegration(library_id="Eco1C1G1T1")
+    
+    # Print available libraries
+    print("Available libraries:", cello.get_available_libraries())
+    
+    # Create a custom UCF with specific gates and parts
+    custom_ucf = {
+        "selected_gates": ["A1_AmtR", "P3_PhlF"],
+        "selected_parts": ["pTac", "YFP", "L3S2P21"],
+        "ucf_name": "custom_test.UCF.json"
     }
-    cello_config ={
-        'verbose': False,  # Print more info to console & log. See logging.config to change verbosity
-        'print_iters': False,  # Print to console info on *all* tested iters (produces copious amounts of text)
-        'exhaustive': False,  # Run *all* possible permutes to find true optimum score (*long* run time)
-        'test_configs': False,  # Runs brief tests of all configs, producing logs and a csv summary of all tests
-        'log_overwrite': True,  # Removes date/time from file name, allowing overwrite of logs
-        'total_iters': 1_000  #
-    }
-    cello = CelloIntegration(cello_args, cello_config)
-    cello.run_cello()
+    
+    # Run Cello with the custom UCF
+    result = cello.run_cello(
+        verilog_code="module main(input a, input b, output y); assign y = a & b; endmodule",
+        custom_ucf=custom_ucf
+    )
+    
+    print("Cello run success:", result["success"])
+    if result["success"]:
+        print("Output path:", result["results"]["output_path"])

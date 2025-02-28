@@ -1,7 +1,14 @@
 # tools/functions.py
 
 import json
+import os
+import glob
+import re
 from src.library.ucf_retrieval import choose_repressor, get_dna_part_by_name, get_gate_by_id, get_gates_by_type, list_misc_items, list_promoters, list_terminators
+from src.library.ucf_customizer import UCFCustomizer
+from src.tools.gpro_integration import PromoterOptimizer, RepressorOptimizer
+from src.library.llm_library_selector import RuleBasedLibrarySelector, LLMBasedLibrarySelector
+from src.library.library_manager import LibraryManager
 
 
 tool_functions = [
@@ -124,6 +131,194 @@ tool_functions = [
             },
             "required": ["verilog_code"]
         }
+    },
+    {
+        "name": "create_custom_ucf",
+        "description": "Create a customized UCF file with selected parts for more controlled circuit design.",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "selected_gates": {
+                    "type": "array",
+                    "items": {"type": "string"},
+                    "description": "List of gate IDs to include in the custom UCF"
+                },
+                "selected_parts": {
+                    "type": "array",
+                    "items": {"type": "string"},
+                    "description": "List of part IDs to include in the custom UCF"
+                },
+                "modified_parts": {
+                    "type": "object",
+                    "description": "Dict of part_id -> modified properties"
+                },
+                "ucf_name": {
+                    "type": "string",
+                    "description": "Optional name for the UCF file"
+                }
+            },
+            "required": []
+        }
+    },
+    {
+        "name": "predict_promoter_strength",
+        "description": "Predict the strength of a promoter sequence.",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "sequence": {
+                    "type": "string",
+                    "description": "DNA sequence of the promoter"
+                }
+            },
+            "required": ["sequence"]
+        }
+    },
+    {
+        "name": "optimize_promoter",
+        "description": "Optimize a promoter to reach a target strength.",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "seed_sequence": {
+                    "type": "string",
+                    "description": "Starting sequence for optimization"
+                },
+                "target_strength": {
+                    "type": "number",
+                    "description": "Desired promoter strength"
+                },
+                "iterations": {
+                    "type": "integer",
+                    "description": "Number of optimization iterations"
+                }
+            },
+            "required": ["seed_sequence", "target_strength"]
+        }
+    },
+    {
+        "name": "generate_promoters",
+        "description": "Generate novel promoter sequences with optional strength filtering.",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "count": {
+                    "type": "integer",
+                    "description": "Number of promoters to generate"
+                },
+                "min_strength": {
+                    "type": "number",
+                    "description": "Minimum acceptable strength (optional)"
+                },
+                "max_strength": {
+                    "type": "number",
+                    "description": "Maximum acceptable strength (optional)"
+                }
+            },
+            "required": ["count"]
+        }
+    },
+    {
+        "name": "optimize_binding_site",
+        "description": "Optimize a repressor binding site for target repression level.",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "repressor_id": {
+                    "type": "string",
+                    "description": "ID of the repressor protein"
+                },
+                "starting_site": {
+                    "type": "string",
+                    "description": "Starting binding site sequence"
+                },
+                "target_repression": {
+                    "type": "number",
+                    "description": "Desired repression level (0-1)"
+                }
+            },
+            "required": ["repressor_id", "starting_site", "target_repression"]
+        }
+    },
+    {
+        "name": "find_ucf_file",
+        "description": "Find the appropriate UCF file based on user specifications.",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "organism": {
+                    "type": "string",
+                    "description": "Organism for the circuit (e.g., 'E. coli', 'yeast')"
+                },
+                "inducers": {
+                    "type": "array",
+                    "items": {"type": "string"},
+                    "description": "List of inducers to use (e.g., 'arabinose', 'IPTG', 'aTc')"
+                },
+                "gate_types": {
+                    "type": "array",
+                    "items": {"type": "string"},
+                    "description": "List of gate types needed (e.g., 'NOT', 'NOR', 'AND')"
+                }
+            },
+            "required": ["organism"]
+        }
+    },
+    {
+        "name": "design_circuit",
+        "description": "Design a genetic circuit with automatic UCF file selection based on requirements.",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "verilog_code": {
+                    "type": "string",
+                    "description": "The Verilog code representing the circuit design"
+                },
+                "organism": {
+                    "type": "string",
+                    "description": "Organism for the circuit (e.g., 'E. coli', 'yeast')"
+                },
+                "inducers": {
+                    "type": "array",
+                    "items": {"type": "string"},
+                    "description": "List of inducers to use (e.g., 'arabinose', 'IPTG', 'aTc')"
+                },
+                "outputs": {
+                    "type": "array",
+                    "items": {"type": "string"},
+                    "description": "List of outputs required (e.g., 'GFP', 'RFP')"
+                },
+                "gate_types": {
+                    "type": "array",
+                    "items": {"type": "string"},
+                    "description": "List of gate types needed (e.g., 'NOT', 'NOR', 'AND')"
+                },
+                "config": {
+                    "type": "object",
+                    "description": "Optional Cello configuration parameters",
+                    "properties": {
+                        "exhaustive": {"type": "boolean"},
+                        "total_iters": {"type": "integer"},
+                        "verbose": {"type": "boolean"}
+                    }
+                }
+            },
+            "required": ["verilog_code", "organism"]
+        }
+    },
+    {
+        "name": "analyze_and_select_library",
+        "description": "Analyze a user request and select the most appropriate library based on the requirements.",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "user_request": {
+                    "type": "string",
+                    "description": "The user's request describing their circuit design needs, including organism, parts, gates, etc."
+                }
+            },
+            "required": ["user_request"]
+        }
     }
 ]
 
@@ -151,7 +346,7 @@ class ToolIntegration:
         """
         Interface with Cello to design genetic circuits from Verilog specifications.
         """
-        from tools.cello_integration import CelloIntegration
+        from src.tools.cello_integration import CelloIntegration
         
         # Initialize Cello with optional custom config
         cello = CelloIntegration(cello_config=config)
@@ -199,6 +394,285 @@ class ToolIntegration:
         except Exception as e:
             return {"error": f"Failed to parse circuit_spec as JSON: {e}"}
 
+    def find_ucf_file_func(self, organism: str, inducers: list = None, gate_types: list = None):
+        """
+        Find the appropriate UCF file based on user specifications.
+        
+        Args:
+            organism: Organism for the circuit (e.g., 'E. coli', 'yeast')
+            inducers: List of inducers to use (e.g., 'arabinose', 'IPTG', 'aTc')
+            gate_types: List of gate types needed (e.g., 'NOT', 'NOR', 'AND')
+            
+        Returns:
+            Dict containing matching UCF files and their properties
+        """
+        # Map organism names to directory prefixes
+        organism_map = {
+            "e. coli": "Eco",
+            "e.coli": "Eco",
+            "ecoli": "Eco",
+            "eco": "Eco",
+            "yeast": "SC",
+            "s. cerevisiae": "SC",
+            "bacillus": "Bth",
+            "b. subtilis": "Bth"
+        }
+        
+        # Map inducer names to search terms
+        inducer_map = {
+            "arabinose": ["arabinose", "AraC", "pBAD"],
+            "iptg": ["IPTG", "LacI", "pTac"],
+            "atc": ["aTc", "TetR", "pTet"],
+            "tetracycline": ["aTc", "TetR", "pTet"],
+            "3oxoc6hsl": ["3OC6HSL", "LuxR", "pLux"],
+            "hsl": ["HSL", "LuxR", "pLux"]
+        }
+        
+        # Map gate types to search terms
+        gate_type_map = {
+            "not": ["NOT", "inverter"],
+            "nor": ["NOR"],
+            "and": ["AND"],
+            "or": ["OR"],
+            "nand": ["NAND"],
+            "xor": ["XOR"]
+        }
+        
+        # Normalize organism input
+        org_key = organism.lower().strip()
+        if org_key not in organism_map:
+            return {
+                "error": f"Unsupported organism: {organism}. Supported organisms are: E. coli, S. cerevisiae, B. subtilis"
+            }
+        
+        org_prefix = organism_map[org_key]
+        
+        # Get all UCF files for the specified organism
+        ucf_dir = "ext_repos/Cello-UCF/files/v2/ucf"
+        ucf_files = glob.glob(f"{ucf_dir}/{org_prefix}/*.UCF.json")
+        
+        if not ucf_files:
+            return {
+                "error": f"No UCF files found for organism: {organism}"
+            }
+        
+        # If no specific requirements, return all available UCF files
+        if not inducers and not gate_types:
+            return {
+                "ucf_files": [os.path.basename(f) for f in ucf_files],
+                "message": f"Found {len(ucf_files)} UCF files for {organism}. No specific requirements provided."
+            }
+        
+        # Prepare search terms
+        search_terms = []
+        
+        if inducers:
+            for inducer in inducers:
+                inducer_key = inducer.lower().strip()
+                if inducer_key in inducer_map:
+                    search_terms.extend(inducer_map[inducer_key])
+                else:
+                    return {
+                        "error": f"Unsupported inducer: {inducer}. Supported inducers are: arabinose, IPTG, aTc, 3OC6HSL"
+                    }
+        
+        if gate_types:
+            for gate_type in gate_types:
+                gate_key = gate_type.lower().strip()
+                if gate_key in gate_type_map:
+                    search_terms.extend(gate_type_map[gate_key])
+                else:
+                    return {
+                        "error": f"Unsupported gate type: {gate_type}. Supported gate types are: NOT, NOR, AND, OR, NAND, XOR"
+                    }
+        
+        # Check each UCF file for the search terms
+        matching_files = []
+        
+        for ucf_file in ucf_files:
+            file_name = os.path.basename(ucf_file)
+            
+            # Use grep to search for terms in the file
+            matches = {}
+            for term in search_terms:
+                try:
+                    # Use grep to search for the term
+                    result = os.popen(f"grep -i '{term}' '{ucf_file}' | wc -l").read().strip()
+                    count = int(result)
+                    if count > 0:
+                        matches[term] = count
+                except Exception as e:
+                    print(f"Error searching for {term} in {file_name}: {e}")
+            
+            if matches:
+                matching_files.append({
+                    "file": file_name,
+                    "path": ucf_file,
+                    "matches": matches
+                })
+        
+        if not matching_files:
+            return {
+                "error": f"No UCF files found matching the specified requirements: organism={organism}, inducers={inducers}, gate_types={gate_types}",
+                "available_files": [os.path.basename(f) for f in ucf_files]
+            }
+        
+        # Sort matching files by number of matches
+        matching_files.sort(key=lambda x: sum(x["matches"].values()), reverse=True)
+        
+        return {
+            "matching_files": matching_files,
+            "message": f"Found {len(matching_files)} UCF files matching your requirements."
+        }
+
+    def analyze_and_select_library_func(self, user_request: str):
+        """
+        Analyze a user request and select the most appropriate library.
+        
+        Args:
+            user_request: The user's request describing their circuit design needs
+            
+        Returns:
+            Dict containing the selected library and analysis results
+        """
+        # Create a library selector
+        library_selector = LLMBasedLibrarySelector()
+        
+        # Analyze the request and select a library
+        result = library_selector.select_library(user_request)
+        
+        # If a library was selected, get its metadata
+        if result["success"]:
+            library_id = result["library_id"]
+            metadata = library_selector.get_library_metadata(library_id)
+            result["metadata"] = metadata
+            
+            # Update the library in the Cello integration if available
+            if hasattr(self, "cello_integration") and self.cello_integration:
+                self.cello_integration.select_library(library_id)
+        
+        return result
+        
+    def get_ucf_metadata_func(self):
+        """
+        Get metadata for all available UCF libraries.
+        This function extracts key information from each UCF file to help the LLM make an informed decision.
+        
+        Returns:
+            Dict containing metadata for all available UCF libraries
+        """
+        # Create a library manager to access all libraries
+        library_manager = LibraryManager()
+        
+        # Get all available libraries
+        available_libraries = library_manager.get_available_libraries()
+        
+        # Create a library selector to get detailed metadata
+        library_selector = LLMBasedLibrarySelector(library_manager)
+        
+        # Collect metadata for each library
+        libraries_metadata = {}
+        for library_id in available_libraries:
+            # Select the library
+            library_manager.select_library(library_id)
+            
+            # Get metadata
+            metadata = library_selector.get_library_metadata(library_id)
+            
+            # Add to collection
+            libraries_metadata[library_id] = metadata
+        
+        return {
+            "available_libraries": available_libraries,
+            "libraries_metadata": libraries_metadata
+        }
+    
+    def llm_select_ucf_func(self, user_request: str, llm_reasoning: str):
+        """
+        Select a UCF library based on LLM reasoning.
+        This function is designed to be called after the LLM has analyzed the user request
+        and UCF metadata, and has provided its reasoning for selecting a particular library.
+        
+        Args:
+            user_request: The original user request
+            llm_reasoning: The LLM's reasoning for selecting a particular library,
+                           including the library ID to select
+        
+        Returns:
+            Dict containing the selected library and metadata
+        """
+        # Extract the library ID from the LLM reasoning
+        # This is a simple implementation - in practice, you might want to use regex or more sophisticated parsing
+        library_id = None
+        
+        # Look for library IDs in the reasoning (assuming they follow the format like Eco1C1G1T0)
+        import re
+        library_pattern = r'\b([A-Za-z]{2,3}\d+[A-Za-z]\d+[A-Za-z]\d+[A-Za-z]\d+)\b'
+        matches = re.findall(library_pattern, llm_reasoning)
+        
+        if matches:
+            library_id = matches[0]
+        else:
+            # Try to find any mention of a library ID
+            library_manager = LibraryManager()
+            available_libraries = library_manager.get_available_libraries()
+            
+            for lib_id in available_libraries:
+                if lib_id in llm_reasoning:
+                    library_id = lib_id
+                    break
+        
+        # If no library ID was found, try to extract organism information and select based on that
+        if not library_id:
+            # Create a library selector
+            library_selector = LLMBasedLibrarySelector()
+            
+            # Analyze the user request
+            analysis = library_selector.analyze_user_request(user_request)
+            
+            # Try to select based on organism
+            if analysis["organisms"]:
+                library_manager = LibraryManager()
+                for organism in analysis["organisms"]:
+                    if library_manager.select_library(organism):
+                        library_id = library_manager.current_library_id
+                        break
+            
+            # If still no library ID, default to the first available
+            if not library_id:
+                library_manager = LibraryManager()
+                available_libraries = library_manager.get_available_libraries()
+                if available_libraries:
+                    library_id = available_libraries[0]
+        
+        # If we have a library ID, get its metadata and select it
+        if library_id:
+            library_manager = LibraryManager()
+            success = library_manager.select_library(library_id)
+            
+            if success:
+                # Get metadata
+                library_selector = LLMBasedLibrarySelector(library_manager)
+                metadata = library_selector.get_library_metadata(library_id)
+                
+                # Update the library in the Cello integration if available
+                if hasattr(self, "cello_integration") and self.cello_integration:
+                    self.cello_integration.select_library(library_id)
+                
+                return {
+                    "success": True,
+                    "library_id": library_id,
+                    "metadata": metadata,
+                    "message": f"Selected library {library_id} based on LLM reasoning"
+                }
+        
+        # If we couldn't select a library, return an error
+        return {
+            "success": False,
+            "message": "Could not select a library based on LLM reasoning",
+            "user_request": user_request,
+            "llm_reasoning": llm_reasoning
+        }
 
     def call_tool_function(self, function_name, function_args):
         if function_name == "find_gates_by_type":
@@ -207,24 +681,90 @@ class ToolIntegration:
         elif function_name == "get_gate_info":
             gate_id = function_args["gate_id"]
             return self.get_gate_info_func(gate_id)
+        elif function_name == "design_with_cello":
+            verilog_code = function_args["verilog_code"]
+            config = function_args.get("config", None)
+            return self.design_with_cello_func(verilog_code, config)
         elif function_name == "simulate_circuit":
             circuit_spec = function_args["circuit_spec"]
             return self.simulate_circuit_func(circuit_spec)
-        elif function_name == "list_promoters":
-            return list_promoters(self.library_data)
-        elif function_name == "choose_repressor":
-            fam = function_args.get("family", None)
-            return choose_repressor(self.library_data, fam)
-        elif function_name == "get_dna_part_by_name":
-            return get_dna_part_by_name(self.library_data, function_args["name"])
-        elif function_name == "list_terminators":
-            return list_terminators(self.library_data)
-        elif function_name == "list_misc_items":
-            return list_misc_items(self.library_data)
-        elif function_name == "design_with_cello":
-            verilog = function_args["verilog_code"]
+        elif function_name == "find_ucf_file":
+            organism = function_args["organism"]
+            inducers = function_args.get("inducers", None)
+            gate_types = function_args.get("gate_types", None)
+            return self.find_ucf_file_func(organism, inducers, gate_types)
+        elif function_name == "design_circuit":
+            verilog_code = function_args["verilog_code"]
+            organism = function_args["organism"]
+            inducers = function_args.get("inducers", None)
+            outputs = function_args.get("outputs", None)
+            gate_types = function_args.get("gate_types", None)
             config = function_args.get("config", None)
-            return self.design_with_cello_func(verilog, config)
+            return self.design_circuit_func(verilog_code, organism, inducers, outputs, gate_types, config)
+        elif function_name == "optimize_promoter":
+            promoter_id = function_args["promoter_id"]
+            target_strength = function_args["target_strength"]
+            
+            promoter_optimizer = PromoterOptimizer()
+            promoters = promoter_optimizer.optimize_promoter(
+                promoter_id=promoter_id,
+                target_strength=target_strength
+            )
+            
+            return promoters
+        elif function_name == "optimize_binding_site":
+            repressor_id = function_args["repressor_id"]
+            starting_site = function_args["starting_site"]
+            target_repression = function_args["target_repression"]
+            
+            repressor_optimizer = RepressorOptimizer()
+            result = repressor_optimizer.optimize_binding_site(
+                repressor_id=repressor_id,
+                starting_site=starting_site,
+                target_repression=target_repression
+            )
+            
+            return result
+        elif function_name == "analyze_and_select_library":
+            user_request = function_args["user_request"]
+            return self.analyze_and_select_library_func(user_request)
+        elif function_name == "get_ucf_metadata":
+            return self.get_ucf_metadata_func()
+        elif function_name == "llm_select_ucf":
+            user_request = function_args["user_request"]
+            llm_reasoning = function_args["llm_reasoning"]
+            return self.llm_select_ucf_func(user_request, llm_reasoning)
         else:
             return {"error": f"No such function: {function_name}"}
+
+    def design_circuit_func(self, verilog_code: str, organism: str, inducers: list = None, 
+                           outputs: list = None, gate_types: list = None, config: dict = None):
+        """
+        Design a genetic circuit with automatic UCF file selection based on requirements.
+        
+        Args:
+            verilog_code: Verilog code for the circuit
+            organism: Target organism (e.g., 'E. coli')
+            inducers: List of inducers required (e.g., ['arabinose', 'IPTG'])
+            outputs: List of outputs required (e.g., ['GFP', 'RFP'])
+            gate_types: List of gate types required (e.g., ['NOT', 'NOR'])
+            config: Optional Cello configuration
+            
+        Returns:
+            Dict with design results or error
+        """
+        from src.design_module import DesignOrchestrator
+        
+        # Initialize the design orchestrator
+        orchestrator = DesignOrchestrator(self)
+        
+        # Design the circuit with automatic UCF selection
+        return orchestrator.design_circuit(
+            verilog_code=verilog_code,
+            organism=organism,
+            inducers=inducers,
+            outputs=outputs,
+            gate_types=gate_types,
+            cello_config=config
+        )
 
