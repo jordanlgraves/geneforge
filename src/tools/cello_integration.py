@@ -700,8 +700,8 @@ class CelloIntegration:
         
         for output, ratio in metrics.get('on_off_ratios', {}).items():
             metrics['meets_performance_standards'][output] = {
-                'on_off_ratio': ratio >= 10,  # Common threshold: ON/OFF ratio should be at least 10
-                'leakage': metrics.get('leakage', {}).get(output, 100) <= 10  # Common threshold: leakage should be less than 10%
+                'on_off_ratio': ratio >= 500,  # Much stricter threshold: ON/OFF ratio should be at least 500 (was 10)
+                'leakage': metrics.get('leakage', {}).get(output, 100) <= 0.1  # Much stricter threshold: leakage should be less than 0.1% (was 10%)
             }
 
 if __name__ == "__main__":

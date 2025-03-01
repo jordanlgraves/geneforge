@@ -82,7 +82,8 @@ def get_gates_by_type(library_data, gate_type):
 
 def get_all_parts(library_data):
     """
-    Return the list from library_data["parts"].
+    Return the list from library_data["parts"] if library_data is a dictionary,
+    or return library_data directly if it's already a list.
     Each part is typically:
       {
         "id": <string>,
@@ -91,7 +92,13 @@ def get_all_parts(library_data):
         "raw_data": <original item>
       }
     """
-    return library_data.get("parts", [])
+    if isinstance(library_data, list):
+        return library_data
+    elif isinstance(library_data, dict):
+        return library_data.get("parts", [])
+    else:
+        logger.warning(f"Unexpected library_data type: {type(library_data)}")
+        return []
 
 
 def get_part_by_id(library_data, part_id):
@@ -147,14 +154,21 @@ def get_dna_part_by_name(library_data, name):
 def list_promoters(library_data):
     """
     Return parts that appear to be promoters.
-    If your parse_ecoli_ucf doesn't set 'type'='promoter', you might
-    rely on raw_data. Adjust as needed.
+    Works with either a dictionary with a 'parts' key or directly with a list of parts.
     """
     results = []
     for p in get_all_parts(library_data):
-        if "promoter" in p["id"].lower():
+        # For UCF format where items have a "type" field
+        if isinstance(p, dict) and p.get("type", "").lower() == "promoter":
             results.append(p)
-        elif p['raw_data'].get('type','').lower() == 'promoter':
+        # For UCF format where items have "collection" field 
+        elif isinstance(p, dict) and p.get("collection", "") == "parts" and "promoter" in p.get("name", "").lower():
+            results.append(p)
+        # Check ID if available
+        elif isinstance(p, dict) and "id" in p and "promoter" in p["id"].lower():
+            results.append(p)
+        # Check raw_data if available
+        elif isinstance(p, dict) and "raw_data" in p and isinstance(p["raw_data"], dict) and p['raw_data'].get('type','').lower() == 'promoter':
             results.append(p)
     return results
 

@@ -657,16 +657,20 @@ class UCFCustomizer:
         return result
         
     def _retrieve_schema(self, uri):
-        """
-        Helper method to retrieve schema files for the referencing library.
-        
-        Args:
-            uri: The URI of the schema to retrieve
-            
-        Returns:
-            The schema contents or None if not found
-        """
-        if uri.startswith("file:"):
+        """Retrieve a schema reference from a URL or file path."""
+        if uri.startswith(('http://', 'https://')):
+            try:
+                import requests
+                response = requests.get(uri)
+                if response.status_code == 200:
+                    return response.json()
+                else:
+                    logger.warning(f"Failed to download schema: {uri} (status code: {response.status_code})")
+                    return None
+            except Exception as e:
+                logger.warning(f"Error downloading schema: {uri} - {str(e)}")
+                return None
+        elif uri.startswith('file:'):
             file_path = uri.replace("file:", "")
             if os.name == 'nt' and file_path.startswith("/"):
                 file_path = file_path[1:]
@@ -684,4 +688,46 @@ class UCFCustomizer:
                     except FileNotFoundError:
                         logger.warning(f"Reference file not found: {uri} or {alternative_path}")
                         return None
-        return None 
+        return None
+    
+    def customize_ucf(self, input_ucf_path: str, output_ucf_path: str, modified_parts: Dict[str, Dict] = None) -> str:
+        """
+        Customize an existing UCF file with modified parts.
+        
+        Args:
+            input_ucf_path: Path to the input UCF file
+            output_ucf_path: Path to save the customized UCF file
+            modified_parts: Dictionary mapping part names to dictionaries of modifications
+            
+        Returns:
+            Path to the saved customized UCF file
+        """
+        if not os.path.exists(input_ucf_path):
+            raise FileNotFoundError(f"Input UCF file not found: {input_ucf_path}")
+        
+        logger.info(f"Customizing UCF file: {input_ucf_path}")
+        
+        # Load the input UCF
+        with open(input_ucf_path, 'r') as f:
+            ucf_data = json.load(f)
+        
+        # Validate the input UCF
+        validation_result = self.validate_ucf(ucf_data)
+        if not validation_result['valid']:
+            logger.warning(f"Input UCF file is not valid: {validation_result['errors']}")
+        
+        # Modify parts if specified
+        if modified_parts:
+            self._modify_parts(ucf_data, modified_parts)
+            logger.info(f"Modified {len(modified_parts)} parts in UCF")
+        
+        # Ensure output directory exists
+        os.makedirs(os.path.dirname(os.path.abspath(output_ucf_path)), exist_ok=True)
+        
+        # Save the customized UCF
+        with open(output_ucf_path, 'w') as f:
+            json.dump(ucf_data, f, indent=2)
+        
+        logger.info(f"Saved customized UCF to: {output_ucf_path}")
+        
+        return output_ucf_path 

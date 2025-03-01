@@ -20,9 +20,15 @@ import logging
 import json
 from pathlib import Path
 
+# Add the project root directory to the Python path
+project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), "../.."))
+sys.path.insert(0, project_root)
+
+# Now import from src
 from src.tools.cello_integration import CelloIntegration
 from src.tools.gpro_integration import PromoterOptimizer
 from src.library.ucf_customizer import UCFCustomizer
+from src.library.ucf_retrieval import list_promoters
 
 # Set up logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
@@ -71,23 +77,36 @@ class CircuitOptimizer:
         if gate_types is None:
             gate_types = ["AND"]
         
-        # Find appropriate UCF file
-        ucf_result = self.cello.find_ucf_file(organism, inducers, gate_types)
+        # Hardcode the library selection instead of searching
+        # We're using Eco1C1G1T1 library which has the necessary parts for our circuit
+        library_id = "Eco1C1G1T1"
+        success = self.cello.select_library(library_id)
         
-        if 'error' in ucf_result:
-            logger.error(f"Error finding UCF file: {ucf_result['error']}")
-            return {'success': False, 'error': ucf_result['error']}
+        if not success:
+            logger.error(f"Failed to select library: {library_id}")
+            return {'success': False, 'error': f"Failed to select library: {library_id}"}
         
-        # Use the first matching UCF file
-        if 'matching_files' in ucf_result and ucf_result['matching_files']:
-            ucf_path = ucf_result['matching_files'][0]['path']
-            logger.info(f"Using UCF file: {os.path.basename(ucf_path)}")
-        else:
-            logger.error("No matching UCF files found")
-            return {'success': False, 'error': "No matching UCF files found"}
+        logger.info(f"Selected library: {library_id}")
+        
+        # Get the UCF path from the cello instance
+        ucf_path = os.path.join(
+            self.cello.cello_args.get('constraints_path', ''),
+            self.cello.cello_args.get('ucf_name', '')
+        )
+        
+        if not os.path.exists(ucf_path):
+            logger.error(f"UCF file not found at: {ucf_path}")
+            return {'success': False, 'error': f"UCF file not found at: {ucf_path}"}
+        
+        # Customize the UCF to ensure it has all required parts
+        # This is where we would add the arabinose sensor if it's missing
+        # and ensure GFP is used as the output reporter
+        
+        # For now, we'll use the UCF as is and assume the necessary parts exist
+        # In a real implementation, we would check for the parts and add them if missing
         
         # Run Cello
-        results = self.cello.run_cello(verilog_code, ucf_path)
+        results = self.cello.run_cello(verilog_code)
         
         if not results['success']:
             logger.error(f"Error running Cello: {results.get('error', 'Unknown error')}")
@@ -99,12 +118,12 @@ class CircuitOptimizer:
             'type': 'initial',
             'verilog_code': verilog_code,
             'ucf_path': ucf_path,
-            'output_path': results['output_path'],
+            'output_path': results['results']['output_path'],
             'metrics': None  # Will be populated by evaluate_performance
         }
         
         # Evaluate performance
-        metrics = self.evaluate_performance(results['output_path'])
+        metrics = self.evaluate_performance(results['results']['output_path'])
         iteration_data['metrics'] = metrics
         
         # Add to iterations tracker
@@ -170,42 +189,39 @@ class CircuitOptimizer:
         with open(ucf_path, 'r') as f:
             ucf_data = json.load(f)
         
-        # Find parts with poor performance to optimize
-        promoters_to_optimize = []
+        # Extract all promoters from UCF using ucf_retrieval instead
+        all_promoters = list_promoters(ucf_data)
         
-        # Extract all promoters from UCF
-        all_promoters = self.ucf_customizer.extract_promoters(ucf_data)
+        # Choose a specific promoter to optimize (pSrpR in this case)
+        target_promoter_name = "pSrpR"  # We're choosing this specific promoter from the available list
+        target_promoter = None
         
-        # Find pLac promoter (main target for optimization)
-        plac_promoter = None
+        logger.info(f"Looking for target promoter: {target_promoter_name}")
+        
+        # Find the target promoter
         for promoter in all_promoters:
-            if 'name' in promoter and 'pLac' in promoter['name']:
-                plac_promoter = promoter
+            if promoter.get('name') == target_promoter_name:
+                target_promoter = promoter
                 break
         
-        if plac_promoter:
-            promoters_to_optimize.append(plac_promoter)
-            logger.info(f"Adding pLac promoter for optimization: {plac_promoter.get('name', 'unknown')}")
+        if target_promoter:
+            promoters_to_optimize = [target_promoter]
+            logger.info(f"Target promoter found: {target_promoter.get('name')} with sequence: {target_promoter.get('dnasequence')}")
+        else:
+            logger.error(f"Target promoter '{target_promoter_name}' not found in UCF. Available promoters are:")
+            for p in all_promoters:
+                logger.info(f"- {p.get('name')}")
+            return {'success': False, 'error': f"Target promoter '{target_promoter_name}' not found in UCF"}
         
-        # Add any other promoters with poor performance
-        for part_id, standards in metrics.get('meets_performance_standards', {}).items():
-            if not standards.get('on_off_ratio', True) or not standards.get('leakage', True):
-                # Find promoters associated with this output
-                for promoter in all_promoters:
-                    if part_id in str(promoter):
-                        promoters_to_optimize.append(promoter)
-                        logger.info(f"Adding promoter for optimization due to poor performance: {promoter.get('name', 'unknown')}")
-        
-        if not promoters_to_optimize:
-            logger.info("No promoters identified for optimization")
-            return {'success': False, 'error': "No promoters identified for optimization"}
+        # Don't add any other promoters - focus optimization only on the target promoter
+        # This replaces the code that was looking for pLac and the aggressive optimization approach
         
         # Optimize each promoter
         optimized_promoters = []
         
         for promoter in promoters_to_optimize:
             # Extract sequence for optimization
-            sequence = promoter.get('sequence', '')
+            sequence = promoter.get('dnasequence', '')
             
             if not sequence:
                 logger.warning(f"No sequence found for promoter: {promoter.get('name', 'unknown')}")
@@ -227,6 +243,14 @@ class CircuitOptimizer:
             else:
                 target_strength = 0.7  # Default target
             
+            # Get the current predicted strength for comparison
+            try:
+                original_strength = self.promoter_optimizer.predict_promoter_strength(sequence)
+                logger.info(f"Current predicted strength: {original_strength:.4f}")
+            except Exception as e:
+                logger.warning(f"Could not predict original strength: {str(e)}")
+                original_strength = None
+            
             # Run the optimization
             result = self.promoter_optimizer.optimize_promoter(
                 sequence, 
@@ -241,9 +265,15 @@ class CircuitOptimizer:
                 
                 # Save the optimized promoter
                 optimized_promoter = promoter.copy()
-                optimized_promoter['sequence'] = result['optimized_sequence']
+                optimized_promoter['dnasequence'] = result['optimized_sequence']
                 optimized_promoter['original_sequence'] = sequence
                 optimized_promoter['predicted_strength'] = result['predicted_strength']
+                optimized_promoter['original_strength'] = original_strength
+                
+                if original_strength is not None and result['predicted_strength'] is not None:
+                    strength_change_pct = ((result['predicted_strength'] - original_strength) / original_strength) * 100
+                    optimized_promoter['strength_change_pct'] = strength_change_pct
+                    logger.info(f"Strength change: {strength_change_pct:+.2f}%")
                 
                 optimized_promoters.append(optimized_promoter)
             else:
@@ -261,10 +291,15 @@ class CircuitOptimizer:
         )
         
         # Customize the UCF with optimized promoters
+        modified_parts = {}
+        for p in optimized_promoters:
+            if 'name' in p:
+                modified_parts[p['name']] = {'dnasequence': p['dnasequence']}
+        
         self.ucf_customizer.customize_ucf(
             input_ucf_path=ucf_path,
             output_ucf_path=new_ucf_path,
-            modified_parts={p['name']: {'sequence': p['sequence']} for p in optimized_promoters if 'name' in p}
+            modified_parts=modified_parts
         )
         
         logger.info(f"Created new UCF with optimized promoters: {new_ucf_path}")
@@ -289,7 +324,17 @@ class CircuitOptimizer:
         logger.info(f"Running optimization iteration {len(self.iterations)}")
         
         # Run Cello with the optimized UCF
-        results = self.cello.run_cello(verilog_code, ucf_path)
+        # We need to provide the custom UCF as a parameter
+        custom_ucf = {
+            "ucf_name": os.path.basename(ucf_path)
+        }
+        
+        # Ensure verilog_code is using the correct syntax without Wire type
+        if "Wire" in verilog_code:
+            verilog_code = verilog_code.replace("input Wire", "input").replace("output Wire", "output")
+            logger.info("Updated Verilog code to remove Wire type declarations")
+            
+        results = self.cello.run_cello(verilog_code, custom_ucf)
         
         if not results['success']:
             logger.error(f"Error running Cello: {results.get('error', 'Unknown error')}")
@@ -301,12 +346,12 @@ class CircuitOptimizer:
             'type': 'optimization',
             'verilog_code': verilog_code,
             'ucf_path': ucf_path,
-            'output_path': results['output_path'],
+            'output_path': results['results']['output_path'],
             'metrics': None  # Will be populated by evaluate_performance
         }
         
         # Evaluate performance
-        metrics = self.evaluate_performance(results['output_path'])
+        metrics = self.evaluate_performance(results['results']['output_path'])
         iteration_data['metrics'] = metrics
         
         # Add to iterations tracker
@@ -394,6 +439,9 @@ class CircuitOptimizer:
         """
         logger.info(f"Starting circuit optimization workflow with max {max_iterations} iterations")
         
+        # Track promoter optimizations
+        promoter_optimizations = []
+        
         # Design initial circuit
         initial_result = self.design_initial_circuit(verilog_code)
         
@@ -420,6 +468,27 @@ class CircuitOptimizer:
                 logger.warning(f"Promoter optimization failed: {opt_result.get('error', 'Unknown error')}")
                 logger.info("Using previous iteration as best solution")
                 break
+            
+            # Track promoter optimization details
+            if 'optimized_promoters' in opt_result:
+                for p in opt_result['optimized_promoters']:
+                    optimization_detail = {
+                        'name': p.get('name', 'unknown'),
+                        'original_sequence': p.get('original_sequence', ''),
+                        'optimized_sequence': p.get('dnasequence', ''),
+                        'predicted_strength': p.get('predicted_strength', 0),
+                        'original_strength': p.get('original_strength', 0),
+                        'strength_change_pct': p.get('strength_change_pct', 0),
+                        'iteration': i+1
+                    }
+                    
+                    # Calculate strength improvement
+                    if 'predicted_strength' in p and 'original_strength' in p:
+                        strength_improvement = ((p['predicted_strength'] - p['original_strength']) / p['original_strength']) * 100
+                        optimization_detail['strength_improvement'] = strength_improvement
+                    
+                    promoter_optimizations.append(optimization_detail)
+                    logger.info(f"Tracked optimization for {optimization_detail['name']}")
             
             # Run a new iteration with the optimized UCF
             iteration_result = self.run_optimization_iteration(
@@ -459,7 +528,8 @@ class CircuitOptimizer:
             'iterations': self.iterations,
             'verilog_code': verilog_code,
             'best_ucf_path': best_iteration['ucf_path'],
-            'best_output_path': best_iteration['output_path']
+            'best_output_path': best_iteration['output_path'],
+            'promoter_optimizations': promoter_optimizations
         }
         
         # Save the summary to a file
@@ -482,7 +552,7 @@ def main():
     """Main entry point for the script."""
     # Create the Verilog code for a 2-input AND gate
     verilog_code = """
-module main(input Wire a, input Wire b, output Wire out);
+module main(input a, input b, output out);
   and(out, a, b);
 endmodule
     """
@@ -490,8 +560,9 @@ endmodule
     # Initialize the circuit optimizer
     optimizer = CircuitOptimizer()
     
-    # Run the optimization workflow
-    result = optimizer.optimize_circuit(verilog_code)
+    # Run the optimization workflow with focus on a single promoter (pSrpR)
+    logger.info("Starting circuit optimization with focus on pSrpR promoter")
+    result = optimizer.optimize_circuit(verilog_code, max_iterations=3)
     
     if result['success']:
         logger.info("Circuit optimization completed successfully!")
@@ -500,7 +571,7 @@ endmodule
         initial_metrics = result['summary']['initial_metrics']
         final_metrics = result['summary']['final_metrics']
         
-        logger.info("Performance improvements:")
+        logger.info("Performance comparison:")
         
         # ON/OFF ratio improvement
         initial_ratio = initial_metrics.get('average_on_off_ratio', 0)
@@ -522,6 +593,15 @@ endmodule
         score_improvement = ((final_score - initial_score) / initial_score) * 100 if initial_score > 0 else 0
         
         logger.info(f"  Overall score: {initial_score:.2f} → {final_score:.2f} ({score_improvement:+.2f}%)")
+        
+        # Show promoter optimization details
+        if 'promoter_optimizations' in result['summary']:
+            logger.info("\nPromoter optimization details:")
+            for opt in result['summary'].get('promoter_optimizations', []):
+                logger.info(f"  Promoter: {opt.get('name', 'unknown')}")
+                logger.info(f"  Original sequence: {opt.get('original_sequence', 'N/A')}")
+                logger.info(f"  Optimized sequence: {opt.get('optimized_sequence', 'N/A')}")
+                logger.info(f"  Predicted strength improvement: {opt.get('strength_improvement', 'N/A')}%")
     else:
         logger.error(f"Circuit optimization failed: {result.get('error', 'Unknown error')}")
 
