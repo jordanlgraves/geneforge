@@ -5,7 +5,11 @@ import time
 import atexit
 import logging
 import shutil
+import math
 from typing import Dict, Optional, List, Any, Union
+import json
+import tempfile
+from pathlib import Path
 
 # Set up the Python path for Cello
 from src.tools.cello_setup import is_setup_successful
@@ -387,35 +391,318 @@ class CelloIntegration:
             'all_files_zip': None
         }
 
-        # Check for expected files
-        base_name = os.path.basename(output_path).replace('.v', '')
-        search_patterns = {
-            'sbol_file': f'{base_name}._pySBOL3.nt',
-            'eugene_script': f'{base_name}._eugene.eug',
-            'dna_sequences': f'{base_name}._dna-sequences.csv',
-            'activity_table': f'{base_name}._activity-table.csv',
-            'circuit_score': f'{base_name}._circuit-score.csv',
-            'all_files_zip': f'{base_name}._all-files.zip'
+        # Check if directory exists
+        if not os.path.exists(output_path):
+            self.logger.warning(f"Output path does not exist: {output_path}")
+            return results
+
+        # List all files in the output directory
+        output_files = os.listdir(output_path)
+        
+        # Map file types to patterns
+        file_type_patterns = {
+            'sbol_file': '_pySBOL3.nt',
+            'eugene_script': '_eugene.eug',
+            'dna_sequences': '_dna-sequences.csv',
+            'activity_table': '_activity-table.csv',
+            'circuit_score': '_circuit-score.csv',
+            'all_files_zip': '_all-files.zip'
         }
-
-        # Find matching files
-        for file_type, pattern in search_patterns.items():
-            full_path = os.path.join(output_path, pattern)
-            if os.path.exists(full_path):
-                results[file_type] = full_path
-
+        
+        # Find matching files for each file type
+        for file_type, pattern in file_type_patterns.items():
+            for filename in output_files:
+                if pattern in filename:
+                    results[file_type] = os.path.join(output_path, filename)
+                    break
+        
         # Find visualizations
-        vis_files = [
-            f'{base_name}._response-plots.pdf',
-            f'{base_name}._tech-mapping.pdf',
-            f'{base_name}._dpl-sbol.pdf'
+        visualization_patterns = [
+            '_response-plots.pdf',
+            '_tech-mapping.pdf',
+            '_dpl-sbol.pdf',
+            '_response-plots.png',
+            '_tech-mapping.png',
+            '_dpl-sbol.png'
         ]
-        results['visualizations'] = [
-            os.path.join(output_path, f) for f in vis_files
-            if os.path.exists(os.path.join(output_path, f))
-        ]
-
+        
+        for pattern in visualization_patterns:
+            for filename in output_files:
+                if pattern in filename:
+                    results['visualizations'].append(os.path.join(output_path, filename))
+        
+        # Log what we found
+        self.logger.info(f"Found Cello output files:")
+        for file_type, file_path in results.items():
+            if file_type == 'visualizations':
+                self.logger.info(f"  Visualizations: {len(results['visualizations'])} files")
+            elif file_path:
+                self.logger.info(f"  {file_type}: {os.path.basename(file_path)}")
+            else:
+                self.logger.info(f"  {file_type}: Not found")
+        
         return results
+
+    def evaluate_circuit_performance(self, output_path: str) -> Dict:
+        """
+        Evaluates circuit performance by extracting and analyzing metrics from Cello output files.
+        
+        Args:
+            output_path: Path to Cello output directory
+            
+        Returns:
+            Dictionary containing performance metrics including:
+            - Overall circuit score
+            - ON/OFF ratios for each output
+            - Leakage percentages
+            - Dynamic range
+            - Derived KPIs
+        """
+        metrics = {
+            'overall_score': None,
+            'input_output_states': [],
+            'on_off_ratios': {},
+            'leakage': {},
+            'dynamic_range': {},
+            'part_usage': {},
+            'success': False,
+            'error': None
+        }
+        
+        try:
+            # Get files to analyze
+            parsed_output = self._parse_cello_output(output_path)
+            circuit_score_file = parsed_output.get('circuit_score')
+            activity_table_file = parsed_output.get('activity_table')
+            part_info_file = None
+            
+            # Look for part information file
+            for filename in os.listdir(output_path):
+                if '_dpl-part-information.csv' in filename:
+                    part_info_file = os.path.join(output_path, filename)
+                    break
+            
+            # Extract overall circuit score
+            if circuit_score_file and os.path.exists(circuit_score_file):
+                metrics['overall_score'] = self._extract_circuit_score(circuit_score_file)
+            
+            # Extract activity table data
+            if activity_table_file and os.path.exists(activity_table_file):
+                io_data = self._extract_activity_table_data(activity_table_file)
+                metrics.update(io_data)
+            
+            # Extract part usage information
+            if part_info_file and os.path.exists(part_info_file):
+                metrics['part_usage'] = self._extract_part_usage(part_info_file)
+            
+            # Calculate derived metrics
+            self._calculate_derived_metrics(metrics)
+            
+            metrics['success'] = True
+            
+        except Exception as e:
+            metrics['success'] = False
+            metrics['error'] = str(e)
+            self.logger.error(f"Error evaluating circuit performance: {str(e)}")
+        
+        return metrics
+    
+    def _extract_circuit_score(self, circuit_score_file: str) -> float:
+        """Extract the overall circuit score from circuit_score.csv"""
+        self.logger.info(f"Extracting circuit score from: {circuit_score_file}")
+        try:
+            with open(circuit_score_file, 'r') as f:
+                lines = f.readlines()
+                self.logger.info(f"Read {len(lines)} lines from circuit score file: {lines}")
+                if len(lines) >= 1:  # Changed from 2 to 1 as we only need one line
+                    # Expected format: "circuit_score,SCORE_VALUE"
+                    score_line = lines[0].strip()  # Always use the first line
+                    self.logger.info(f"Score line: {score_line}")
+                    parts = score_line.split(',')
+                    self.logger.info(f"Split parts: {parts}")
+                    if len(parts) >= 2:
+                        return float(parts[1])
+                    elif len(parts) == 1 and parts[0].replace('.', '', 1).isdigit():
+                        return float(parts[0])
+                    else:
+                        self.logger.warning(f"Unexpected circuit score format: {score_line}")
+                        return 0.0
+                self.logger.warning(f"Not enough lines in circuit score file")
+                return 0.0
+        except Exception as e:
+            self.logger.error(f"Error extracting circuit score: {str(e)}")
+            return 0.0
+    
+    def _extract_activity_table_data(self, activity_table_file: str) -> Dict:
+        """Extract data from the activity table CSV file"""
+        result = {
+            'input_output_states': [],
+            'on_off_ratios': {},
+            'leakage': {},
+            'on_values': {},
+            'off_values': {}
+        }
+        
+        try:
+            with open(activity_table_file, 'r') as f:
+                lines = f.readlines()
+                
+                # Parse the file based on sections
+                section = None
+                headers = []
+                numeric_values = []
+                binary_values = []
+                
+                for line in lines:
+                    line = line.strip()
+                    if not line:
+                        continue
+                    
+                    if line.lower() == "scores...":
+                        section = "scores"
+                        continue
+                    elif line.lower() == "binary...":
+                        section = "binary"
+                        continue
+                    
+                    if section == "scores":
+                        if "," in line and not any(keyword in line.lower() for keyword in ["scores", "binary"]):
+                            parts = line.split(',')
+                            if all(part.replace('.', '', 1).replace('e', '', 1).replace('-', '', 1).replace('+', '', 1).isdigit() for part in parts[1:]):
+                                numeric_values.append([float(p) if p else 0.0 for p in parts])
+                            else:
+                                headers = parts
+                    elif section == "binary":
+                        if "," in line and not any(keyword in line.lower() for keyword in ["scores", "binary"]):
+                            parts = line.split(',')
+                            if "_I/O" in parts[0]:
+                                headers = parts
+                            elif all(part in ("0", "1", "") for part in parts):
+                                binary_values.append([int(p) if p else 0 for p in parts])
+                
+                # Process the extracted data
+                if headers and binary_values:
+                    # Extract input/output states
+                    io_states = []
+                    for binary_row in binary_values:
+                        if len(binary_row) == len(headers):
+                            state = {}
+                            for i, header in enumerate(headers):
+                                component_name = header.replace("_I/O", "")
+                                state[component_name] = binary_row[i]
+                            io_states.append(state)
+                    result['input_output_states'] = io_states
+                
+                # Process numeric scores for ON/OFF ratio and leakage calculation
+                if headers and numeric_values and len(numeric_values) >= 2:
+                    # Identify outputs (typically the last component)
+                    if len(headers) > 1:
+                        output_components = [header for header in headers if 'reporter' in header.lower()]
+                        if not output_components and len(headers) > 1:
+                            # If no reporter found, assume the last component is the output
+                            output_components = [headers[-1]]
+                            
+                        # For each output component, calculate ON/OFF ratio
+                        for output in output_components:
+                            output_idx = headers.index(output)
+                            on_values = []
+                            off_values = []
+                            
+                            # Determine which states are ON and OFF for this output
+                            for i, binary_row in enumerate(binary_values):
+                                if i < len(numeric_values):  # Make sure we have corresponding numeric values
+                                    if output_idx < len(binary_row) and output_idx < len(numeric_values[i]):
+                                        if binary_row[output_idx] == 1:
+                                            on_values.append(numeric_values[i][output_idx])
+                                        else:
+                                            off_values.append(numeric_values[i][output_idx])
+                            
+                            # Calculate metrics if we have both ON and OFF values
+                            if on_values and off_values:
+                                avg_on = sum(on_values) / len(on_values)
+                                avg_off = sum(off_values) / len(off_values)
+                                
+                                # Store values for later use
+                                result['on_values'][output] = on_values
+                                result['off_values'][output] = off_values
+                                
+                                # Calculate ON/OFF ratio
+                                if avg_off > 0:
+                                    ratio = avg_on / avg_off
+                                    result['on_off_ratios'][output] = ratio
+                                else:
+                                    result['on_off_ratios'][output] = float('inf')  # Avoid division by zero
+                                
+                                # Calculate leakage (OFF value as percentage of ON value)
+                                if avg_on > 0:
+                                    leakage_pct = (avg_off / avg_on) * 100
+                                    result['leakage'][output] = leakage_pct
+                                else:
+                                    result['leakage'][output] = 0.0
+            
+        except Exception as e:
+            self.logger.error(f"Error extracting activity table data: {str(e)}")
+        
+        return result
+    
+    def _extract_part_usage(self, part_info_file: str) -> Dict:
+        """Extract information about parts used in the circuit"""
+        part_usage = {
+            'promoters': [],
+            'rbs': [],
+            'cds': [],
+            'terminators': [],
+            'other': []
+        }
+        
+        try:
+            with open(part_info_file, 'r') as f:
+                # Skip header line
+                next(f)
+                
+                for line in f:
+                    parts = line.strip().split(',')
+                    if len(parts) >= 3:
+                        part_name = parts[0]
+                        part_type = parts[1].lower()
+                        
+                        if 'promoter' in part_type:
+                            part_usage['promoters'].append(part_name)
+                        elif 'rbs' in part_type:
+                            part_usage['rbs'].append(part_name)
+                        elif 'cds' in part_type:
+                            part_usage['cds'].append(part_name)
+                        elif 'terminator' in part_type:
+                            part_usage['terminators'].append(part_name)
+                        else:
+                            part_usage['other'].append(part_name)
+        except Exception as e:
+            self.logger.error(f"Error extracting part usage information: {str(e)}")
+        
+        return part_usage
+    
+    def _calculate_derived_metrics(self, metrics: Dict) -> None:
+        """Calculate additional performance metrics derived from basic metrics"""
+        # Calculate dynamic range for each output
+        for output, ratio in metrics.get('on_off_ratios', {}).items():
+            # Dynamic range in decibels (dB)
+            if ratio > 0:
+                metrics['dynamic_range'][output] = 20 * math.log10(ratio)
+            else:
+                metrics['dynamic_range'][output] = 0.0
+        
+        # Add any other derived metrics here
+        metrics['average_on_off_ratio'] = sum(metrics.get('on_off_ratios', {}).values()) / len(metrics.get('on_off_ratios', {})) if metrics.get('on_off_ratios') else 0.0
+        metrics['average_leakage'] = sum(metrics.get('leakage', {}).values()) / len(metrics.get('leakage', {})) if metrics.get('leakage') else 0.0
+        
+        # Determine if the circuit meets common performance standards
+        metrics['meets_performance_standards'] = {}
+        
+        for output, ratio in metrics.get('on_off_ratios', {}).items():
+            metrics['meets_performance_standards'][output] = {
+                'on_off_ratio': ratio >= 10,  # Common threshold: ON/OFF ratio should be at least 10
+                'leakage': metrics.get('leakage', {}).get(output, 100) <= 10  # Common threshold: leakage should be less than 10%
+            }
 
 if __name__ == "__main__":
     # Example usage
