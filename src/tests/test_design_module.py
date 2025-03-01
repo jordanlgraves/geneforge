@@ -168,8 +168,8 @@ class TestDesignOrchestrator(unittest.TestCase):
         # Set the return value for the create method
         mock_create.return_value = MockResponse(
             "REASONING: Based on the user request for a NOT gate circuit in E. coli with GFP output and arabinose sensing, "
-            "I recommend the Eco2C2G2T2 library because it supports E. coli and has the necessary components.\n"
-            "SELECTED_LIBRARY: Eco2C2G2T2"
+            "I recommend the Eco1C2G2T2 library because it supports E. coli and has the necessary components.\n"
+            "SELECTED_LIBRARY: Eco1C2G2T2"
         )
         
         orchestrator = DesignOrchestrator(self.tool_integration)
@@ -177,10 +177,10 @@ class TestDesignOrchestrator(unittest.TestCase):
         # Mock the llm_select_ucf_func method to return a known UCF file
         orchestrator.tools.llm_select_ucf_func = MagicMock(return_value={
             "success": True,
-            "library_id": "Eco2C2G2T2",
-            "message": "Selected library Eco2C2G2T2 based on LLM reasoning",
+            "library_id": "Eco1C2G2T2",
+            "message": "Selected library Eco1C2G2T2 based on LLM reasoning",
             "metadata": {
-                "library_id": "Eco2C2G2T2",
+                "library_id": "Eco1C2G2T2",
                 "part_count": 4,
                 "gate_count": 6,
                 "gate_types": ["nor"],
@@ -218,9 +218,9 @@ class TestDesignOrchestrator(unittest.TestCase):
         self.assertTrue(result["success"])
         self.assertIn("dna_design", result)
         self.assertIn("ucf_file", result)
-        self.assertEqual(result["ucf_file"], "Eco2C2G2T2.UCF.json")
+        self.assertEqual(result["ucf_file"], "Eco1C2G2T2.UCF.json")
         self.assertIn("library_id", result)
-        self.assertEqual(result["library_id"], "Eco2C2G2T2")
+        self.assertEqual(result["library_id"], "Eco1C2G2T2")
     
         # Verify that the OpenAI API was called
         mock_create.assert_called_once()
@@ -233,7 +233,7 @@ class TestDesignOrchestrator(unittest.TestCase):
         args, kwargs = orchestrator.tools.design_with_cello_func.call_args
         self.assertEqual(args[0], verilog_code)
         self.assertIn("ucf_name", args[1])
-        self.assertEqual(args[1]["ucf_name"], "Eco2C2G2T2.UCF.json")
+        self.assertEqual(args[1]["ucf_name"], "Eco1C2G2T2.UCF.json")
 
 if __name__ == "__main__":
     unittest.main() 

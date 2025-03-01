@@ -319,6 +319,20 @@ tool_functions = [
             },
             "required": ["user_request"]
         }
+    },
+    {
+        "name": "evaluate_circuit_performance",
+        "description": "Evaluate the performance of a designed genetic circuit by analyzing Cello output files",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "output_path": {
+                    "type": "string",
+                    "description": "Path to the Cello output directory for the circuit"
+                }
+            },
+            "required": ["output_path"]
+        }
     }
 ]
 
@@ -674,6 +688,36 @@ class ToolIntegration:
             "llm_reasoning": llm_reasoning
         }
 
+    def evaluate_circuit_performance_func(self, output_path: str):
+        """
+        Evaluate circuit performance by extracting metrics from Cello output files.
+        
+        Args:
+            output_path: Path to Cello output directory
+            
+        Returns:
+            Dict with performance metrics including ON/OFF ratios, leakage, etc.
+        """
+        from src.tools.cello_integration import CelloIntegration
+        
+        # Initialize Cello integration
+        cello = CelloIntegration()
+        
+        # Evaluate circuit performance
+        metrics = cello.evaluate_circuit_performance(output_path)
+        
+        return {
+            "success": metrics['success'],
+            "overall_score": metrics.get('overall_score'),
+            "on_off_ratios": metrics.get('on_off_ratios', {}),
+            "leakage": metrics.get('leakage', {}),
+            "dynamic_range": metrics.get('dynamic_range', {}),
+            "average_on_off_ratio": metrics.get('average_on_off_ratio'),
+            "average_leakage": metrics.get('average_leakage'),
+            "meets_performance_standards": metrics.get('meets_performance_standards', {}),
+            "error": metrics.get('error')
+        }
+
     def call_tool_function(self, function_name, function_args):
         """
         Call a tool function with the provided arguments.
@@ -834,6 +878,9 @@ class ToolIntegration:
             user_request = function_args["user_request"]
             llm_reasoning = function_args["llm_reasoning"]
             return self.llm_select_ucf_func(user_request, llm_reasoning)
+        elif function_name == "evaluate_circuit_performance":
+            output_path = function_args["output_path"]
+            return self.evaluate_circuit_performance_func(output_path)
         else:
             return {"error": f"No such function: {function_name}"}
 

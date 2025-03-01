@@ -643,42 +643,173 @@ class LLMBasedLibrarySelector:
                         parts = get_all_parts(ucf_data)
                         gates = get_all_gates(ucf_data)
                         
-                        # Categorize parts
+                        # Categorize parts with more detail
                         promoters = [p for p in parts if p.get("raw_data", {}).get("type") == "promoter"]
                         terminators = [p for p in parts if p.get("raw_data", {}).get("type") == "terminator"]
+                        repressors = [p for p in parts if p.get("raw_data", {}).get("type") == "cds" or p.get("raw_data", {}).get("type") == "repressor"]
+                        rbs_parts = [p for p in parts if p.get("raw_data", {}).get("type") == "rbs"]
                         reporters = [p for p in parts if any(r in p.get("id", "").lower() for r in ["gfp", "rfp", "yfp", "cfp"])]
+                        ribozymes = [p for p in parts if p.get("raw_data", {}).get("type") == "ribozyme"]
+                        scars = [p for p in parts if p.get("raw_data", {}).get("type") == "scar"]
                         
-                        # Gate types
+                        # Create more detailed part information
+                        detailed_parts = []
+                        for p in parts:
+                            part_detail = {
+                                "id": p.get("id", ""),
+                                "type": p.get("type", ""),
+                                "raw_type": p.get("raw_data", {}).get("type", ""),
+                                "description": p.get("raw_data", {}).get("description", ""),
+                                "sequence_length": len(p.get("raw_data", {}).get("sequence", "")) if p.get("raw_data", {}).get("sequence") else 0,
+                            }
+                            detailed_parts.append(part_detail)
+                        
+                        # Extract input/output related information
+                        inputs = []
+                        outputs = []
+                        input_details = {}
+                        output_details = {}
+                        
+                        # Try to extract input/output info from input file if available
+                        if input_path and os.path.exists(input_path):
+                            try:
+                                with open(input_path, 'r') as f:
+                                    input_data = json.load(f)
+                                    if isinstance(input_data, dict):
+                                        # Extract inputs from input file
+                                        if "inputs" in input_data:
+                                            inputs = input_data["inputs"]
+                                            # Try to extract more details about inputs
+                                            if isinstance(inputs, list):
+                                                for i, input_item in enumerate(inputs):
+                                                    if isinstance(input_item, dict):
+                                                        input_name = input_item.get("name", f"input_{i}")
+                                                        input_details[input_name] = input_item
+                                        
+                                        # Extract outputs from input file
+                                        if "outputs" in input_data:
+                                            outputs = input_data["outputs"]
+                                            # Try to extract more details about outputs
+                                            if isinstance(outputs, list):
+                                                for i, output_item in enumerate(outputs):
+                                                    if isinstance(output_item, dict):
+                                                        output_name = output_item.get("name", f"output_{i}")
+                                                        output_details[output_name] = output_item
+                            except Exception as e:
+                                logger.error(f"Error parsing input file {input_path}: {e}")
+                        
+                        # Gate types and information
                         gate_types = set()
+                        gate_details = []
                         for gate in gates:
                             gate_type = gate.get("gate_type", "").lower()
                             if gate_type:
                                 gate_types.add(gate_type)
+                            
+                            # Add more detailed gate information
+                            gate_detail = {
+                                "id": gate.get("id", ""),
+                                "type": gate_type,
+                                "group_name": gate.get("raw_data", {}).get("group_name", ""),
+                                "system": gate.get("raw_data", {}).get("system", ""),
+                                "inputs": gate.get("raw_data", {}).get("inputs", []),
+                                "outputs": gate.get("raw_data", {}).get("outputs", [])
+                            }
+                            gate_details.append(gate_detail)
                         
-                        # Extract organism from library ID
+                        # Extract organism from library ID with more detail
                         organism = "Unknown"
+                        organism_details = {}
                         if lib_id.startswith("Eco"):
                             organism = "E. coli"
+                            organism_details = {
+                                "full_name": "Escherichia coli",
+                                "type": "bacteria",
+                                "gram_stain": "negative",
+                                "domains": ["prokaryotic"]
+                            }
                         elif lib_id.startswith("SC"):
-                            organism = "S. cerevisiae (yeast)"
+                            organism = "S. cerevisiae"
+                            organism_details = {
+                                "full_name": "Saccharomyces cerevisiae",
+                                "type": "yeast",
+                                "domains": ["eukaryotic", "fungi"]
+                            }
                         elif lib_id.startswith("Bth"):
                             organism = "B. subtilis"
+                            organism_details = {
+                                "full_name": "Bacillus subtilis",
+                                "type": "bacteria",
+                                "gram_stain": "positive",
+                                "domains": ["prokaryotic"]
+                            }
+                        
+                        # Create a more detailed input/output structure
+                        io_information = {
+                            "inputs": inputs,
+                            "outputs": outputs,
+                            "input_details": input_details,
+                            "output_details": output_details
+                        }
+                        
+                        # Analyze regulated promoters
+                        regulated_promoters = {}
+                        for promoter in promoters:
+                            promoter_id = promoter.get("id", "")
+                            # Try to match with a regulator by checking if the promoter name matches the pattern "p<RegulatorName>"
+                            if promoter_id.startswith("p"):
+                                potential_regulator = promoter_id[1:]  # Remove the 'p' prefix
+                                # Check if this regulator exists in the list of repressors
+                                if any(r.get("id") == potential_regulator for r in repressors):
+                                    regulated_promoters[promoter_id] = potential_regulator
                         
                         # Create metadata
                         lib_metadata = {
                             "library_id": lib_id,
                             "organism": organism,
+                            "organism_details": organism_details,
                             "ucf_path": ucf_path,
                             "input_path": input_path,
                             "output_path": output_path,
+                            
+                            # Counts
                             "parts_count": len(parts),
                             "gates_count": len(gates),
                             "promoters_count": len(promoters),
                             "terminators_count": len(terminators),
                             "reporters_count": len(reporters),
-                            "reporter_types": [r.get("id") for r in reporters],
+                            "repressors_count": len(repressors),
+                            "rbs_count": len(rbs_parts),
+                            "ribozymes_count": len(ribozymes),
+                            "scars_count": len(scars),
+                            
+                            # Lists of components
                             "gate_types": list(gate_types),
-                            # Add sample parts for context
+                            "gates": gate_details,
+                            "parts": detailed_parts,  # All parts with details
+                            "reporter_types": [r.get("id") for r in reporters],
+                            "all_promoters": [p.get("id") for p in promoters],
+                            "all_terminators": [t.get("id") for t in terminators],
+                            "all_repressors": [r.get("id") for r in repressors],
+                            "all_rbs": [r.get("id") for r in rbs_parts],
+                            "all_reporters": [r.get("id") for r in reporters],
+                            "all_ribozymes": [r.get("id") for r in ribozymes],
+                            "all_scars": [s.get("id") for s in scars],
+                            
+                            # Regulatory relationships
+                            "regulated_promoters": regulated_promoters,
+                            
+                            # Input/Output information
+                            "io_info": io_information,
+                            
+                            # UCF collection statistics
+                            "ucf_collections": {
+                                collection: len(ucf_data.get(collection, [])) 
+                                for collection in ucf_data.keys() 
+                                if isinstance(ucf_data.get(collection), list)
+                            },
+                            
+                            # Add sample parts for context (still keeping these for backward compatibility)
                             "sample_promoters": [p.get("id") for p in promoters[:5]],
                             "sample_reporters": [r.get("id") for r in reporters[:5]]
                         }
@@ -731,32 +862,139 @@ AVAILABLE LIBRARIES:
         
         # Add library metadata to prompt
         for lib_id, metadata in libraries_metadata.items():
-            prompt += f"\n--- LIBRARY: {lib_id} ---\n"
+            prompt += f"\n{'='*50}\n"
+            prompt += f"LIBRARY: {lib_id}\n"
+            prompt += f"{'='*50}\n"
             
             if "error" in metadata:
                 prompt += f"Error: {metadata['error']}\n"
-                continue
+                continue  # Skip to next library if there's an error
             
-            # Basic information
-            prompt += f"Organism: {metadata.get('organism', 'Unknown')}\n"
-            prompt += f"Parts: {metadata.get('parts_count', 0)}\n"
-            prompt += f"Gates: {metadata.get('gates_count', 0)}\n"
+            # Basic organism information
+            prompt += f"Organism: {metadata.get('organism', 'Unknown')}"
+            organism_details = metadata.get('organism_details', {})
+            if organism_details:
+                prompt += f" ({organism_details.get('full_name', '')})\n"
+                prompt += f"  Type: {organism_details.get('type', 'Unknown')}\n"
+                if 'gram_stain' in organism_details:
+                    prompt += f"  Gram Stain: {organism_details.get('gram_stain', '')}\n"
+                if 'domains' in organism_details:
+                    prompt += f"  Domains: {', '.join(organism_details.get('domains', []))}\n"
+            else:
+                prompt += "\n"
             
-            # Gate types
+            # Component summary
+            prompt += "\nCOMPONENT SUMMARY:\n"
+            prompt += f"  Total Parts: {metadata.get('parts_count', 0)}\n"
+            prompt += f"  Gates: {metadata.get('gates_count', 0)}\n"
+            prompt += f"  Promoters: {metadata.get('promoters_count', 0)}\n"
+            prompt += f"  Terminators: {metadata.get('terminators_count', 0)}\n"
+            prompt += f"  Repressors: {metadata.get('repressors_count', 0)}\n"
+            prompt += f"  RBS: {metadata.get('rbs_count', 0)}\n"
+            prompt += f"  Reporters: {metadata.get('reporters_count', 0)}\n"
+            prompt += f"  Ribozymes: {metadata.get('ribozymes_count', 0)}\n"
+            prompt += f"  Scars: {metadata.get('scars_count', 0)}\n"
+            
+            # Gate information
             gate_types = metadata.get('gate_types', [])
             if gate_types:
-                prompt += f"Gate Types: {', '.join(gate_types)}\n"
+                prompt += "\nGATE TYPES:\n"
+                for gate_type in gate_types:
+                    prompt += f"  - {gate_type}\n"
             
             # Reporter information
             reporter_types = metadata.get('reporter_types', [])
             if reporter_types:
-                prompt += f"Reporter Types: {', '.join(reporter_types)}\n"
+                prompt += "\nREPORTER TYPES:\n"
+                for reporter in reporter_types:
+                    prompt += f"  - {reporter}\n"
             
-            # Sample promoters
-            sample_promoters = metadata.get('sample_promoters', [])
-            if sample_promoters:
-                prompt += f"Sample Promoters: {', '.join(sample_promoters)}\n"
+            # Regulatory relationships
+            regulated_promoters = metadata.get('regulated_promoters', {})
+            if regulated_promoters:
+                prompt += "\nREGULATORY RELATIONSHIPS:\n"
+                for promoter, regulator in regulated_promoters.items():
+                    prompt += f"  - {promoter} is regulated by {regulator}\n"
+            
+            # Gates with details
+            gates = metadata.get('gates', [])
+            if gates:
+                prompt += "\nGATES (Details):\n"
+                # Group gates by type
+                gates_by_type = {}
+                for gate in gates:
+                    gate_type = gate.get('type', 'unknown')
+                    if gate_type not in gates_by_type:
+                        gates_by_type[gate_type] = []
+                    gates_by_type[gate_type].append(gate)
+                
+                # List gates by type
+                for gate_type, gate_list in gates_by_type.items():
+                    prompt += f"  {gate_type.upper()} Gates:\n"
+                    for gate in gate_list[:5]:  # Limit to first 5 of each type
+                        prompt += f"    - {gate.get('id', '')} (System: {gate.get('system', 'Unknown')})\n"
+                    if len(gate_list) > 5:
+                        prompt += f"      ... and {len(gate_list) - 5} more {gate_type} gates\n"
+            
+            # All promoters
+            all_promoters = metadata.get('all_promoters', [])
+            if all_promoters:
+                prompt += "\nPROMOTERS:\n"
+                for promoter in all_promoters[:10]:  # Limit to first 10
+                    prompt += f"  - {promoter}\n"
+                if len(all_promoters) > 10:
+                    prompt += f"  ... and {len(all_promoters) - 10} more promoters\n"
+            
+            # All reporters
+            all_reporters = metadata.get('all_reporters', [])
+            if all_reporters:
+                prompt += "\nREPORTERS:\n"
+                for reporter in all_reporters:
+                    prompt += f"  - {reporter}\n"
+            
+            # All repressors
+            all_repressors = metadata.get('all_repressors', [])
+            if all_repressors:
+                prompt += "\nREPRESSORS:\n"
+                for repressor in all_repressors[:10]:  # Limit to first 10
+                    prompt += f"  - {repressor}\n"
+                if len(all_repressors) > 10:
+                    prompt += f"  ... and {len(all_repressors) - 10} more repressors\n"
+            
+            # Add terminators
+            all_terminators = metadata.get('all_terminators', [])
+            if all_terminators:
+                prompt += "\nTERMINATORS:\n"
+                for terminator in all_terminators[:10]:  # Limit to first 10
+                    prompt += f"  - {terminator}\n"
+                if len(all_terminators) > 10:
+                    prompt += f"  ... and {len(all_terminators) - 10} more terminators\n"
+            
+            # Input/Output information
+            io_info = metadata.get('io_info', {})
+            inputs = io_info.get('inputs', [])
+            if inputs:
+                prompt += "\nSUPPORTED INPUTS:\n"
+                for input_item in inputs:
+                    if isinstance(input_item, dict) and 'name' in input_item:
+                        input_name = input_item.get('name', '')
+                        input_type = input_item.get('type', '')
+                        prompt += f"  - {input_name} (Type: {input_type})\n"
+                    else:
+                        prompt += f"  - {input_item}\n"
+            
+            outputs = io_info.get('outputs', [])
+            if outputs:
+                prompt += "\nSUPPORTED OUTPUTS:\n"
+                for output_item in outputs:
+                    if isinstance(output_item, dict) and 'name' in output_item:
+                        output_name = output_item.get('name', '')
+                        output_type = output_item.get('type', '')
+                        prompt += f"  - {output_name} (Type: {output_type})\n"
+                    else:
+                        prompt += f"  - {output_item}\n"
         
+        prompt += f"\n{'='*80}\n"
         prompt += """
 INSTRUCTIONS:
 1. Analyze the user's request carefully to understand what they want to design (type of circuit, organism, inputs, outputs, etc.)

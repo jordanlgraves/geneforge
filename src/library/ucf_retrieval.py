@@ -27,19 +27,17 @@ def load_ecoli_library(json_path):
     
     with open(json_path, 'r', encoding='utf-8') as f:
         data = json.load(f)
-
-    if "structured_data" not in data:
-        # This might be a raw UCF file, so let's try to parse it
-        try:
-            from src.library.parse_ucf import parse_ecoli_ucf
-            parsed_data = parse_ecoli_ucf(json_path)
-            return parsed_data["structured_data"]
-        except Exception as e:
-            logger.error(f"Failed to parse JSON file as UCF: {e}")
-            raise ValueError("JSON file does not contain 'structured_data' at top-level and could not be parsed as a UCF file.")
-
-    # Return the structured_data portion
-    return data["structured_data"]
+    
+    # Check if this is a raw UCF file or a processed file
+    # Raw UCF files are typically arrays where the first element has a "collection" key
+    if isinstance(data, list) and len(data) > 0 and "collection" in data[0]:
+        raise ValueError(f"This appears to be a raw UCF file. Please process it with parse_ecoli_ucf first.")
+    
+    # Extract the structured data
+    if "structured_data" in data:
+        return data["structured_data"]
+    else:
+        return data
 
 
 # ----------------------- Basic Retrieval Functions -----------------------
