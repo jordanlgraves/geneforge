@@ -730,4 +730,77 @@ class UCFCustomizer:
         
         logger.info(f"Saved customized UCF to: {output_ucf_path}")
         
-        return output_ucf_path 
+        return output_ucf_path
+    
+    def customize_ucf_with_parameters(self, input_ucf_path, output_ucf_path, 
+                                     modified_parts=None, 
+                                     modified_parameters=None):
+        """
+        Customize UCF with both part sequences and response function parameters.
+        
+        Args:
+            input_ucf_path: Path to input UCF file
+            output_ucf_path: Path for saving output
+            modified_parts: Dict mapping part names to sequence modifications
+            modified_parameters: Dict mapping gate names to parameter modifications
+                e.g. {"S4_SrpR": {"ymax": 45.2, "ymin": 0.05, "K": 0.85, "n": 4.9}}
+        """
+        # Load UCF data
+        with open(input_ucf_path, 'r') as f:
+            ucf_data = json.load(f)
+        
+        # Modify part sequences if specified
+        if modified_parts:
+            self._modify_parts(ucf_data, modified_parts)
+        
+        # Modify response function parameters if specified
+        if modified_parameters:
+            for item in ucf_data:
+                if item.get("collection") == "response_functions":
+                    gate_name = item.get("gate_name")
+                    if gate_name in modified_parameters:
+                        for param in item.get("parameters", []):
+                            param_name = param.get("name")
+                            if param_name in modified_parameters[gate_name]:
+                                param["value"] = modified_parameters[gate_name][param_name]
+        
+        # Save the modified UCF
+        with open(output_ucf_path, 'w') as f:
+            json.dump(ucf_data, f, indent=2)
+        
+        return output_ucf_path
+    
+    def find_gate_for_promoter(self, ucf_data, promoter_name):
+        """
+        Find the gate name associated with a promoter.
+        
+        Args:
+            ucf_data: The UCF data
+            promoter_name: Name of the promoter
+            
+        Returns:
+            Gate name if found, None otherwise
+        """
+        for item in ucf_data:
+            if item.get("collection") == "gate_parts" and item.get("promoter") == promoter_name:
+                return item.get("gate_name")
+        return None
+
+    def get_gate_parameters(self, ucf_data, gate_name):
+        """
+        Get parameters for a specific gate.
+        
+        Args:
+            ucf_data: The UCF data
+            gate_name: Name of the gate
+            
+        Returns:
+            Dictionary of parameters if found, None otherwise
+        """
+        for item in ucf_data:
+            if item.get("collection") == "response_functions" and item.get("gate_name") == gate_name:
+                param_dict = {}
+                for param in item.get("parameters", []):
+                    param_dict[param.get("name")] = param.get("value")
+                return param_dict
+        return None

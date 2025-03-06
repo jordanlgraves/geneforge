@@ -10,17 +10,10 @@ from typing import Dict, Optional, List, Any, Union
 import json
 import tempfile
 from pathlib import Path
+import sys
 
-# Set up the Python path for Cello
-from src.tools.cello_setup import is_setup_successful
-
-# Import CELLO3 after setting up the path
-if is_setup_successful:
-    from core_algorithm.celloAlgo import CELLO3
-else:
-    raise ImportError("Failed to set up Cello path. Cannot import CELLO3.")
-
-from src.library.ucf_customizer import UCFCustomizer  # Import UCFCustomizer for validation
+# Import UCFCustomizer for validation
+from src.library.ucf_customizer import UCFCustomizer
 from src.library.library_manager import LibraryManager
 
 class CelloIntegration:
@@ -88,40 +81,25 @@ class CelloIntegration:
         self.logger.addHandler(capture_handler)
 
     def _start_minieugene_server(self):
-        """Start the MiniEugene Java server if not already running"""
-        try:
-            # Check if server is already running
-            gateway_dir = os.path.join("ext_repos", "Cello-v2-1-Core", 
-                                     "core_algorithm", "utils", "py4j_gateway")
-            
-            # Start the Java server as a subprocess
-            self.java_process = subprocess.Popen(
-                ["java", "-cp", 
-                 ".:jars/py4j.jar:./jars/miniEugene-core-1.0.0-jar-with-dependencies.jar:./src", 
-                 "miniEugenePermuter"],
-                cwd=gateway_dir,
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE
-            )
-            
-            # Wait briefly for server initialization
-            time.sleep(2)
-            atexit.register(self._stop_minieugene_server)  # Cleanup on exit
-            
-        except Exception as e:
-            print(f"Failed to start MiniEugene server: {e}")
-            raise
+        """
+        Start the MiniEugene server if needed for Cello
+        
+        Note: This is now a placeholder since MiniEugene server is managed by 
+        the wrapper script in its own subprocess environment
+        """
+        self.logger.info("MiniEugene server will be managed by the wrapper script")
+        self.java_process = None
 
     def _stop_minieugene_server(self):
-        """Stop the Java server process"""
-        if self.java_process:
-            self.java_process.terminate()
-            try:
-                self.java_process.wait(timeout=5)
-            except subprocess.TimeoutExpired:
-                self.java_process.kill()
-            self.java_process = None
-            
+        """
+        Stop the MiniEugene server if it's running
+        
+        Note: This is now a placeholder since MiniEugene server is managed by 
+        the wrapper script in its own subprocess environment
+        """
+        self.logger.info("MiniEugene server is managed by the wrapper script")
+        self.java_process = None
+
     def select_library(self, library_id: str) -> bool:
         """
         Select a library to use for Cello.
@@ -291,6 +269,9 @@ class CelloIntegration:
                     'error': "Yosys is not installed or not in the system PATH. Yosys is required for Cello's logic synthesis."
                 }
             
+            # Make sure output directory exists
+            os.makedirs(self.cello_args.get('out_path', 'outputs/cello_outputs'), exist_ok=True)
+            
             # Process Verilog code if provided
             if verilog_code:
                 # Save verilog code to temporary file
@@ -353,21 +334,116 @@ class CelloIntegration:
 
             self.logger.info("Starting Cello run with configuration: %s", self.cello_config)
             
-            # Run Cello
-            cello = CELLO3(**self.cello_args, options=self.cello_config)
-            
-            # Get output path
-            output_path = os.path.join(self.cello_args['out_path'], 
-                                     self.cello_args['v_name'])
-
-            return {
-                'success': True,
-                'log': '\n'.join(self.log_buffer),
-                'results': {
-                    'output_path': output_path,
-                    'dna_design': self._parse_cello_output(output_path)
-                }
+            # Prepare input for wrapper script
+            wrapper_input = {
+                'cello_args': self.cello_args,
+                'cello_config': self.cello_config,
+                'verilog_code': verilog_code,
+                'custom_ucf': custom_ucf
             }
+            
+            # Write input to temporary file
+            with tempfile.NamedTemporaryFile(mode='w', suffix='.json', delete=False) as input_file:
+                json.dump(wrapper_input, input_file)
+                input_path = input_file.name
+            
+            self.logger.info(f"Saved wrapper input to {input_path}")
+            
+            # Get the absolute path to the wrapper script
+            wrapper_script = os.path.join(os.getcwd(), "src", "tools", "cello_wrapper.py")
+            if not os.path.exists(wrapper_script):
+                self.logger.error(f"Wrapper script not found at {wrapper_script}")
+                return {
+                    'success': False,
+                    'log': '\n'.join(self.log_buffer),
+                    'error': f"Wrapper script not found at {wrapper_script}"
+                }
+            
+            # Make wrapper script executable
+            os.chmod(wrapper_script, 0o755)
+            
+            # Run the wrapper script in a separate process
+            self.logger.info(f"Running wrapper script: {wrapper_script}")
+            
+            # Build the command to run the wrapper script
+            cmd = [
+                "python3",  # Use Python 3
+                wrapper_script,
+                "--input-file", input_path
+            ]
+            
+            self.logger.info(f"Running command: {' '.join(cmd)}")
+            
+            # Run the command and capture output
+            try:
+                process = subprocess.run(
+                    cmd,
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.PIPE,
+                    text=True,
+                    cwd=os.getcwd(),  # Run from the project root
+                    timeout=600  # 10-minute timeout for Cello run
+                )
+            except subprocess.TimeoutExpired:
+                self.logger.error("Cello process timed out after 10 minutes")
+                return {
+                    'success': False,
+                    'log': '\n'.join(self.log_buffer),
+                    'error': "Cello process timed out after 10 minutes"
+                }
+            
+            # Clean up the input file
+            try:
+                os.unlink(input_path)
+            except Exception as e:
+                self.logger.warning(f"Failed to delete input file {input_path}: {e}")
+            
+            # Process the output
+            if process.returncode != 0:
+                self.logger.error(f"Wrapper script failed with exit code {process.returncode}")
+                self.logger.error(f"Stdout: {process.stdout}")
+                self.logger.error(f"Stderr: {process.stderr}")
+                return {
+                    'success': False,
+                    'log': '\n'.join(self.log_buffer) + '\n' + process.stderr,
+                    'error': f"Wrapper script failed with exit code {process.returncode}"
+                }
+            
+            # Parse the output JSON
+            try:
+                result = json.loads(process.stdout)
+            except json.JSONDecodeError as e:
+                self.logger.error(f"Failed to parse wrapper output as JSON: {e}")
+                self.logger.error(f"Wrapper output: {process.stdout}")
+                return {
+                    'success': False,
+                    'log': '\n'.join(self.log_buffer) + '\n' + process.stdout,
+                    'error': f"Failed to parse wrapper output as JSON: {e}"
+                }
+            
+            # Add the log buffer to the result
+            if 'log' in result:
+                result['log'] = '\n'.join(self.log_buffer) + '\n' + result['log']
+            else:
+                result['log'] = '\n'.join(self.log_buffer)
+            
+            # If successful, add more detailed information about the output directory
+            if result.get('success', False) and 'results' in result:
+                output_path = result['results'].get('output_path')
+                if output_path and os.path.exists(output_path):
+                    self.logger.info(f"Cello output directory: {output_path}")
+                    # List all files in the output directory
+                    all_files = []
+                    for root, dirs, files in os.walk(output_path):
+                        for file in files:
+                            rel_path = os.path.relpath(os.path.join(root, file), output_path)
+                            all_files.append(rel_path)
+                    
+                    if all_files:
+                        self.logger.info(f"Generated {len(all_files)} output files")
+                        result['results']['all_files'] = all_files
+            
+            return result
 
         except Exception as e:
             self.logger.error(f"Cello run failed: {str(e)}", exc_info=True)

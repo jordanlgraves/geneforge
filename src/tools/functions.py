@@ -9,8 +9,8 @@ from src.library.ucf_customizer import UCFCustomizer
 from src.tools.gpro_integration import PromoterOptimizer, RepressorOptimizer
 from src.library.llm_library_selector import RuleBasedLibrarySelector, LLMBasedLibrarySelector
 from src.library.library_manager import LibraryManager
-
-
+from src.tools.cello_integration import CelloIntegration
+from src.tools.deepseed_integration import DeepSeedIntegration
 tool_functions = [
     {
         "name": "find_gates_by_type",

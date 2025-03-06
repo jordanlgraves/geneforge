@@ -3,7 +3,6 @@ import os
 import shutil
 import time
 import json
-from unittest.mock import MagicMock, patch
 from pathlib import Path
 
 # Determine the absolute path to the project root
@@ -94,145 +93,6 @@ class TestCelloIntegration(unittest.TestCase):
         # Check that the libraries match the ones from the LibraryManager
         self.assertEqual(set(libraries), set(self.available_libraries))
     
-    @patch('src.tools.cello_integration.CELLO3')
-    def test_run_cello_mock(self, mock_cello3):
-        """Test running Cello with mock CELLO3"""
-        # Mock the CELLO3 class
-        mock_cello_instance = MagicMock()
-        mock_cello3.return_value = mock_cello_instance
-        
-        # Create test output directory structure
-        output_path = os.path.join(self.project_root, "outputs", "cello_outputs", "0x17.v")
-        os.makedirs(output_path, exist_ok=True)
-        
-        # Create mock output files
-        test_files = {
-            "sbol_file": "0x17._pySBOL3.nt",
-            "eugene_script": "0x17._eugene.eug",
-            "dna_sequences": "0x17._dna-sequences.csv",
-            "activity_table": "0x17._activity-table.csv",
-            "circuit_score": "0x17._circuit-score.csv",
-            "all_files_zip": "0x17._all-files.zip"
-        }
-        
-        for _, filename in test_files.items():
-            with open(os.path.join(output_path, filename), 'w') as f:
-                f.write("Test content")
-        
-        # Create visualization files
-        vis_files = [
-            "0x17._response-plots.pdf",
-            "0x17._tech-mapping.pdf",
-            "0x17._dpl-sbol.pdf"
-        ]
-        
-        for filename in vis_files:
-            with open(os.path.join(output_path, filename), 'w') as f:
-                f.write("Test visualization content")
-        
-        # Create CelloIntegration instance
-        with patch('src.tools.cello_integration.UCFCustomizer') as mock_ucf_customizer:
-            # Mock UCF validation
-            mock_validator = MagicMock()
-            mock_validator.validate_ucf.return_value = {"valid": True}
-            mock_ucf_customizer.return_value = mock_validator
-            
-            # Mock the dependency check
-            with patch.object(CelloIntegration, '_check_yosys_dependency', return_value=True):
-                with patch.object(CelloIntegration, '_start_minieugene_server'):
-                    with patch.object(CelloIntegration, '_stop_minieugene_server'):
-                        cello = CelloIntegration()
-                        
-                        # Test run_cello with Verilog code
-                        verilog_code = "module NOT_gate (input a, output out); assign out = ~a; endmodule"
-                        result = cello.run_cello(verilog_code=verilog_code)
-                        
-                        # Check that CELLO3 was called with the correct arguments
-                        mock_cello3.assert_called_once()
-                        
-                        # Check the result structure
-                        self.assertTrue(result["success"])
-                        self.assertIn("log", result)
-                        self.assertIn("results", result)
-                        self.assertIn("output_path", result["results"])
-                        self.assertIn("dna_design", result["results"])
-                        
-                        # Check that the output files were detected
-                        dna_design = result["results"]["dna_design"]
-                        for file_type in test_files.keys():
-                            self.assertIn(file_type, dna_design)
-                            self.assertIsNotNone(dna_design[file_type])
-                            
-                        # Check that visualizations were detected
-                        self.assertIn("visualizations", dna_design)
-                        self.assertEqual(len(dna_design["visualizations"]), len(vis_files))
-        
-        # Clean up test files
-        try:
-            shutil.rmtree(os.path.dirname(output_path))
-        except:
-            pass
-    
-    @patch('src.tools.cello_integration.CELLO3')
-    def test_custom_ucf_creation(self, mock_cello3):
-        """Test creating and using a custom UCF"""
-        # Mock the CELLO3 class
-        mock_cello_instance = MagicMock()
-        mock_cello3.return_value = mock_cello_instance
-        
-        # Create test output directory
-        output_path = os.path.join(self.project_root, "outputs", "cello_outputs", "0x17.v")
-        os.makedirs(output_path, exist_ok=True)
-        
-        # Create a minimal output file for the test
-        with open(os.path.join(output_path, "0x17._dna-sequences.csv"), 'w') as f:
-            f.write("Test DNA sequence")
-        
-        # Create CelloIntegration instance
-        with patch.object(CelloIntegration, 'create_custom_ucf') as mock_create_custom_ucf:
-            # Set up the mock to return a success value
-            mock_create_custom_ucf.return_value = os.path.join(
-                self.project_root, "ext_repos", "Cello-v2-1-Core", "input", "constraints", "custom_test.UCF.json"
-            )
-            
-            # Mock the UCF validation and dependency check
-            with patch('src.tools.cello_integration.UCFCustomizer') as mock_ucf_customizer:
-                mock_validator = MagicMock()
-                mock_validator.validate_ucf.return_value = {"valid": True}
-                mock_ucf_customizer.return_value = mock_validator
-                
-                with patch.object(CelloIntegration, '_check_yosys_dependency', return_value=True):
-                    with patch.object(CelloIntegration, '_start_minieugene_server'):
-                        with patch.object(CelloIntegration, '_stop_minieugene_server'):
-                            cello = CelloIntegration()
-                            
-                            # Test run_cello with a custom UCF
-                            verilog_code = "module NOT_gate (input a, output out); assign out = ~a; endmodule"
-                            custom_ucf = {
-                                "selected_gates": ["A1_AmtR", "P3_PhlF"],
-                                "selected_parts": ["pTac", "YFP", "L3S2P21"],
-                                "ucf_name": "custom_test.UCF.json"
-                            }
-                            
-                            result = cello.run_cello(verilog_code=verilog_code, custom_ucf=custom_ucf)
-                            
-                            # Check that create_custom_ucf was called with the correct arguments
-                            mock_create_custom_ucf.assert_called_once_with(
-                                selected_gates=custom_ucf["selected_gates"],
-                                selected_parts=custom_ucf["selected_parts"],
-                                modified_parts=None,
-                                new_parts=None,
-                                ucf_name=custom_ucf["ucf_name"]
-                            )
-                            
-                            # Check the result
-                            self.assertTrue(result["success"])
-        
-        # Clean up test files
-        try:
-            shutil.rmtree(os.path.dirname(output_path))
-        except:
-            pass
     
     def test_yosys_dependency_check(self):
         """Test the Yosys dependency check"""
@@ -254,7 +114,7 @@ class TestCelloIntegration(unittest.TestCase):
     
     def test_end_to_end_cello_run(self):
         """
-        Test an end-to-end run of Cello with a real (not mocked) integration.
+        Test an end-to-end run of Cello.
         
         This test verifies that:
         1. Cello can be initialized with a valid library
@@ -314,7 +174,7 @@ class TestCelloIntegration(unittest.TestCase):
             
             print(f"Running Cello with Verilog code for a NOT gate...")
             
-            # Run Cello without mocking
+            # Run Cello
             result = cello.run_cello(verilog_code=verilog_code)
             
             # Print full result for debugging
