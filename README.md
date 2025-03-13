@@ -1,4 +1,4 @@
-# LLM-Based Cello Designer
+# GeneForge: Automated Genetic Circuit Design and Optimization
 
 This repository contains an the foundation work for developing an automated AI-driven system to design and optimize genetic circuits.
 
@@ -54,6 +54,10 @@ UCF Library Manager:
 - Validates file selections for compatibility
 - Finds alternative files if the selected files are not valid
 - Allows the agent to select appropriate files based on the user's request (e.g. "I want a **NOT gate** for **E. coli**")
+
+
+## Retrieval Augmented Generation
+While not yet implemented, RAG will be used to provide the agents with access to a wide range of information. This will give the planning agent the ability to search through scientific literature to find relevant information to assist in the design process.
 
 ## Integrations
 
