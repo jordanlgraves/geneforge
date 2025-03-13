@@ -26,3 +26,12 @@ __pycache__/
 *.pyz
 
 .cursorrules
+
+# Pytorch
+*.pt
+*.pth
+*.ptl
+*.pth.tar
+*.pth.tar.gz
+*.pth.tar.bz2
+*.pth.tar.xz
