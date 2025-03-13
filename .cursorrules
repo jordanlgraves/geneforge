@@ -1,4 +1,0 @@
-- When running any python commands in the bash shell, you must first select the python version: `source ~/.bash_profile`
-- When running any python commands in the bash shell, you must first activate the project environment: `source venv/bin/activate`
-
-
