@@ -17,19 +17,11 @@ class TestUCFCustomization(unittest.TestCase):
         if not success:
             # If no E. coli library, try any available library
             available_libraries = cls.library_manager.get_available_libraries()
-            if not available_libraries:
-                raise unittest.SkipTest("No libraries available for testing")
-            
             success = cls.library_manager.select_library(available_libraries[0])
-            if not success:
-                raise unittest.SkipTest("Could not select a library for testing")
-        
+            
         # Get the UCF path from the library manager
         library_info = cls.library_manager.get_current_library_info()
         cls.base_ucf_path = library_info["ucf_path"]
-        
-        if not cls.base_ucf_path or not os.path.exists(cls.base_ucf_path):
-            raise unittest.SkipTest(f"UCF file not found at {cls.base_ucf_path}")
         
         cls.temp_dir = tempfile.TemporaryDirectory()
         cls.test_dir = cls.temp_dir.name
@@ -77,9 +69,6 @@ class TestUCFCustomization(unittest.TestCase):
         """Test creating UCF with selected gates only"""
         customizer = UCFCustomizer(self.base_ucf_path)
         
-        if not self.sample_gate_ids:
-            self.skipTest("No sample gates available for testing")
-        
         # Create custom UCF with first 2 gates
         ucf_path = customizer.create_custom_ucf(
             selected_gates=self.sample_gate_ids,
@@ -109,9 +98,6 @@ class TestUCFCustomization(unittest.TestCase):
     def test_part_filtering(self):
         """Test filtering of parts collections"""
         customizer = UCFCustomizer(self.base_ucf_path)
-        
-        if not self.sample_part_ids:
-            self.skipTest("No sample parts available for testing")
             
         print(f"\nTest part filtering with parts: {self.sample_part_ids}")
         
@@ -158,8 +144,6 @@ class TestUCFCustomization(unittest.TestCase):
         # Use the first sample part if available
         if len(self.sample_part_ids) > 0:
             modified_part = self.sample_part_ids[0]
-        else:
-            self.skipTest("No sample parts available for testing")
         
         modifications = {
             "parameters": {"strength": 2.5},

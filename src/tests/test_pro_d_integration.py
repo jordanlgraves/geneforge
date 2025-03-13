@@ -157,9 +157,6 @@ class TestProDIntegration(unittest.TestCase):
         """
         Test evaluation of promoter spacer sequences using the real ProD tool.
         """
-        # Skip test if model not found
-        if not os.path.exists(self.model_path):
-            self.skipTest(f"ProD model not found at {self.model_path}")
             
         spacers = [
             "ACTGACTAGCTAGCTAG",  # Valid 17bp spacer
@@ -192,9 +189,6 @@ class TestProDIntegration(unittest.TestCase):
         """
         Test generation of promoter library using the real ProD tool.
         """
-        # Skip test if model not found
-        if not os.path.exists(self.model_path):
-            self.skipTest(f"ProD model not found at {self.model_path}")
         
         # Try multiple blueprints until we find one that works
         generated_library = None
@@ -219,36 +213,33 @@ class TestProDIntegration(unittest.TestCase):
                 print(f"Blueprint {blueprint} failed: {str(e)}")
                 continue
         
-        if generated_library is not None:
-            print(f"\nSuccessfully generated library with blueprint: {blueprint_used}")
-            self.assertIsInstance(generated_library, pd.DataFrame)
-            self.assertGreater(len(generated_library), 0, "Should generate library for valid blueprint")
-            
-            # Verify output file was created
-            self.assertTrue(os.path.exists(f"{self.output_path}.csv"), "Output file should be created")
-            
-            # Test integration class method with the successful blueprint
-            library = self.prod.generate_library(
-                blueprint_used,
-                desired_strengths=[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10],  # All strengths
-                library_size=2
-            )
-            
-            if library:
-                self.assertIsInstance(library, dict)
-                self.assertGreater(len(library), 0, "Should generate library dictionary for valid blueprint")
-                
-                # Verify structure of library entries
-                for spacer, data in library.items():
-                    self.assertEqual(len(spacer), 17, "Spacer should be 17bp")
-                    self.assertIn('strength', data)
-                    self.assertIn('class', data)
-                    self.assertIn('probability', data)
-                    self.assertIn('strength_band', data)
-                    self.assertIn('full_promoter', data)
-        else:
-            self.skipTest("Could not generate library with any blueprint. This is expected since promoter generation is probabilistic.")
+        print(f"\nSuccessfully generated library with blueprint: {blueprint_used}")
+        self.assertIsInstance(generated_library, pd.DataFrame)
+        self.assertGreater(len(generated_library), 0, "Should generate library for valid blueprint")
         
+        # Verify output file was created
+        self.assertTrue(os.path.exists(f"{self.output_path}.csv"), "Output file should be created")
+        
+        # Test integration class method with the successful blueprint
+        library = self.prod.generate_library(
+            blueprint_used,
+            desired_strengths=[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10],  # All strengths
+            library_size=2
+        )
+        
+        if library:
+            self.assertIsInstance(library, dict)
+            self.assertGreater(len(library), 0, "Should generate library dictionary for valid blueprint")
+            
+            # Verify structure of library entries
+            for spacer, data in library.items():
+                self.assertEqual(len(spacer), 17, "Spacer should be 17bp")
+                self.assertIn('strength', data)
+                self.assertIn('class', data)
+                self.assertIn('probability', data)
+                self.assertIn('strength_band', data)
+                self.assertIn('full_promoter', data)
+    
         # Test with empty blueprint
         with self.assertRaises(ValueError):
             generate_promoter_library("")
@@ -261,9 +252,6 @@ class TestProDIntegration(unittest.TestCase):
         """
         Test end-to-end workflow: extract spacer, evaluate, and regenerate promoter.
         """
-        # Skip test if model not found
-        if not os.path.exists(self.model_path):
-            self.skipTest(f"ProD model not found at {self.model_path}")
             
         # Extract spacer from full promoter
         spacer = self.prod.extract_spacer(self.full_promoter)
@@ -286,9 +274,7 @@ class TestProDIntegration(unittest.TestCase):
         2. Verify each spacer is a valid length (17bp) or None if no spacer found
         3. Evaluate valid spacers
         """
-        # Skip test if model not found
-        if not os.path.exists(self.model_path):
-            self.skipTest(f"ProD model not found at {self.model_path}")
+        
             
         # Process each promoter sequence
         valid_spacers = []

@@ -59,9 +59,6 @@ class TestLibrarySelection(unittest.TestCase):
     
     def test_direct_library_selection(self):
         """Test selecting a library directly by ID"""
-        # Skip if no libraries available
-        if not self.available_libraries:
-            self.skipTest("No libraries available for testing")
         
         # Select the first available library
         library_id = self.available_libraries[0]
@@ -108,41 +105,31 @@ class TestLibrarySelection(unittest.TestCase):
     def test_cello_integration_library_selection(self):
         """Test that the Cello integration can select libraries"""
         # Skip if no libraries available
-        if not self.available_libraries:
-            self.skipTest("No libraries available for testing")
         
-        try:
-            # Create a Cello integration with a specific library
-            library_id = self.available_libraries[0]
-            cello = CelloIntegration(library_id=library_id)
+        # Create a Cello integration with a specific library
+        library_id = self.available_libraries[0]
+        cello = CelloIntegration(library_id=library_id)
+        
+        # Verify that the library was selected
+        self.assertEqual(cello.library_manager.current_library_id, library_id,
+                        f"Cello integration should select library {library_id}")
+        
+        # Try selecting a different library
+        if len(self.available_libraries) > 1:
+            library_id = self.available_libraries[1]
+            success = cello.select_library(library_id)
             
-            # Verify that the library was selected
+            self.assertTrue(success, f"Should be able to select library {library_id}")
             self.assertEqual(cello.library_manager.current_library_id, library_id,
                             f"Cello integration should select library {library_id}")
-            
-            # Try selecting a different library
-            if len(self.available_libraries) > 1:
-                library_id = self.available_libraries[1]
-                success = cello.select_library(library_id)
-                
-                self.assertTrue(success, f"Should be able to select library {library_id}")
-                self.assertEqual(cello.library_manager.current_library_id, library_id,
-                               f"Cello integration should select library {library_id}")
-        except ImportError as e:
-            self.skipTest(f"Skipping Cello integration test due to import error: {e}")
+    
     
     def test_custom_ucf_creation(self):
         """Test creating a custom UCF with the library manager"""
-        # Skip if no libraries available
-        if not self.available_libraries:
-            self.skipTest("No libraries available for testing")
         
         # Select a library
         library_id = self.available_libraries[0]
         success = self.library_manager.select_library(library_id)
-        
-        if not success or not self.library_manager.current_customizer:
-            self.skipTest(f"Could not select library {library_id} or no customizer available")
         
         # Create a simple custom UCF
         ucf_path = self.library_manager.create_custom_ucf(
@@ -164,34 +151,29 @@ class TestLibrarySelection(unittest.TestCase):
     
     def test_cello_with_custom_ucf(self):
         """Test creating a custom UCF with Cello integration"""
-        # Skip if no libraries available
-        if not self.available_libraries:
-            self.skipTest("No libraries available for testing")
         
-        try:
-            # Create a Cello integration with a specific library
-            library_id = self.available_libraries[0]
-            cello = CelloIntegration(library_id=library_id)
-            
-            # Create a custom UCF
-            custom_ucf_path = cello.create_custom_ucf(
-                ucf_name="test_custom_cello.UCF.json",
-                output_dir=self.test_dir
-            )
-            
-            # Verify the UCF was created
-            self.assertIsNotNone(custom_ucf_path, "Should be able to create a custom UCF")
-            self.assertTrue(os.path.exists(custom_ucf_path), "Custom UCF file should exist")
-            
-            # Verify the UCF is valid JSON
-            with open(custom_ucf_path) as f:
-                try:
-                    ucf_data = json.load(f)
-                    self.assertTrue(isinstance(ucf_data, list), "UCF data should be a list")
-                except json.JSONDecodeError:
-                    self.fail("Custom UCF should be valid JSON")
-        except ImportError as e:
-            self.skipTest(f"Skipping Cello integration test due to import error: {e}")
+        # Create a Cello integration with a specific library
+        library_id = self.available_libraries[0]
+        cello = CelloIntegration(library_id=library_id)
+        
+        # Create a custom UCF
+        custom_ucf_path = cello.create_custom_ucf(
+            ucf_name="test_custom_cello.UCF.json",
+            output_dir=self.test_dir
+        )
+        
+        # Verify the UCF was created
+        self.assertIsNotNone(custom_ucf_path, "Should be able to create a custom UCF")
+        self.assertTrue(os.path.exists(custom_ucf_path), "Custom UCF file should exist")
+        
+        # Verify the UCF is valid JSON
+        with open(custom_ucf_path) as f:
+            try:
+                ucf_data = json.load(f)
+                self.assertTrue(isinstance(ucf_data, list), "UCF data should be a list")
+            except json.JSONDecodeError:
+                self.fail("Custom UCF should be valid JSON")
+
 
 if __name__ == "__main__":
     unittest.main() 

@@ -17,9 +17,6 @@ class TestRuleBasedLibrarySelector(unittest.TestCase):
         
         # Get available libraries for testing
         cls.available_libraries = cls.library_manager.get_available_libraries()
-        
-        if not cls.available_libraries:
-            raise unittest.SkipTest("No libraries available for testing")
             
         print(f"Available libraries for testing: {cls.available_libraries}")
         
@@ -162,18 +159,12 @@ class TestLLMBasedLibrarySelector(unittest.TestCase):
     def setUpClass(cls):
         """Set up test environment"""
         # Check if OpenAI API key is available
-        if not os.environ.get("OPENAI_API_KEY"):
-            raise unittest.SkipTest("OPENAI_API_KEY environment variable not set, skipping LLM tests")
-        
         # Create a library manager for testing
         cls.library_manager = LibraryManager()
         
         # Get available libraries for testing
         cls.available_libraries = cls.library_manager.get_available_libraries()
         
-        if not cls.available_libraries:
-            raise unittest.SkipTest("No libraries available for testing")
-            
         print(f"Available libraries for testing: {cls.available_libraries}")
         
         # Create a library selector
