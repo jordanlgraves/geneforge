@@ -6,11 +6,8 @@ This repository contains an the foundation work for developing an automated AI-d
 
 To core features of the system include a master LLM-agent which plans and orchestrates the design of a genetic circuit. This agent deploys worker agents to handle different parts of the design process. For example, a cello design agent is responsible for generating verilog, managing a UCF library, and running the cello program. Another analysis agent is responsible for parsing the results of the cello program and providing feedback to the design agent. Each agent is given it's own file to manage internal memory and reasoning streaming. Each agent is also provided with the user's initial prompt and design specification. The master agent is responsible for coordinating the work of the other agents and for providing feedback to the user as well as deciding on the next steps in the design process. 
 
-### Examples and use cases:
+## Examples and use cases:
 Examples of prompts cane b found in `examples_and_prompts`. These range from simple to complex and are designed to guide the implementation of this project and outline the vision of the system.
-
-### Reinforcement learning:
-Another core feature of the system is it's amenability to reinforcement learning. The initial reinforcement learning goal is to establish successful outputs from a wide range of prompts with high temperature values to ensure a wide range of outputs. Successful outputs, determined using in-silico validation/simulation, will be used as training data to improve the agents performance.
 
 ## Agents:
 
@@ -58,6 +55,9 @@ UCF Library Manager:
 
 ## Retrieval Augmented Generation
 While not yet implemented, RAG will be used to provide the agents with access to a wide range of information. This will give the planning agent the ability to search through scientific literature to find relevant information to assist in the design process.
+
+## Reinforcement learning:
+Another core feature of the system is it's amenability to reinforcement learning. The initial reinforcement learning goal is to establish successful outputs from a wide range of prompts with high temperature values to ensure a wide range of outputs. Successful outputs, determined using in-silico validation/simulation, will be used as training data to improve the agents performance.
 
 ## Integrations
 
