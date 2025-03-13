@@ -119,12 +119,74 @@ def main():
         # Show a simple Verilog example
         print_section("VERILOG EXAMPLE")
         print("Example Verilog code for a NOT gate:")
-        verilog_code = "module NOT(input a, output y); assign y = !a; endmodule"
+        verilog_code = """
+        module NOT_gate (
+            input a,
+            output out
+        );
+            assign out = ~a;
+        endmodule
+        """
         print(verilog_code)
         
-        print("\nTo run this circuit in Cello, you would use:")
-        print("result = integration.run_cello(verilog_code)")
-        print("Note: This example does not actually run Cello to avoid long computation.")
+        # Create a specific output directory for this example
+        example_output_dir = os.path.join(project_root, "outputs", "cello_example_outputs")
+        os.makedirs(example_output_dir, exist_ok=True)
+        print(f"\nCreated example output directory: {example_output_dir}")
+        
+        # Use the first available E. coli library or any available library
+        library_id = eco_lib if eco_lib else (integration.get_available_libraries()[0] if integration.get_available_libraries() else None)
+        
+        if library_id:
+            print(f"\nUsing library: {library_id}")
+            integration.select_library(library_id)
+            
+            # Set custom arguments for this run
+            example_verilog_name = "example_NOT_gate.v"
+            integration.cello_args.update({
+                'v_name': example_verilog_name,
+                'out_path': example_output_dir
+            })
+            
+            print("\nRunning Cello with the NOT gate circuit...")
+            try:
+                # Actually run Cello
+                result = integration.run_cello(verilog_code=verilog_code)
+                
+                print(f"\nCello run completed with success: {result['success']}")
+                
+                if result['success']:
+                    output_path = result['results']['output_path']
+                    print(f"Output files generated in: {output_path}")
+                    
+                    # Display DNA design components
+                    dna_design = result['results']['dna_design']
+                    print("\nDNA design generated with components:")
+                    for key, value in dna_design.items():
+                        if key == 'visualizations':
+                            print(f"  - Visualizations: {len(value)} files")
+                        elif value:
+                            print(f"  - {key}: {os.path.basename(value) if isinstance(value, str) else value}")
+                    
+                    # Display DNA sequences if available
+                    dna_sequences_file = dna_design.get('dna_sequences')
+                    if dna_sequences_file and os.path.exists(dna_sequences_file):
+                        print("\nDNA Sequences (first 5 lines):")
+                        with open(dna_sequences_file, 'r') as f:
+                            lines = f.readlines()
+                            for i, line in enumerate(lines[:5]):
+                                print(f"  {line.strip()}")
+                            print(f"  ... ({len(lines)} total lines in DNA sequences file)")
+                else:
+                    print(f"Cello run failed: {result.get('error', 'Unknown error')}")
+                    print("\nCheck the log for more details:")
+                    print(result.get('log', '')[:500] + "..." if len(result.get('log', '')) > 500 else result.get('log', ''))
+            except Exception as e:
+                import traceback
+                print(f"Error running Cello: {e}")
+                print(traceback.format_exc())
+        else:
+            print("\nNo libraries available to run Cello. Please ensure libraries are properly set up.")
             
     except Exception as e:
         print(f"Error initializing CelloIntegration: {e}")

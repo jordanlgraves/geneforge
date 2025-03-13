@@ -11,6 +11,7 @@ import json
 import tempfile
 from pathlib import Path
 
+from core_algorithm.celloAlgo import CELLO3
 
 from src.library.ucf_customizer import UCFCustomizer  # Import UCFCustomizer for validation
 from src.library.library_manager import LibraryManager
