@@ -56,7 +56,7 @@ UCF Library Manager:
 ## Retrieval Augmented Generation
 While not yet implemented, RAG will be used to provide the agents with access to a wide range of information. This will give the planning agent the ability to search through scientific literature to find relevant information to assist in the design process.
 
-## Reinforcement learning:
+## Reinforcement learning
 Another core feature of the system is it's amenability to reinforcement learning. The initial reinforcement learning goal is to establish successful outputs from a wide range of prompts with high temperature values to ensure a wide range of outputs. Successful outputs, determined using in-silico validation/simulation, will be used as training data to improve the agents performance.
 
 ## Integrations
