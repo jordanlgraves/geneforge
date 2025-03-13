@@ -55,6 +55,9 @@ UCF Library Manager:
 - Finds alternative files if the selected files are not valid
 - Allows the agent to select appropriate files based on the user's request (e.g. "I want a **NOT gate** for **E. coli**")
 
+## Integrations
+
+Currently, each integration is managed separately in the `ext_repos` directory. My current workflow adds the individual repos to the `PYTHONPATH` and then imports them in the individual integration files. This allows me to use the tools in the rest of the project. This will need to be revisited in the future to prevent dependency conflicts.
 
 ## Examples
 
