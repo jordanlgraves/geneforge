@@ -7,7 +7,7 @@ This repository contains an the foundation work for developing an automated AI-d
 To core features of the system include a master LLM-agent which plans and orchestrates the design of a genetic circuit. This agent deploys worker agents to handle different parts of the design process. For example, a cello design agent is responsible for generating verilog, managing a UCF library, and running the cello program. Another analysis agent is responsible for parsing the results of the cello program and providing feedback to the design agent. Each agent is given it's own file to manage internal memory and reasoning streaming. Each agent is also provided with the user's initial prompt and design specification. The master agent is responsible for coordinating the work of the other agents and for providing feedback to the user as well as deciding on the next steps in the design process. 
 
 ## Examples and use cases:
-Examples of prompts cane b found in `examples_and_prompts`. These range from simple to complex and are designed to guide the implementation of this project and outline the vision of the system.
+Examples of prompts can be found in `examples_and_prompts`. These range from simple to complex to aspirations and are designed to guide the implementation of this project and outline the vision of more sophisticated systems.
 
 ## Agents:
 
