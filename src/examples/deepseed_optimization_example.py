@@ -32,7 +32,6 @@ sys.path.append(project_root)
 
 # Import DeepSEED integration classes
 from src.tools.deepseed_integration import DeepSeedIntegration
-from src.tools.deepseed_circuit_optimizer import DeepSeedCircuitOptimizer
 
 # Configure logging
 logging.basicConfig(
@@ -44,12 +43,15 @@ logger = logging.getLogger("deepseed_example")
 def setup_argparse():
     """Set up command-line arguments."""
     parser = argparse.ArgumentParser(description='DeepSEED Promoter Optimization Example')
-    parser.add_argument('--input-dir', type=str, required=True, 
-                        help='Input directory containing UCF files')
-    parser.add_argument('--output-dir', type=str, required=True,
-                        help='Output directory for results')
-    parser.add_argument('--circuit', type=str, required=True,
-                        help='Name of the circuit to optimize')
+    parser.add_argument('--input-dir', type=str, 
+                        help='Input directory containing UCF files',
+                        default="ext_repos/Cello-UCF/files/v2/ucf/Eco/Eco1C1G1T1.UCF.json")
+    parser.add_argument('--output-dir', type=str, 
+                        help='Output directory for results',
+                        default="outputs/deepseed_optimization_example")
+    parser.add_argument('--circuit', type=str, 
+                        help='Name of the circuit to optimize',
+                        default="Eco1C1G1T1")
     parser.add_argument('--model-dir', type=str, default='outputs/deepseed_models',
                         help='Directory containing DeepSEED models')
     return parser.parse_args()
@@ -62,7 +64,6 @@ def example_1_optimize_single_promoter():
     
     # Initialize DeepSEED integration
     deepseed = DeepSeedIntegration(
-        model_dir="outputs/deepseed_models",
         cache_dir="outputs/deepseed_cache"
     )
     
@@ -131,7 +132,6 @@ def example_2_circuit_optimization(args):
         input_directory=str(input_dir),
         output_directory=str(output_dir),
         circuit_name=args.circuit,
-        deepseed_model_dir=args.model_dir
     )
     
     # Run the optimization

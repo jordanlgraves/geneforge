@@ -20,6 +20,8 @@ design_orchestrator = DesignOrchestrator(library)
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+DEBUG_MODEL = True
+
 def chat_with_tool(client, messages, i=0, model="gpt-4o-mini", max_rounds=10):
     logging.info(f"Message round: {i}")
     
@@ -85,11 +87,11 @@ def chat_with_tool(client, messages, i=0, model="gpt-4o-mini", max_rounds=10):
         fn_args_json = fn_call.arguments or "{}"
         fn_args = json.loads(fn_args_json)
         
-        logging.info(f"Calling function: {fn_name} with args: {fn_args}")
+        logging.info(f"\n\nCalling function: {fn_name} with args: {fn_args}")
         
         try:
             tool_result = library.call_tool_function(fn_name, fn_args)
-            logging.info(f"Tool result: {json.dumps(tool_result)[:500]}...")  # Log first 500 chars to avoid huge logs
+            logging.info(f"Tool result: {json.dumps(tool_result)[:500]}...\n\n")  # Log first 500 chars to avoid huge logs
             
             # Check if there was an error in the tool result
             if isinstance(tool_result, dict) and "error" in tool_result:
@@ -111,16 +113,20 @@ def chat_with_tool(client, messages, i=0, model="gpt-4o-mini", max_rounds=10):
             return chat_with_tool(client, messages, i + 1, model, max_rounds)
             
         except Exception as e:
-            logging.error(f"Error calling function {fn_name}: {str(e)}")
-            error_result = {"error": f"Function execution failed: {str(e)}"}
-            
-            messages.append({
-                "role": "function",
-                "name": fn_name,
-                "content": json.dumps(error_result)
-            })
-            
-            return chat_with_tool(client, messages, i + 1, model, max_rounds)
+            if DEBUG_MODEL:
+                # reraise so we can see the error in the debugger
+                raise e
+            else:
+                logging.error(f"Error calling function {fn_name}: {str(e)}")
+                error_result = {"error": f"Function execution failed: {str(e)}"}
+                
+                messages.append({
+                    "role": "function",
+                    "name": fn_name,
+                    "content": json.dumps(error_result)
+                })
+                
+                return chat_with_tool(client, messages, i + 1, model, max_rounds)
     else:
         logging.info("No function call made; returning the model's response.")
         return response.choices[0].message

@@ -4,10 +4,12 @@ import logging
 from typing import Dict, List, Optional, Union, Any
 from pathlib import Path
 
-from src.library.ucf_retrieval import load_ecoli_library
+from src.library.ucf_retrieval import get_dna_part_by_name
 from src.library.ucf_customizer import UCFCustomizer
 
 logger = logging.getLogger("library_manager")
+
+DEBUG_MODEL = True
 
 class LibraryManager:
     """
@@ -43,15 +45,19 @@ class LibraryManager:
         Args:
             default_library: Default library identifier (e.g., "Eco1C1G1T1")
         """
-        self.default_library = default_library
+        # Initialize the UCF customizer
+        self.ucf_customizer = UCFCustomizer()
+        
+        # Scan available libraries
         self.available_libraries = self._scan_libraries()
-        self.current_library_id = default_library
-        self.current_library_path = None
+        
+        # Set initial state
+        self.default_library = default_library
+        self.current_library_id = None
+        self.current_ucf_data = None  # Store raw UCF data
+        self.current_ucf_path = None
         self.current_input_path = None
         self.current_output_path = None
-        self.current_parsed_path = None
-        self.current_library_data = None
-        self.current_customizer = None
         
         # Try to load the default library
         if self.available_libraries:
@@ -63,7 +69,7 @@ class LibraryManager:
             self.select_library(self.default_library)
         else:
             logger.warning("No libraries found. Library manager initialized without active library.")
-        
+    
     def _scan_libraries(self) -> Dict[str, Dict[str, str]]:
         """
         Scan all library directories to find available UCF, input, and output files.
@@ -137,137 +143,53 @@ class LibraryManager:
         # Start with the current file's directory
         current_dir = os.path.dirname(os.path.abspath(__file__))
         
-        # Navigate up to the project root (src/library -> src -> project_root)
-        project_root = os.path.abspath(os.path.join(current_dir, "../.."))
+        # Go up to the src directory
+        parent_dir = os.path.dirname(current_dir)
+        
+        # Go up one more level to the project root
+        project_root = os.path.dirname(parent_dir)
         
         return project_root
     
-    def _scan_directory_for_libraries(self, directory: str, libraries: Dict[str, Dict[str, str]]):
+    def select_library(self, library_id: str) -> bool:
         """
-        Scan a directory for UCF library files.
+        Select a library by ID.
         
         Args:
-            directory: Directory to scan
-            libraries: Dictionary to update with found libraries
-        """
-        for filename in os.listdir(directory):
-            if filename.endswith(".UCF.json"):
-                # Extract library ID (e.g., "Eco1C1G1T1" from "Eco1C1G1T1.UCF.json")
-                library_id = filename.replace(".UCF.json", "")
-                full_path = os.path.join(directory, filename)
-                
-                if library_id not in libraries:
-                    libraries[library_id] = {}
-                    
-                libraries[library_id]["ucf"] = full_path
-    
-    def get_available_libraries(self) -> List[str]:
-        """
-        Get a list of all available library IDs.
-        
-        Returns:
-            List of library IDs
-        """
-        return list(self.available_libraries.keys())
-    
-    def select_library(self, library_identifier: str) -> bool:
-        """
-        Select a library by its identifier or description.
-        
-        Args:
-            library_identifier: Library ID or description (e.g., "Eco1C1G1T1" or "ecoli")
+            library_id: ID of the library to select
             
         Returns:
-            True if library was successfully selected, False otherwise
-        """
-        # Check if this is a direct library ID
-        if library_identifier in self.available_libraries:
-            return self._load_library(library_identifier)
-        
-        # Check if this is an organism prefix
-        normalized_id = library_identifier.lower().strip()
-        if normalized_id in self.ORGANISM_PREFIXES:
-            prefix = self.ORGANISM_PREFIXES[normalized_id]
-            
-            # Find libraries matching this prefix
-            matching_libraries = [
-                lib_id for lib_id in self.available_libraries.keys()
-                if lib_id.startswith(prefix)
-            ]
-            
-            if matching_libraries:
-                # Sort by complexity (assuming format like Eco1C1G1T1 where higher numbers = more complex)
-                matching_libraries.sort()
-                return self._load_library(matching_libraries[0])
-        
-        # If we get here, no matching library was found
-        logger.warning(f"No matching library found for '{library_identifier}'")
-        return False
-    
-    def _load_library(self, library_id: str) -> bool:
-        """
-        Load a library by its ID.
-        
-        Args:
-            library_id: Library ID to load
-            
-        Returns:
-            True if library was successfully loaded, False otherwise
+            True if the library was successfully selected, False otherwise
         """
         if library_id not in self.available_libraries:
-            logger.error(f"Library '{library_id}' not found")
+            logger.error(f"Library {library_id} not found")
             return False
         
+        # Get the library info
         library_info = self.available_libraries[library_id]
         
-        # Reset current library data
-        self.current_library_data = None
-        self.current_customizer = None
-        self.current_library_path = None
-        self.current_input_path = None
-        self.current_output_path = None
-        self.current_parsed_path = None
+        # Check if the UCF file exists
+        if "ucf" not in library_info:
+            logger.error(f"Library {library_id} does not have a UCF file")
+            return False
         
-        # Try to load parsed data if available
-        if "parsed" in library_info:
-            try:
-                self.current_parsed_path = library_info["parsed"]
-                self.current_library_data = load_ecoli_library(self.current_parsed_path)
-                logger.info(f"Loaded parsed library data from {self.current_parsed_path}")
-            except Exception as e:
-                logger.error(f"Failed to load parsed library: {e}")
-                self.current_parsed_path = None
-                self.current_library_data = None
+        # Store the UCF path
+        self.current_ucf_path = library_info["ucf"]
         
-        # Try to load UCF data if available
-        if "ucf" in library_info:
-            try:
-                self.current_library_path = library_info["ucf"]
-                self.current_customizer = UCFCustomizer(self.current_library_path)
-                logger.info(f"Loaded UCF library from {self.current_library_path}")
-                
-                # If we don't have parsed data, try to extract basic data from the UCF
-                if self.current_library_data is None:
-                    self.current_library_data = {
-                        "metadata": {"library_id": library_id},
-                        "parts": [],
-                        "gates": [],
-                        "interactions": [],
-                        "experimental_data": [],
-                        "misc": [],
-                        "unrecognized": {"items": [], "fields": []}
-                    }
-                    
-                    # Extract parts and gates from the UCF
-                    for collection_name, items in self.current_customizer.collections.items():
-                        if collection_name == "parts":
-                            self.current_library_data["parts"] = items
-                        elif collection_name == "gates":
-                            self.current_library_data["gates"] = items
-            except Exception as e:
-                logger.error(f"Failed to load UCF library: {e}")
-                if self.current_library_data is None:
-                    return False
+        # Load the UCF file - store raw UCF data
+        try:
+            with open(self.current_ucf_path, 'r') as f:
+                self.current_ucf_data = json.load(f)
+            
+            logger.info(f"Loaded raw UCF data from {self.current_ucf_path}")
+            
+        except Exception as e:
+            if DEBUG_MODEL:
+                # reraise so we can see the error in the debugger
+                raise e
+            
+            logger.error(f"Failed to load UCF library: {e}")
+            return False
         
         # Store input and output file paths if available
         if "input" in library_info:
@@ -278,30 +200,74 @@ class LibraryManager:
             self.current_output_path = library_info["output"]
             logger.info(f"Registered output file: {self.current_output_path}")
         
-        # If we have either parsed data or a customizer, consider it a success
-        if self.current_library_data is not None or self.current_customizer is not None:
-            self.current_library_id = library_id
-            return True
+        # Set the current library ID
+        self.current_library_id = library_id
+        logger.info(f"Selected library: {library_id}")
         
-        return False
+        return True
     
     def get_library_data(self) -> Optional[Dict[str, Any]]:
         """
-        Get the current library data.
+        Get the current library data in a structured format.
+        This method converts raw UCF data to a structured format for easier querying.
         
         Returns:
-            Library data dictionary or None if no library is loaded
+            Structured library data or None if no library is loaded
         """
-        return self.current_library_data
+        if not self.current_ucf_data:
+            return None
+            
+        # Convert raw UCF data to a structured format on-demand
+        structured_data = {
+            "parts": [],
+            "gates": []
+        }
+        
+        # Process parts and gates
+        for item in self.current_ucf_data:
+            if "collection" not in item:
+                continue
+                
+            collection = item["collection"]
+            
+            if collection == "parts":
+                part_data = {
+                    "id": item.get("name", ""),
+                    "name": item.get("name", ""),
+                    "type": item.get("type", ""),
+                    "sequence": item.get("dnasequence", ""),
+                    "raw_data": item
+                }
+                
+                # Process parameters
+                for param in item.get("parameters", []):
+                    param_name = param.get("name", "").lower()
+                    param_value = param.get("value", 0)
+                    part_data[param_name] = param_value
+                
+                structured_data["parts"].append(part_data)
+                
+            elif collection == "gates":
+                gate_data = {
+                    "id": item.get("name", ""),
+                    "name": item.get("name", ""),
+                    "type": item.get("type", ""),
+                    "raw_data": item
+                }
+                structured_data["gates"].append(gate_data)
+            
+            # Add other collections as needed
+        
+        return structured_data
     
-    def get_customizer(self) -> Optional[UCFCustomizer]:
+    def get_ucf_data(self) -> Optional[List[Dict]]:
         """
-        Get the UCF customizer for the current library.
+        Get the raw UCF data for the current library.
         
         Returns:
-            UCFCustomizer instance or None if no UCF is loaded
+            Raw UCF data or None if no library is loaded
         """
-        return self.current_customizer
+        return self.current_ucf_data
     
     def get_input_file_path(self) -> Optional[str]:
         """
@@ -323,7 +289,7 @@ class LibraryManager:
     
     def create_custom_ucf(self, 
                          selected_gates: List[str] = None,
-                         selected_parts: List[str] = None,
+                         selected_parts: List = None,
                          modified_parts: Dict[str, Dict] = None,
                          new_parts: List[Dict] = None,
                          ucf_name: str = None,
@@ -333,7 +299,7 @@ class LibraryManager:
         
         Args:
             selected_gates: List of gate IDs to include
-            selected_parts: List of part IDs to include
+            selected_parts: List of part objects or IDs to include
             modified_parts: Dict of part_id -> modified properties
             new_parts: List of new part definitions to add
             ucf_name: Optional name for the UCF file
@@ -342,14 +308,41 @@ class LibraryManager:
         Returns:
             Path to the created UCF file or None if creation failed
         """
-        if self.current_customizer is None:
-            logger.error("No UCF library loaded, cannot create custom UCF")
+        if not self.current_ucf_data:
+            logger.error("No UCF data loaded, cannot create custom UCF")
             return None
         
+        # Process selected_parts to ensure we have a list of part dictionaries
+        processed_parts = []
+        if selected_parts:
+            for part in selected_parts:
+                if isinstance(part, dict) and ("id" in part or "name" in part):
+                    # If it's already a part object with id/name, use it directly
+                    processed_parts.append(part)
+                else:
+                    # Otherwise, try to find the part in the raw UCF data
+                    part_name = part if isinstance(part, str) else part.get("id", part.get("name", ""))
+                    found = False
+                    
+                    for item in self.current_ucf_data:
+                        if item.get("collection") == "parts" and item.get("name") == part_name:
+                            processed_parts.append(item)
+                            found = True
+                            break
+                    
+                    if not found:
+                        logger.warning(f"Part {part_name} not found in UCF")
+        
+        # Default output directory
+        if not output_dir:
+            output_dir = "outputs/custom_ucf"
+        
         try:
-            return self.current_customizer.create_custom_ucf(
+            # Create the custom UCF using our raw UCF data
+            return self.ucf_customizer.create_custom_ucf(
+                ucf_data=self.current_ucf_data,
                 selected_gates=selected_gates,
-                selected_parts=selected_parts,
+                selected_parts=processed_parts,
                 modified_parts=modified_parts,
                 new_parts=new_parts,
                 ucf_name=ucf_name,
@@ -368,17 +361,19 @@ class LibraryManager:
         """
         info = {
             "library_id": self.current_library_id,
-            "ucf_path": self.current_library_path,
+            "ucf_path": self.current_ucf_path,
             "input_path": self.current_input_path,
             "output_path": self.current_output_path,
-            "parsed_path": self.current_parsed_path,
-            "has_library_data": self.current_library_data is not None,
-            "has_customizer": self.current_customizer is not None
+            "has_ucf_data": self.current_ucf_data is not None
         }
         
-        # Add some statistics if we have library data
-        if self.current_library_data is not None:
-            info["num_parts"] = len(self.current_library_data.get("parts", []))
-            info["num_gates"] = len(self.current_library_data.get("gates", []))
+        # Add some statistics about the UCF if data is available
+        if self.current_ucf_data:
+            # Count parts and gates in the raw UCF
+            parts_count = sum(1 for item in self.current_ucf_data if item.get("collection") == "parts")
+            gates_count = sum(1 for item in self.current_ucf_data if item.get("collection") == "gates")
+            
+            info["num_parts"] = parts_count
+            info["num_gates"] = gates_count
         
         return info 

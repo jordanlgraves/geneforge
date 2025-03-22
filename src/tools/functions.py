@@ -4,6 +4,7 @@ import json
 import os
 import glob
 import re
+from typing import Dict, List
 from src.library.ucf_retrieval import choose_repressor, get_dna_part_by_name, get_gate_by_id, get_gates_by_type, list_misc_items, list_promoters, list_terminators
 from src.library.ucf_customizer import UCFCustomizer
 from src.tools.gpro_integration import PromoterOptimizer, RepressorOptimizer
@@ -14,7 +15,7 @@ from src.tools.deepseed_integration import DeepSeedIntegration
 tool_functions = [
     {
         "name": "find_gates_by_type",
-        "description": "Find all gates in the library that match a certain type (e.g. NOR, AND, NOT).",
+        "description": "Find all gates in the library that match a certain type (e.g. NOR, AND, NOT). IMPORTANT: You must first select a library using analyze_and_select_library before using this function.",
         "parameters": {
             "type": "object",
             "properties": {
@@ -28,7 +29,7 @@ tool_functions = [
     },
     {
         "name": "get_gate_info",
-        "description": "Retrieve metadata for a specific gate by ID.",
+        "description": "Retrieve metadata for a specific gate by ID. IMPORTANT: You must first select a library using analyze_and_select_library before using this function.",
         "parameters": {
             "type": "object",
             "properties": {
@@ -56,7 +57,7 @@ tool_functions = [
     },
     {
         "name": "list_promoters",
-        "description": "Return a list of promoter parts from the library.",
+        "description": "Return a list of promoter parts from the selected library. IMPORTANT: You must first select a library using analyze_and_select_library before using this function.",
         "parameters": {
             "type": "object",
             "properties": {},
@@ -65,7 +66,7 @@ tool_functions = [
     },
     {
         "name": "choose_repressor",
-        "description": "Return a list of possible repressors. Optionally filter by family.",
+        "description": "Return a list of possible repressors. Optionally filter by family. IMPORTANT: You must first select a library using analyze_and_select_library before using this function.",
         "parameters": {
             "type": "object",
             "properties": {
@@ -79,7 +80,7 @@ tool_functions = [
     },
     {
         "name": "get_dna_part_by_name",
-        "description": "Get a specific DNA part by name (like 'pTet').",
+        "description": "Get a specific DNA part by name (like 'pTet'). IMPORTANT: You must first select a library using analyze_and_select_library before using this function.",
         "parameters": {
             "type": "object",
             "properties": {
@@ -93,7 +94,7 @@ tool_functions = [
     },
     {
         "name": "list_terminators",
-        "description": "Return a list of terminator parts from the library.",
+        "description": "Return a list of terminator parts from the selected library. IMPORTANT: You must first select a library using analyze_and_select_library before using this function.",
         "parameters": {
             "type": "object",
             "properties": {},
@@ -102,7 +103,7 @@ tool_functions = [
     },
     {
         "name": "list_misc_items",
-        "description": "Return a list of miscellaneous items from the library.",
+        "description": "Return a list of miscellaneous items from the selected library. IMPORTANT: You must first select a library using analyze_and_select_library before using this function.",
         "parameters": {
             "type": "object",
             "properties": {},
@@ -134,7 +135,7 @@ tool_functions = [
     },
     {
         "name": "create_custom_ucf",
-        "description": "Create a customized UCF file with selected parts for more controlled circuit design.",
+        "description": "Create a customized UCF file with selected parts. IMPORTANT: You must first select a library using the analyze_and_select_library function before using this function.",
         "parameters": {
             "type": "object",
             "properties": {
@@ -566,6 +567,29 @@ class ToolIntegration:
                 self.cello_integration.select_library(library_id)
         
         return result
+    
+    def create_custom_ucf_func(self, selected_gates: List[str], selected_parts: List[str], modified_parts: Dict[str, Dict], ucf_name: str):
+        """
+        Create a customized UCF file with selected parts.
+        
+        Args:
+            selected_gates: List of gate IDs to include in the UCF
+            selected_parts: List of part IDs to include in the UCF
+            modified_parts: Dictionary of parts to modify in the UCF
+            ucf_name: Name of the UCF file to create
+        
+        Returns:
+            Dict containing the path to the created UCF file
+        """
+        # Create a library manager to access the selected library
+        self.library_data
+        ucf_customizer = UCFCustomizer(base_ucf=self.library_data)
+        custom_ucf_path = ucf_customizer.create_custom_ucf(selected_gates, selected_parts, modified_parts, ucf_name)
+        return {
+            "success": True,
+            "custom_ucf_path": custom_ucf_path
+        }
+        
         
     def get_ucf_metadata_func(self):
         """
@@ -739,103 +763,25 @@ class ToolIntegration:
             circuit_spec = function_args["circuit_spec"]
             return self.simulate_circuit_func(circuit_spec)
         elif function_name == "list_promoters":
-            # Implement the function to list promoters
-            try:
-                from src.library.ucf_retrieval import list_promoters
-                promoters = list_promoters(self.library_data)
-                return {
-                    "promoters": [
-                        {
-                            "id": p.get("id", "unknown"),
-                            "type": p.get("type", "promoter"),
-                            "sequence": p.get("sequence", "")[:50] + "..." if p.get("sequence") and len(p.get("sequence")) > 50 else p.get("sequence", "")
-                        } 
-                        for p in promoters
-                    ],
-                    "count": len(promoters)
-                }
-            except Exception as e:
-                return {"error": f"Error listing promoters: {str(e)}"}
+            return self.list_promoters_func()
         elif function_name == "choose_repressor":
-            # Implement the function to choose a repressor
-            try:
-                from src.library.ucf_retrieval import choose_repressor
-                family = function_args.get("family", None)
-                repressors = choose_repressor(self.library_data, family)
-                return {
-                    "repressors": [
-                        {
-                            "id": r.get("id", "unknown"),
-                            "type": r.get("type", "repressor"),
-                            "sequence": r.get("sequence", "")[:50] + "..." if r.get("sequence") and len(r.get("sequence")) > 50 else r.get("sequence", "")
-                        }
-                        for r in repressors
-                    ],
-                    "count": len(repressors)
-                }
-            except Exception as e:
-                return {"error": f"Error choosing repressor: {str(e)}"}
+            family = function_args.get("family", None)
+            return self.choose_repressor_func(family)
         elif function_name == "get_dna_part_by_name":
-            # Implement the function to get a DNA part by name
-            try:
-                from src.library.ucf_retrieval import get_dna_part_by_name
-                name = function_args["name"]
-                part = get_dna_part_by_name(self.library_data, name)
-                if part:
-                    return {
-                        "id": part.get("id", "unknown"),
-                        "type": part.get("type", "dna_part"),
-                        "sequence": part.get("sequence", ""),
-                        "raw_data": part.get("raw_data", {})
-                    }
-                else:
-                    return {"error": f"DNA part with name '{name}' not found"}
-            except Exception as e:
-                return {"error": f"Error getting DNA part: {str(e)}"}
+            name = function_args["name"]
+            return self.get_dna_part_by_name_func(name)
         elif function_name == "list_terminators":
-            # Implement the function to list terminators
-            try:
-                from src.library.ucf_retrieval import list_terminators
-                terminators = list_terminators(self.library_data)
-                return {
-                    "terminators": [
-                        {
-                            "id": t.get("id", "unknown"),
-                            "type": t.get("type", "terminator"),
-                            "sequence": t.get("sequence", "")[:50] + "..." if t.get("sequence") and len(t.get("sequence")) > 50 else t.get("sequence", "")
-                        }
-                        for t in terminators
-                    ],
-                    "count": len(terminators)
-                }
-            except Exception as e:
-                return {"error": f"Error listing terminators: {str(e)}"}
+            return self.list_terminators_func()
         elif function_name == "list_misc_items":
-            # Implement the function to list miscellaneous items
-            try:
-                from src.library.ucf_retrieval import list_misc_items
-                items = list_misc_items(self.library_data)
-                return {
-                    "items": [
-                        {
-                            "id": item.get("id", f"item_{i}"),
-                            "type": item.get("type", "unknown"),
-                            "category": item.get("category", "misc")
-                        }
-                        for i, item in enumerate(items)
-                    ],
-                    "count": len(items)
-                }
-            except Exception as e:
-                return {"error": f"Error listing misc items: {str(e)}"}
+            return self.list_misc_items_func()
         elif function_name == "design_with_cello":
             verilog_code = function_args["verilog_code"]
             config = function_args.get("config", None)
             return self.design_with_cello_func(verilog_code, config)
         elif function_name == "create_custom_ucf":
-            selected_gates = function_args["selected_gates"]
-            selected_parts = function_args["selected_parts"]
-            modified_parts = function_args["modified_parts"]
+            selected_gates = function_args.get("selected_gates", None)
+            selected_parts = function_args.get("selected_parts", None)
+            modified_parts = function_args.get("modified_parts", None)
             ucf_name = function_args.get("ucf_name", "")
             return self.create_custom_ucf_func(selected_gates, selected_parts, modified_parts, ucf_name)
         elif function_name == "predict_promoter_strength":
@@ -844,7 +790,7 @@ class ToolIntegration:
         elif function_name == "optimize_promoter":
             seed_sequence = function_args["seed_sequence"]
             target_strength = function_args["target_strength"]
-            iterations = function_args["iterations"]
+            iterations = function_args.get("iterations", 100)
             return self.optimize_promoter_func(seed_sequence, target_strength, iterations)
         elif function_name == "generate_promoters":
             count = function_args["count"]
@@ -914,4 +860,188 @@ class ToolIntegration:
             gate_types=gate_types,
             cello_config=config
         )
+
+    def list_promoters_func(self):
+        """
+        Return a list of promoter parts from the selected library.
+        """
+        try:
+            from src.library.ucf_retrieval import list_promoters
+            promoters = list_promoters(self.library_data)
+            return {
+                "promoters": [
+                    {
+                        "id": p.get("id", "unknown"),
+                        "type": p.get("type", "promoter"),
+                        "sequence": p.get("sequence", "")[:50] + "..." if p.get("sequence") and len(p.get("sequence")) > 50 else p.get("sequence", "")
+                    } 
+                    for p in promoters
+                ],
+                "count": len(promoters)
+            }
+        except Exception as e:
+            return {"error": f"Error listing promoters: {str(e)}"}
+
+    def choose_repressor_func(self, family=None):
+        """
+        Return a list of possible repressors. Optionally filter by family.
+        """
+        try:
+            from src.library.ucf_retrieval import choose_repressor
+            repressors = choose_repressor(self.library_data, family)
+            return {
+                "repressors": [
+                    {
+                        "id": r.get("id", "unknown"),
+                        "type": r.get("type", "repressor"),
+                        "sequence": r.get("sequence", "")[:50] + "..." if r.get("sequence") and len(r.get("sequence")) > 50 else r.get("sequence", "")
+                    }
+                    for r in repressors
+                ],
+                "count": len(repressors)
+            }
+        except Exception as e:
+            return {"error": f"Error choosing repressor: {str(e)}"}
+
+    def get_dna_part_by_name_func(self, name):
+        """
+        Get a specific DNA part by name.
+        """
+        try:
+            from src.library.ucf_retrieval import get_dna_part_by_name
+            part = get_dna_part_by_name(self.library_data, name)
+            if part:
+                return {
+                    "id": part.get("id", "unknown"),
+                    "type": part.get("type", "dna_part"),
+                    "sequence": part.get("sequence", ""),
+                    "raw_data": part.get("raw_data", {})
+                }
+            else:
+                return {"error": f"DNA part with name '{name}' not found"}
+        except Exception as e:
+            return {"error": f"Error getting DNA part: {str(e)}"}
+
+    def list_terminators_func(self):
+        """
+        Return a list of terminator parts from the selected library.
+        """
+        try:
+            from src.library.ucf_retrieval import list_terminators
+            terminators = list_terminators(self.library_data)
+            return {
+                "terminators": [
+                    {
+                        "id": t.get("id", "unknown"),
+                        "type": t.get("type", "terminator"),
+                        "sequence": t.get("sequence", "")[:50] + "..." if t.get("sequence") and len(t.get("sequence")) > 50 else t.get("sequence", "")
+                    }
+                    for t in terminators
+                ],
+                "count": len(terminators)
+            }
+        except Exception as e:
+            return {"error": f"Error listing terminators: {str(e)}"}
+
+    def list_misc_items_func(self):
+        """
+        Return a list of miscellaneous items from the selected library.
+        """
+        try:
+            from src.library.ucf_retrieval import list_misc_items
+            items = list_misc_items(self.library_data)
+            return {
+                "items": [
+                    {
+                        "id": item.get("id", f"item_{i}"),
+                        "type": item.get("type", "unknown"),
+                        "category": item.get("category", "misc")
+                    }
+                    for i, item in enumerate(items)
+                ],
+                "count": len(items)
+            }
+        except Exception as e:
+            return {"error": f"Error listing misc items: {str(e)}"}
+
+    def predict_promoter_strength_func(self, sequence):
+        """
+        Predict the strength of a promoter sequence.
+        """
+        try:
+            promoter_optimizer = PromoterOptimizer()
+            result = promoter_optimizer.predict_strength(sequence)
+            return {
+                "sequence": sequence,
+                "predicted_strength": result["strength"],
+                "confidence": result.get("confidence", None)
+            }
+        except Exception as e:
+            return {"error": f"Error predicting promoter strength: {str(e)}"}
+
+    def optimize_promoter_func(self, seed_sequence, target_strength, iterations=100):
+        """
+        Optimize a promoter to reach a target strength.
+        """
+        try:
+            promoter_optimizer = PromoterOptimizer()
+            result = promoter_optimizer.optimize_promoter(
+                seed_sequence=seed_sequence,
+                target_strength=target_strength,
+                iterations=iterations
+            )
+            return {
+                "original_sequence": seed_sequence,
+                "optimized_sequence": result["sequence"],
+                "original_strength": result["original_strength"],
+                "final_strength": result["final_strength"],
+                "iterations_performed": result["iterations"]
+            }
+        except Exception as e:
+            return {"error": f"Error optimizing promoter: {str(e)}"}
+
+    def generate_promoters_func(self, count, min_strength=None, max_strength=None):
+        """
+        Generate novel promoter sequences with optional strength filtering.
+        """
+        try:
+            deepseed = DeepSeedIntegration()
+            promoters = deepseed.generate_promoters(
+                count=count,
+                min_strength=min_strength,
+                max_strength=max_strength
+            )
+            return {
+                "promoters": [
+                    {
+                        "sequence": p["sequence"],
+                        "predicted_strength": p["strength"]
+                    }
+                    for p in promoters
+                ],
+                "count": len(promoters)
+            }
+        except Exception as e:
+            return {"error": f"Error generating promoters: {str(e)}"}
+
+    def optimize_binding_site_func(self, repressor_id, starting_site, target_repression):
+        """
+        Optimize a repressor binding site for target repression level.
+        """
+        try:
+            repressor_optimizer = RepressorOptimizer()
+            result = repressor_optimizer.optimize_binding_site(
+                repressor_id=repressor_id,
+                starting_site=starting_site,
+                target_repression=target_repression
+            )
+            return {
+                "original_site": starting_site,
+                "optimized_site": result["sequence"],
+                "repressor_id": repressor_id,
+                "original_repression": result["original_repression"],
+                "final_repression": result["final_repression"]
+            }
+        except Exception as e:
+            return {"error": f"Error optimizing binding site: {str(e)}"}
 

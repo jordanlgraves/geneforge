@@ -20,6 +20,13 @@ sys.path.append('ext_repos/deepseed')
 from ext_repos.deepseed.Optimizer.optimizer_module import optimizer_fix_flank, one_hot, decode_oneHot
 from ext_repos.deepseed.Optimizer.SeqRegressionModel import Seq2Scalar
 
+from ext_repos.deepseed.Generator.cGAN_training import WGAN, Generator, Discriminator, ResBlock, EncoderLayer
+import torch
+torch.serialization.add_safe_globals([Generator, Discriminator, ResBlock, EncoderLayer])
+
+GENERATOR_MODEL_PATH = os.getenv("DEEPSEED_GENERATOR_MODEL_PATH")
+PREDICTOR_MODEL_PATH = os.getenv("DEEPSEED_PREDICTOR_MODEL_PATH")
+
 class DeepSeedIntegration:
     """
     Integration with DeepSEED toolkit for promoter optimization and generation.
@@ -29,7 +36,6 @@ class DeepSeedIntegration:
     This class requires DeepSEED to be installed and properly configured.
     """
     def __init__(self, 
-                model_dir: str = "outputs/deepseed_models",
                 cache_dir: str = "outputs/deepseed_cache",
                 seqL: int = 165):
         """
@@ -40,24 +46,23 @@ class DeepSeedIntegration:
             cache_dir: Directory for temporary files and results
             seqL: Sequence length (default 165 for DeepSEED)
         """
-        self.model_dir = model_dir
         self.cache_dir = cache_dir
         self.seqL = seqL
         
         # Create necessary directories
-        os.makedirs(self.model_dir, exist_ok=True)
         os.makedirs(self.cache_dir, exist_ok=True)
         os.makedirs(os.path.join(self.cache_dir, "results"), exist_ok=True)
         
         # Default paths for DeepSEED models
-        self.predictor_path = os.path.join(self.model_dir, "predictor", "denselstm_predictor.pth")
-        self.generator_path = os.path.join(self.model_dir, "generator", "generator.pth")
+        self.predictor_path = os.path.join(PREDICTOR_MODEL_PATH)
+        self.generator_path = os.path.join(GENERATOR_MODEL_PATH)
         
         # Check if DeepSEED models are available - required
         if not self._check_models():
             raise FileNotFoundError(f"Required DeepSEED models not found at {self.predictor_path} and {self.generator_path}")
         
         # Initialize optimizer and predictor as None - will be loaded on demand
+        self.generator = None
         self.optimizer = None
         self.predictor = None
         
@@ -96,8 +101,8 @@ class DeepSeedIntegration:
         if self.optimizer is None:
             # Initialize the DeepSEED optimizer
             self.optimizer = optimizer_fix_flank(
-                predictor_path=self.predictor_path,
-                generator_path=self.generator_path,
+                predictor_path=self.predictor,
+                generator_path=self.generator,
                 is_gpu=self.is_gpu,
                 seqL=self.seqL,
                 gen_num=3,  # Number of generated sequences to return
@@ -115,11 +120,32 @@ class DeepSeedIntegration:
         """
         if self.predictor is None:
             # Load the predictor model
-            self.predictor = torch.load(self.predictor_path)
+            if 'denselstm' in self.predictor_path:
+                self.predictor = Seq2Scalar(input_nc=4, seqL=165, mode='denselstm')
+            else:
+                raise ValueError(f"Unsupported predictor model: {self.predictor_path}")
+            self.predictor.load_state_dict(torch.load(self.predictor_path, weights_only=True, map_location=torch.device('cuda' if self.is_gpu else 'cpu')))
             if self.is_gpu:
                 self.predictor = self.predictor.cuda()
             logger.info("DeepSEED predictor loaded successfully")
-    
+
+    def _ensure_generator_loaded(self):
+        """
+        Ensure the DeepSEED generator is loaded.
+        Raises an exception if model isn't available.
+        """
+        if self.generator is None:
+            # Initialize with the same seqL that was used during training
+            gpu_ids = ['0'] if self.is_gpu else []
+            WGAN(input_nc=4, output_nc=4, seqL=self.seqL, l1_w=50, gpu_ids=gpu_ids)
+            # Pass the seqL parameter explicitly to match the trained model
+            self.generator = Generator(input_nc=4, output_nc=4, seqL=self.seqL)
+            self.generator.load_state_dict(torch.load(self.generator_path, map_location=torch.device('cuda' if self.is_gpu else 'cpu')))
+            if self.is_gpu:
+                self.generator = self.generator.cuda()
+            logger.info("DeepSEED generator loaded successfully")
+
+
     def predict_promoter_strength(self, sequence: str) -> float:
         """
         Predict the strength of a promoter sequence using DeepSEED.
