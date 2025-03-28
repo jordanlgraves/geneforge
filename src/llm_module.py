@@ -10,10 +10,10 @@ from src.design_module import DesignOrchestrator
 
 library = LibraryManager()
 library_data = library.get_library_data()
-tool_integration = ToolIntegration(library.library_data)
+tool_integration = ToolIntegration(library_data)
 
 # Initialize the design orchestrator
-design_orchestrator = DesignOrchestrator(library)
+design_orchestrator = DesignOrchestrator(tool_integration)
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)

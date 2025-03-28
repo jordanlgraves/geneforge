@@ -4,6 +4,10 @@ import logging
 from typing import Dict, List, Optional, Union, Any
 from pathlib import Path
 
+import dotenv
+
+CELLO_UCF_ROOT = os.getenv("CELLO_UCF_ROOT")
+
 from src.library.ucf_customizer import CelloUCFCustomizer
 
 logger = logging.getLogger("library_manager")
@@ -15,13 +19,6 @@ class LibraryManager:
     Manages the selection, loading, and customization of UCF libraries.
     Provides a unified interface for working with different library types.
     """
-    
-    # Define standard library locations
-    LIBRARY_PATHS = {
-        "ext_ucf": "ext_repos/Cello-UCF/files/v2/ucf",
-        "ext_input": "ext_repos/Cello-UCF/files/v2/input",
-        "ext_output": "ext_repos/Cello-UCF/files/v2/output",
-    }
     
     def __init__(self, default_library: str = "Eco1C1G1T1"):
         """
@@ -43,7 +40,7 @@ class LibraryManager:
         self.current_ucf_path = None
         self.current_input_path = None
         self.current_output_path = None
-        
+
         # Try to load the default library
         if self.available_libraries:
             # If default library not available, use the first available one
@@ -64,17 +61,20 @@ class LibraryManager:
         """
         libraries = {}
         
-        # Get the absolute project root path for reliable file access
-        project_root = self._get_project_root()
-        
-        # First, prioritize scanning the ext_repos/Cello-UCF structure
-        for path_key in ["ext_ucf", "ext_input", "ext_output"]:
+        library_root = CELLO_UCF_ROOT
+        if not library_root:
+            # Get the absolute project root path for reliable file access
+            project_root = self._get_project_root()
+            library_root = os.path.join(project_root, "ext_repos/Cello-UCF/files/v2")
+        else:
+            library_root = os.path.join(library_root, "files/v2")
+
+        for file_type in ["input", "output", "ucf"]:
             # Convert to absolute path
-            rel_path = self.LIBRARY_PATHS[path_key]
-            path_value = os.path.join(project_root, rel_path)
+            path_value = os.path.join(library_root, file_type)
             
             if not os.path.exists(path_value):
-                logger.warning(f"Library path {rel_path} does not exist")
+                logger.warning(f"Library path {path_value} does not exist")
                 continue
             
             # Process organism directories
@@ -84,19 +84,19 @@ class LibraryManager:
                     # Process files in organism directory
                     for filename in os.listdir(organism_path):
                         # Determine file type and extract library ID
-                        if path_key == "ext_ucf" and filename.endswith(".UCF.json"):
+                        if file_type == "ucf" and filename.endswith(".UCF.json"):
                             library_id = filename.replace(".UCF.json", "")
                             if library_id not in libraries:
                                 libraries[library_id] = {}
                             libraries[library_id]["ucf"] = os.path.join(organism_path, filename)
                             
-                        elif path_key == "ext_input" and filename.endswith(".input.json"):
+                        elif file_type == "input" and filename.endswith(".input.json"):
                             library_id = filename.replace(".input.json", "")
                             if library_id not in libraries:
                                 libraries[library_id] = {}
                             libraries[library_id]["input"] = os.path.join(organism_path, filename)
                             
-                        elif path_key == "ext_output" and filename.endswith(".output.json"):
+                        elif file_type == "output" and filename.endswith(".output.json"):
                             library_id = filename.replace(".output.json", "")
                             if library_id not in libraries:
                                 libraries[library_id] = {}
@@ -127,13 +127,10 @@ class LibraryManager:
         """
         # Start with the current file's directory
         current_dir = os.path.dirname(os.path.abspath(__file__))
-        
         # Go up to the src directory
         parent_dir = os.path.dirname(current_dir)
-        
         # Go up one more level to the project root
         project_root = os.path.dirname(parent_dir)
-        
         return project_root
     
     def get_available_libraries(self) -> Dict[str, Dict[str, str]]:
@@ -152,7 +149,7 @@ class LibraryManager:
         Returns:
             True if the library was successfully selected, False otherwise
         """
-        if library_id not in self.available_libraries:
+        if library_id not in self.available_libraries.keys():
             logger.error(f"Library {library_id} not found")
             return False
         

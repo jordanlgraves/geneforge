@@ -41,9 +41,6 @@ class TestCelloIntegration(unittest.TestCase):
         
         # Get available libraries for testing
         cls.available_libraries = cls.library_manager.get_available_libraries()
-        
-        if not cls.available_libraries:
-            raise unittest.SkipTest("No libraries available for testing")
             
         print(f"Available libraries for testing: {cls.available_libraries}")
     
@@ -57,9 +54,8 @@ class TestCelloIntegration(unittest.TestCase):
         self.assertIsNotNone(cello.cello_config)
         
         # Test initialization with a specific library ID
-        library_id = self.available_libraries[0]
-        cello = CelloIntegration(library_id=library_id)
-        self.assertEqual(cello.library_manager.current_library_id, library_id)
+        cello = CelloIntegration(library_id='Eco1C1G1T1')
+        self.assertEqual(cello.library_manager.current_library_id, 'Eco1C1G1T1')
     
     def test_select_library(self):
         """Test selecting a library"""
@@ -127,10 +123,7 @@ class TestCelloIntegration(unittest.TestCase):
         
         Note: This test requires Yosys to be installed (checked by the class decorator)
         """
-        # Skip if no libraries available
-        if not self.available_libraries:
-            self.skipTest("No libraries available for testing")
-        
+       
         # Create a test-specific output directory
         test_output_dir = os.path.join(self.project_root, "outputs", "cello_test_outputs")
         test_verilog_name = "test_NOT_gate.v"
@@ -145,208 +138,199 @@ class TestCelloIntegration(unittest.TestCase):
         os.makedirs(test_output_dir, exist_ok=True)
         print(f"Created test output directory: {test_output_dir}")
         
-        try:
-            # Create a CelloIntegration instance with the first available library
-            library_id = self.available_libraries[0]
-            print(f"Using library: {library_id}")
-            
-            # Custom cello_args with complete path overrides
-            cello_args = {
-                'v_name': test_verilog_name,
-                'out_path': test_output_dir,
-                # Keep other defaults but ensure paths are correctly set
-                'verilogs_path': os.path.join(self.project_root, "ext_repos", "Cello-v2-1-Core", "library", "verilogs"),
-                'constraints_path': os.path.join(self.project_root, "ext_repos", "Cello-v2-1-Core", "library", "constraints")
-            }
-            
-            print(f"Cello arguments: {cello_args}")
-            
-            # Create Cello instance with custom args
-            cello = CelloIntegration(library_id=library_id, cello_args=cello_args)
-            
-            # Simple NOT gate Verilog code
-            verilog_code = """
-            module NOT_gate (
-                input a,
-                output out
-            );
-                assign out = ~a;
-            endmodule
-            """
-            
-            print(f"Running Cello with Verilog code for a NOT gate...")
-            
-            # Run Cello
-            result = cello.run_cello(verilog_code=verilog_code)
-            
-            # Print full result for debugging
-            print(f"Cello run result: {result}")
-            
-            # Verify the result structure
-            self.assertTrue(result["success"], f"Cello run failed: {result.get('error', 'Unknown error')}")
-            self.assertIn("log", result, "Result should contain logs")
-            self.assertIn("results", result, "Result should contain results")
-            
-            # Verify that results contain expected data
-            results_data = result["results"]
-            self.assertIn("output_path", results_data, "Results should contain output_path")
-            self.assertIn("dna_design", results_data, "Results should contain dna_design")
-            
-            # Verify that the output directory exists
-            output_path = results_data["output_path"]
-            print(f"Output path from results: {output_path}")
-            self.assertTrue(os.path.exists(output_path), f"Output path {output_path} does not exist")
-            
-            # Get the base filenames for testing (with and without extensions)
-            output_dir = Path(output_path)
-            v_name = os.path.basename(output_path)  # Should be our test verilog name
-            print(f"Base verilog name: {v_name}")
-            
-            # Check for the log file - try both the custom and default locations
-            cello_log_paths = [
-                os.path.join(test_output_dir, "cello_run.log"),  # Custom location
-                os.path.join(self.project_root, "outputs", "cello_outputs", "cello_run.log")  # Default location
-            ]
-            
-            log_found = False
-            for log_path in cello_log_paths:
-                if os.path.exists(log_path):
-                    print(f"Found log file at: {log_path}")
-                    self.assertGreater(os.path.getsize(log_path), 0, f"Cello log file is empty")
-                    log_found = True
-                    break
-                    
-            if not log_found:
-                print("Warning: Could not find Cello log file in expected locations")
-            
-            # Verify that DNA design contains expected components
-            dna_design = results_data["dna_design"]
-            print(f"DNA design keys: {dna_design.keys()}")
-            
-            # List all files in the output directory and subdirectories for debugging
-            print(f"All files in output directory tree:")
-            for root, dirs, files in os.walk(output_path):
-                for file in files:
-                    full_path = os.path.join(root, file)
-                    rel_path = os.path.relpath(full_path, output_path)
-                    print(f"  - {rel_path} ({os.path.getsize(full_path)} bytes)")
-            
-            # Expected output files based on the list provided - adjust patterns based on actual output files
-            expected_files = [
-                f"*_activity-table.csv",
-                f"*_all-files.zip",
-                f"*_circuit-score.csv",
-                f"*_dna-sequences.csv",
-                f"*_dpl-dna-designs.csv",
-                f"*_dpl-part-information.csv",
-                f"*_dpl-plot-parameters.csv",
-                f"*_dpl-regulatory-info.csv",
-                f"*_dpl-sbol.pdf",
-                f"*_dpl-sbol.png",
-                f"*_eugene.eug",
-                f"*_pySBOL3.nt",
-                f"*_response-plots.pdf",
-                f"*_response-plots.png",
-                f"*_tech-mapping.pdf",
-                f"*_tech-mapping.png",
-                f"*_yosys",
-                f"*_yosys.dot",
-                f"*_yosys.edif",
-                f"*_yosys.json"
-            ]
-            
-            # Get all files in the output directory
-            if os.path.exists(output_path):
-                output_files = os.listdir(output_path)
-                self.assertGreater(len(output_files), 0, f"No output files found in {output_path}")
-                
-                print(f"Found {len(output_files)} files in output directory:")
-                for file in output_files:
-                    print(f"  - {file}")
-            else:
-                assert False, f"Output path {output_path} does not exist"
-                
-            # Check for essential file types with more thorough validation
-            essential_file_types = ["dna_sequences", "eugene_script", "sbol_file", "activity_table"]
-            for file_type in essential_file_types:
-                self.assertIn(file_type, dna_design, f"DNA design should contain {file_type}")
-                file_path = dna_design[file_type]
-                if file_path:  # Some files might be None if Cello didn't generate them
-                    # Verify file exists
-                    self.assertTrue(os.path.exists(file_path), f"File {file_path} does not exist")
-                    
-                    # Verify file is not empty
-                    file_size = os.path.getsize(file_path)
-                    self.assertGreater(file_size, 0, f"File {file_path} exists but is empty (0 bytes)")
-                    
-                    # Perform content validation based on file type
-                    with open(file_path, 'r') as f:
-                        content = f.read(1024)  # Read first 1KB to check content
-                        self.assertTrue(len(content) > 0, f"File {file_path} couldn't be read or is empty")
-                        
-                        # File-specific validation
-                        if file_type == "dna_sequences":
-                            self.assertIn(",", content, f"DNA sequences file doesn't contain expected CSV format")
-                        elif file_type == "eugene_script":
-                            self.assertIn("PartType", content, "Eugene script doesn't contain expected PartType definitions")
-                        elif file_type == "sbol_file":
-                            self.assertTrue(content.strip(), "SBOL file appears to be empty")
-                        elif file_type == "activity_table":
-                            self.assertIn(",", content, "Activity table doesn't contain expected CSV format")
-            
-            # Check for visualizations
-            self.assertIn("visualizations", dna_design, "DNA design should contain visualizations")
-            visualizations = dna_design["visualizations"]
-            self.assertTrue(isinstance(visualizations, list), "Visualizations should be a list")
-            if visualizations:  # If any visualizations were generated
-                for viz_path in visualizations:
-                    self.assertTrue(os.path.exists(viz_path), f"Visualization file {viz_path} does not exist")
-                    self.assertGreater(os.path.getsize(viz_path), 0, f"Visualization file {viz_path} exists but is empty")
-            
-            # Check for each expected file pattern using glob
-            import glob
-            missing_files = []
-            for file_pattern in expected_files:
-                pattern_path = os.path.join(output_path, file_pattern)
-                matching_files = glob.glob(pattern_path)
-                if not matching_files:
-                    missing_files.append(file_pattern)
-            
-            # Report missing files (if any)
-            if missing_files:
-                print(f"Warning: The following expected file patterns did not match any files:")
-                for missing in missing_files:
-                    print(f"  - {missing}")
-                
-                # Don't fail the test but print a warning
-                print("Note: Some expected files were not found. This may be normal depending on the specific Cello run configuration.")
-            else:
-                print("All expected file patterns matched at least one file.")
-            
-            print(f"Cello end-to-end test successful with library {library_id}")
-            print(f"Output files generated in {output_path}")
-            
-            # Print the DNA sequence from the output
-            dna_sequences_file = dna_design.get("dna_sequences")
-            if dna_sequences_file and os.path.exists(dna_sequences_file):
-                with open(dna_sequences_file, 'r') as f:
-                    print(f"DNA Sequences (first 5 lines):")
-                    lines = f.readlines()
-                    for i, line in enumerate(lines[:5]):  # More robust way to get first 5 lines
-                        print(f"  {line.strip()}")
-                    
-                    # Report total number of sequences
-                    print(f"  ... ({len(lines)} total lines in DNA sequences file)")
         
-        except Exception as e:
-            import traceback
-            self.fail(f"End-to-end Cello test failed: {str(e)}\n{traceback.format_exc()}")
-        finally:
-            # Log that test is complete
-            print(f"Test completed. Test output directory: {test_output_dir}")
-            # Optionally clean up test output - uncomment to remove test files after test
-            # if os.path.exists(test_output_dir):
-            #     shutil.rmtree(test_output_dir)
+        # Create a CelloIntegration
+        library_id = self.available_libraries['Eco1C1G1T1']
+        print(f"Using library: {library_id}")
+        
+        # Custom cello_args with complete path overrides
+        cello_args = {
+            'v_name': test_verilog_name,
+            'out_path': test_output_dir,
+            # Keep other defaults but ensure paths are correctly set
+            'verilogs_path': os.path.join(self.project_root, "ext_repos", "Cello-v2-1-Core", "library", "verilogs"),
+            'constraints_path': os.path.join(self.project_root, "ext_repos", "Cello-v2-1-Core", "library", "constraints")
+        }
+        
+        print(f"Cello arguments: {cello_args}")
+        
+        # Create Cello instance with custom args
+        cello = CelloIntegration(library_id='Eco1C1G1T1', cello_args=cello_args)
+        
+        # Simple NOT gate Verilog code
+        verilog_code = """
+        module NOT_gate (
+            input a,
+            output out
+        );
+            assign out = ~a;
+        endmodule
+        """
+        
+        print(f"Running Cello with Verilog code for a NOT gate...")
+        
+        # Run Cello
+        result = cello.run_cello(verilog_code=verilog_code)
+        
+        # Print full result for debugging
+        print(f"Cello run result: {result}")
+        
+        # Verify the result structure
+        self.assertTrue(result["success"], f"Cello run failed: {result.get('error', 'Unknown error')}")
+        self.assertIn("log", result, "Result should contain logs")
+        self.assertIn("results", result, "Result should contain results")
+        
+        # Verify that results contain expected data
+        results_data = result["results"]
+        self.assertIn("output_path", results_data, "Results should contain output_path")
+        self.assertIn("dna_design", results_data, "Results should contain dna_design")
+        
+        # Verify that the output directory exists
+        output_path = results_data["output_path"]
+        print(f"Output path from results: {output_path}")
+        self.assertTrue(os.path.exists(output_path), f"Output path {output_path} does not exist")
+        
+        # Get the base filenames for testing (with and without extensions)
+        output_dir = Path(output_path)
+        v_name = os.path.basename(output_path)  # Should be our test verilog name
+        print(f"Base verilog name: {v_name}")
+        
+        # Check for the log file - try both the custom and default locations
+        cello_log_paths = [
+            os.path.join(test_output_dir, "cello_run.log"),  # Custom location
+            os.path.join(self.project_root, "outputs", "cello_outputs", "cello_run.log")  # Default location
+        ]
+        
+        log_found = False
+        for log_path in cello_log_paths:
+            if os.path.exists(log_path):
+                print(f"Found log file at: {log_path}")
+                self.assertGreater(os.path.getsize(log_path), 0, f"Cello log file is empty")
+                log_found = True
+                break
+                
+        if not log_found:
+            print("Warning: Could not find Cello log file in expected locations")
+        
+        # Verify that DNA design contains expected components
+        dna_design = results_data["dna_design"]
+        print(f"DNA design keys: {dna_design.keys()}")
+        
+        # List all files in the output directory and subdirectories for debugging
+        print(f"All files in output directory tree:")
+        for root, dirs, files in os.walk(output_path):
+            for file in files:
+                full_path = os.path.join(root, file)
+                rel_path = os.path.relpath(full_path, output_path)
+                print(f"  - {rel_path} ({os.path.getsize(full_path)} bytes)")
+        
+        # Expected output files based on the list provided - adjust patterns based on actual output files
+        expected_files = [
+            f"*_activity-table.csv",
+            f"*_all-files.zip",
+            f"*_circuit-score.csv",
+            f"*_dna-sequences.csv",
+            f"*_dpl-dna-designs.csv",
+            f"*_dpl-part-information.csv",
+            f"*_dpl-plot-parameters.csv",
+            f"*_dpl-regulatory-info.csv",
+            f"*_dpl-sbol.pdf",
+            f"*_dpl-sbol.png",
+            f"*_eugene.eug",
+            f"*_pySBOL3.nt",
+            f"*_response-plots.pdf",
+            f"*_response-plots.png",
+            f"*_tech-mapping.pdf",
+            f"*_tech-mapping.png",
+            f"*_yosys",
+            f"*_yosys.dot",
+            f"*_yosys.edif",
+            f"*_yosys.json"
+        ]
+        
+        # Get all files in the output directory
+        if os.path.exists(output_path):
+            output_files = os.listdir(output_path)
+            self.assertGreater(len(output_files), 0, f"No output files found in {output_path}")
+            
+            print(f"Found {len(output_files)} files in output directory:")
+            for file in output_files:
+                print(f"  - {file}")
+        else:
+            assert False, f"Output path {output_path} does not exist"
+            
+        # Check for essential file types with more thorough validation
+        essential_file_types = ["dna_sequences", "eugene_script", "sbol_file", "activity_table"]
+        for file_type in essential_file_types:
+            self.assertIn(file_type, dna_design, f"DNA design should contain {file_type}")
+            file_path = dna_design[file_type]
+            if file_path:  # Some files might be None if Cello didn't generate them
+                # Verify file exists
+                self.assertTrue(os.path.exists(file_path), f"File {file_path} does not exist")
+                
+                # Verify file is not empty
+                file_size = os.path.getsize(file_path)
+                self.assertGreater(file_size, 0, f"File {file_path} exists but is empty (0 bytes)")
+                
+                # Perform content validation based on file type
+                with open(file_path, 'r') as f:
+                    content = f.read(1024)  # Read first 1KB to check content
+                    self.assertTrue(len(content) > 0, f"File {file_path} couldn't be read or is empty")
+                    
+                    # File-specific validation
+                    if file_type == "dna_sequences":
+                        self.assertIn(",", content, f"DNA sequences file doesn't contain expected CSV format")
+                    elif file_type == "eugene_script":
+                        self.assertIn("PartType", content, "Eugene script doesn't contain expected PartType definitions")
+                    elif file_type == "sbol_file":
+                        self.assertTrue(content.strip(), "SBOL file appears to be empty")
+                    elif file_type == "activity_table":
+                        self.assertIn(",", content, "Activity table doesn't contain expected CSV format")
+        
+        # Check for visualizations
+        self.assertIn("visualizations", dna_design, "DNA design should contain visualizations")
+        visualizations = dna_design["visualizations"]
+        self.assertTrue(isinstance(visualizations, list), "Visualizations should be a list")
+        if visualizations:  # If any visualizations were generated
+            for viz_path in visualizations:
+                self.assertTrue(os.path.exists(viz_path), f"Visualization file {viz_path} does not exist")
+                self.assertGreater(os.path.getsize(viz_path), 0, f"Visualization file {viz_path} exists but is empty")
+        
+        # Check for each expected file pattern using glob
+        import glob
+        missing_files = []
+        for file_pattern in expected_files:
+            pattern_path = os.path.join(output_path, file_pattern)
+            matching_files = glob.glob(pattern_path)
+            if not matching_files:
+                missing_files.append(file_pattern)
+        
+        # Report missing files (if any)
+        if missing_files:
+            print(f"Warning: The following expected file patterns did not match any files:")
+            for missing in missing_files:
+                print(f"  - {missing}")
+            
+            # Don't fail the test but print a warning
+            print("Note: Some expected files were not found. This may be normal depending on the specific Cello run configuration.")
+        else:
+            print("All expected file patterns matched at least one file.")
+        
+        print(f"Cello end-to-end test successful with library {library_id}")
+        print(f"Output files generated in {output_path}")
+        
+        # Print the DNA sequence from the output
+        dna_sequences_file = dna_design.get("dna_sequences")
+        if dna_sequences_file and os.path.exists(dna_sequences_file):
+            with open(dna_sequences_file, 'r') as f:
+                print(f"DNA Sequences (first 5 lines):")
+                lines = f.readlines()
+                for i, line in enumerate(lines[:5]):  # More robust way to get first 5 lines
+                    print(f"  {line.strip()}")
+                
+                # Report total number of sequences
+                print(f"  ... ({len(lines)} total lines in DNA sequences file)")
+        
             
 if __name__ == "__main__":
     unittest.main() 

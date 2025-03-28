@@ -319,8 +319,9 @@ class CelloIntegration:
             if os.path.exists(ucf_path):
                 self.logger.info(f"Validating UCF file: {ucf_path}")
                 try:
-                    ucf_validator = CelloUCFCustomizer(ucf_path)
-                    validation_result = ucf_validator.validate_ucf()
+                    ucf_validator = CelloUCFCustomizer()
+                    ucf_data = self.library_manager.get_ucf_data()
+                    validation_result = ucf_validator.validate_ucf(ucf_data)
                     
                     if not validation_result['valid']:
                         self.logger.error(f"UCF validation failed: {validation_result['errors']}")
