@@ -5,14 +5,14 @@ from unittest.mock import MagicMock, patch
 
 from src.design_module import DesignOrchestrator
 from src.tools.functions import ToolIntegration
-from src.library.ucf_retrieval import load_ecoli_library
+from src.library.ucf_retrieval import load_library
 
 class TestDesignOrchestrator(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         """Set up test environment"""
         # Load library data for testing
-        cls.library_data = load_ecoli_library("libs/parsed/Eco1C1G1T0_parsed.json")
+        cls.library_data = load_library("libs/parsed/Eco1C1G1T0_parsed.json")
         cls.tool_integration = ToolIntegration(cls.library_data)
         
     def test_select_ucf_file_basic(self):

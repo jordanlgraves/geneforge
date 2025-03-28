@@ -4,8 +4,7 @@ import logging
 from typing import Dict, List, Optional, Union, Any
 from pathlib import Path
 
-from src.library.ucf_retrieval import get_dna_part_by_name
-from src.library.ucf_customizer import UCFCustomizer
+from src.library.ucf_customizer import CelloUCFCustomizer
 
 logger = logging.getLogger("library_manager")
 
@@ -24,20 +23,6 @@ class LibraryManager:
         "ext_output": "ext_repos/Cello-UCF/files/v2/output",
     }
     
-    # Define organism prefixes for easier selection
-    ORGANISM_PREFIXES = {
-        "ecoli": "Eco",
-        "e_coli": "Eco",
-        "e.coli": "Eco",
-        "eco": "Eco",
-        "sc": "SC",
-        "yeast": "SC",
-        "s.cerevisiae": "SC",
-        "bth": "Bth",
-        "b.subtilis": "Bth",
-        "bacillus": "Bth"
-    }
-    
     def __init__(self, default_library: str = "Eco1C1G1T1"):
         """
         Initialize the library manager with default settings.
@@ -46,7 +31,7 @@ class LibraryManager:
             default_library: Default library identifier (e.g., "Eco1C1G1T1")
         """
         # Initialize the UCF customizer
-        self.ucf_customizer = UCFCustomizer()
+        self.ucf_customizer = CelloUCFCustomizer()
         
         # Scan available libraries
         self.available_libraries = self._scan_libraries()
@@ -150,6 +135,12 @@ class LibraryManager:
         project_root = os.path.dirname(parent_dir)
         
         return project_root
+    
+    def get_available_libraries(self) -> Dict[str, Dict[str, str]]:
+        """
+        Get the available libraries.
+        """
+        return self.available_libraries
     
     def select_library(self, library_id: str) -> bool:
         """
@@ -290,7 +281,7 @@ class LibraryManager:
     def create_custom_ucf(self, 
                          selected_gates: List[str] = None,
                          selected_parts: List = None,
-                         modified_parts: Dict[str, Dict] = None,
+                         modified_parts: List = None,
                          new_parts: List[Dict] = None,
                          ucf_name: str = None,
                          output_dir: str = None) -> Optional[str]:
@@ -337,20 +328,17 @@ class LibraryManager:
         if not output_dir:
             output_dir = "outputs/custom_ucf"
         
-        try:
-            # Create the custom UCF using our raw UCF data
-            return self.ucf_customizer.create_custom_ucf(
-                ucf_data=self.current_ucf_data,
-                selected_gates=selected_gates,
-                selected_parts=processed_parts,
-                modified_parts=modified_parts,
-                new_parts=new_parts,
-                ucf_name=ucf_name,
-                output_dir=output_dir
-            )
-        except Exception as e:
-            logger.error(f"Failed to create custom UCF: {e}")
-            return None
+        # Create the custom UCF using our raw UCF data
+        return self.ucf_customizer.create_custom_ucf(
+            ucf_data=self.current_ucf_data,
+            selected_gates=selected_gates,
+            selected_parts=processed_parts,
+            modified_parts=modified_parts,
+            new_parts=new_parts,
+            ucf_name=ucf_name,
+            output_dir=output_dir
+        )
+
     
     def get_current_library_info(self) -> Dict[str, Any]:
         """

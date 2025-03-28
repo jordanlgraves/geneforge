@@ -1,0 +1,2 @@
+# Case 2 (NOR gate): 
+# “Design a genetic NOR gate for E. coli where GFP is only expressed when both Input A and Input B are absent, and the internal gate promoter achieves at least a 20-fold difference between the ON and OFF states.”

@@ -1,17 +1,16 @@
 import os
 import logging
 import json
-import time
-from typing import List, Dict, Any, Optional, Callable, Tuple, Union
 from openai import OpenAI
 
+from src.library.library_manager import LibraryManager
 from src.tools.functions import ToolIntegration, tool_functions
-from src.library.ucf_retrieval import get_gate_by_id, get_gates_by_type, load_ecoli_library
+
 from src.design_module import DesignOrchestrator
 
-LIBRARY_JSON_PATH = "libs/parsed/Eco1C1G1T0_parsed.json"
-library_data = load_ecoli_library(LIBRARY_JSON_PATH)
-library = ToolIntegration(library_data)
+library = LibraryManager()
+library_data = library.get_library_data()
+tool_integration = ToolIntegration(library.library_data)
 
 # Initialize the design orchestrator
 design_orchestrator = DesignOrchestrator(library)

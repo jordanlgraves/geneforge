@@ -5,8 +5,8 @@ import os
 import glob
 import re
 from typing import Dict, List
-from src.library.ucf_retrieval import choose_repressor, get_dna_part_by_name, get_gate_by_id, get_gates_by_type, list_misc_items, list_promoters, list_terminators
-from src.library.ucf_customizer import UCFCustomizer
+from src.library.ucf_customizer import CelloUCFCustomizer
+from src.library.ucf_retrieval import get_gates_by_type
 from src.tools.gpro_integration import PromoterOptimizer, RepressorOptimizer
 from src.library.llm_library_selector import RuleBasedLibrarySelector, LLMBasedLibrarySelector
 from src.library.library_manager import LibraryManager
@@ -383,7 +383,7 @@ class ToolIntegration:
 
     def get_gate_info_func(self, gate_id: str):
         """Retrieve raw data for a specific gate by ID."""
-        gate = get_gate_by_id(self.library_data, gate_id)
+        gate = get_gate_by_name(self.library_data, gate_id)
         if not gate:
             return {"error": f"No gate found with id={gate_id}"}
         # We can return the full raw_data or a condensed version
@@ -583,7 +583,7 @@ class ToolIntegration:
         """
         # Create a library manager to access the selected library
         self.library_data
-        ucf_customizer = UCFCustomizer(base_ucf=self.library_data)
+        ucf_customizer = CelloUCFCustomizer(base_ucf=self.library_data)
         custom_ucf_path = ucf_customizer.create_custom_ucf(selected_gates, selected_parts, modified_parts, ucf_name)
         return {
             "success": True,
@@ -772,8 +772,6 @@ class ToolIntegration:
             return self.get_dna_part_by_name_func(name)
         elif function_name == "list_terminators":
             return self.list_terminators_func()
-        elif function_name == "list_misc_items":
-            return self.list_misc_items_func()
         elif function_name == "design_with_cello":
             verilog_code = function_args["verilog_code"]
             config = function_args.get("config", None)
@@ -866,19 +864,9 @@ class ToolIntegration:
         Return a list of promoter parts from the selected library.
         """
         try:
-            from src.library.ucf_retrieval import list_promoters
-            promoters = list_promoters(self.library_data)
-            return {
-                "promoters": [
-                    {
-                        "id": p.get("id", "unknown"),
-                        "type": p.get("type", "promoter"),
-                        "sequence": p.get("sequence", "")[:50] + "..." if p.get("sequence") and len(p.get("sequence")) > 50 else p.get("sequence", "")
-                    } 
-                    for p in promoters
-                ],
-                "count": len(promoters)
-            }
+            from src.library.ucf_customizer import get_parts_by_type
+            promoters = get_parts_by_type(self.library_data, "promoter")
+            return promoters
         except Exception as e:
             return {"error": f"Error listing promoters: {str(e)}"}
 
@@ -887,19 +875,9 @@ class ToolIntegration:
         Return a list of possible repressors. Optionally filter by family.
         """
         try:
-            from src.library.ucf_retrieval import choose_repressor
-            repressors = choose_repressor(self.library_data, family)
-            return {
-                "repressors": [
-                    {
-                        "id": r.get("id", "unknown"),
-                        "type": r.get("type", "repressor"),
-                        "sequence": r.get("sequence", "")[:50] + "..." if r.get("sequence") and len(r.get("sequence")) > 50 else r.get("sequence", "")
-                    }
-                    for r in repressors
-                ],
-                "count": len(repressors)
-            }
+            from src.library.ucf_customizer import get_parts_by_type
+            repressors = get_parts_by_type(self.library_data, "repressor")
+            return repressors
         except Exception as e:
             return {"error": f"Error choosing repressor: {str(e)}"}
 
@@ -908,15 +886,10 @@ class ToolIntegration:
         Get a specific DNA part by name.
         """
         try:
-            from src.library.ucf_retrieval import get_dna_part_by_name
-            part = get_dna_part_by_name(self.library_data, name)
+            from src.library.ucf_customizer import get_part_by_name
+            part = get_part_by_name(self.library_data, name)
             if part:
-                return {
-                    "id": part.get("id", "unknown"),
-                    "type": part.get("type", "dna_part"),
-                    "sequence": part.get("sequence", ""),
-                    "raw_data": part.get("raw_data", {})
-                }
+                return part
             else:
                 return {"error": f"DNA part with name '{name}' not found"}
         except Exception as e:
@@ -927,42 +900,11 @@ class ToolIntegration:
         Return a list of terminator parts from the selected library.
         """
         try:
-            from src.library.ucf_retrieval import list_terminators
-            terminators = list_terminators(self.library_data)
-            return {
-                "terminators": [
-                    {
-                        "id": t.get("id", "unknown"),
-                        "type": t.get("type", "terminator"),
-                        "sequence": t.get("sequence", "")[:50] + "..." if t.get("sequence") and len(t.get("sequence")) > 50 else t.get("sequence", "")
-                    }
-                    for t in terminators
-                ],
-                "count": len(terminators)
-            }
+            from src.library.ucf_customizer import get_parts_by_type
+            terminators = get_parts_by_type(self.library_data, "terminator")
+            return terminators
         except Exception as e:
             return {"error": f"Error listing terminators: {str(e)}"}
-
-    def list_misc_items_func(self):
-        """
-        Return a list of miscellaneous items from the selected library.
-        """
-        try:
-            from src.library.ucf_retrieval import list_misc_items
-            items = list_misc_items(self.library_data)
-            return {
-                "items": [
-                    {
-                        "id": item.get("id", f"item_{i}"),
-                        "type": item.get("type", "unknown"),
-                        "category": item.get("category", "misc")
-                    }
-                    for i, item in enumerate(items)
-                ],
-                "count": len(items)
-            }
-        except Exception as e:
-            return {"error": f"Error listing misc items: {str(e)}"}
 
     def predict_promoter_strength_func(self, sequence):
         """

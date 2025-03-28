@@ -13,7 +13,7 @@ from typing import Dict, List, Optional, Any, Tuple
 
 from src.tools.cello_integration import CelloIntegration
 from src.tools.gpro_integration import PromoterOptimizer
-from src.library.ucf_customizer import UCFCustomizer
+from src.library.ucf_customizer import CelloUCFCustomizer
 from src.library.promoter_parameter_predictor import PromoterParameterPredictor
 from src.library.ucf_retrieval import list_promoters
 
@@ -39,7 +39,7 @@ class CircuitOptimizer:
         """
         self.cello = CelloIntegration()
         self.promoter_optimizer = PromoterOptimizer()
-        self.ucf_customizer = UCFCustomizer()
+        self.ucf_customizer = CelloUCFCustomizer()
         self.parameter_predictor = PromoterParameterPredictor()
         self.output_dir = output_dir
         

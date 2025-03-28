@@ -20,7 +20,7 @@ import json
 from pathlib import Path
 
 from src.tools.cello_integration import CelloIntegration
-from src.library.ucf_customizer import UCFCustomizer
+from src.library.ucf_customizer import CelloUCFCustomizer
 
 # Set up logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')

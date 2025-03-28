@@ -13,7 +13,7 @@ from pathlib import Path
 
 from core_algorithm.celloAlgo import CELLO3
 
-from src.library.ucf_customizer import UCFCustomizer  # Import UCFCustomizer for validation
+from src.library.ucf_customizer import CelloUCFCustomizer  # Import UCFCustomizer for validation
 from src.library.library_manager import LibraryManager
 
 class CelloIntegration:
@@ -319,7 +319,7 @@ class CelloIntegration:
             if os.path.exists(ucf_path):
                 self.logger.info(f"Validating UCF file: {ucf_path}")
                 try:
-                    ucf_validator = UCFCustomizer(ucf_path)
+                    ucf_validator = CelloUCFCustomizer(ucf_path)
                     validation_result = ucf_validator.validate_ucf()
                     
                     if not validation_result['valid']:

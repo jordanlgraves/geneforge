@@ -14,7 +14,7 @@ from jsonschema import ValidationError
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("ucf_customizer")
 
-class UCFCustomizer:
+class CelloUCFCustomizer:
     """
     Creates customized UCF files with selected parts for Cello circuit design.
     Follows the UCF schema structure to ensure valid output files.
@@ -240,146 +240,89 @@ class UCFCustomizer:
     
     def filter_parts(self, ucf_data: List[Dict], selected_parts: List) -> List[Dict]:
         """
-        Filter UCF data to include only the selected parts and clean up any references.
+        Filter UCF data to remove parts that are not in the selected parts list (by name) 
+        and share a type with a selected parts.
+        Only removes parts if they share a type with the selected parts.
+        Cleans up any references to removed parts.
         
         Args:
             ucf_data: The UCF data to filter
-            selected_parts: List of part objects to keep
+            selected_part_names: List of part names to keep
             
         Returns:
-            Filtered UCF data with all references to removed parts cleaned up
+            Filtered UCF data
         """
-        # Step 1: Identify parts to keep and remove
-        selected_part_types = set(p.get('type', '') for p in selected_parts)
-        selected_part_names = set(p.get('name', '') for p in selected_parts)
-        
-        # Create a map of part types to their names for quick lookup
-        parts_by_type = {}
+        resulting_ucf = []
+
+        selected_part_types = set([p['type'] for p in selected_parts])
+        selected_part_names = set([p['name'] for p in selected_parts])
+        removed_part_names = set()
+        # Keep non-part items
         for item in ucf_data:
-            if item.get("collection") == "parts":
-                part_type = item.get("type", "")
-                part_name = item.get("name", "")
-                if part_type not in parts_by_type:
-                    parts_by_type[part_type] = set()
-                parts_by_type[part_type].add(part_name)
-        
-        # Identify removed promoters
-        removed_promoters = set()
-        if "promoter" in parts_by_type:
-            removed_promoters = parts_by_type["promoter"] - selected_part_names
-        
-        # Step 2: Filter based on dependencies
-        # First pass: collect structure names that reference removed promoters
-        removed_structures = set()
-        kept_structures = set()
-        for item in ucf_data:
+            if item.get("collection") != "parts":
+                resulting_ucf.append(item)
+                continue
+                
+            # Keep parts that match the selected names
+            if item.get("type") in selected_part_types:
+                if item.get("name") in selected_part_names:
+                    resulting_ucf.append(item)
+                else:
+                    removed_part_names.add(item.get("name"))
+            else:
+                resulting_ucf.append(item)
+
+        # Now, remove any structures that reference removed parts
+        resulting_ucf_copy = copy.deepcopy(resulting_ucf)
+        resulting_ucf = []
+        for item in resulting_ucf_copy:
+            keep_item = True
             if item.get("collection") == "structures":
                 outputs = item.get("outputs", [])
-                # If any output is a removed promoter, mark structure for removal
-                if any(output in removed_promoters for output in outputs):
-                    removed_structures.add(item.get("name", ""))
-                # If any output is a kept promoter, mark structure to keep
-                elif any(output in selected_part_names for output in outputs):
-                    kept_structures.add(item.get("name", ""))
-        
-        # Second pass: collect gates that reference removed structures
-        removed_gates = set()
-        kept_gates = set()
-        for item in ucf_data:
+                if any(output in removed_part_names for output in outputs):
+                    keep_item = False
+                else:
+                    # check device components
+                    devices = item.get("devices", [])
+                    for device in devices:
+                        device_components = device.get("components", [])
+                        for component in device_components:
+                            if component in removed_part_names:
+                                keep_item = False
+                    if keep_item:
+                        resulting_ucf.append(item)
+            else:
+                resulting_ucf.append(item)
+
+        existing_structure_names = [item.get("name") for item in resulting_ucf if item.get("collection") == "structures"]
+        # remove any gates that reference removed structures
+        resulting_ucf_copy = copy.deepcopy(resulting_ucf)
+        resulting_ucf = []
+        for item in resulting_ucf_copy:
             if item.get("collection") == "gates":
-                if item.get("structure") in removed_structures:
-                    removed_gates.add(item.get("name", ""))
-                elif item.get("structure") in kept_structures:
-                    kept_gates.add(item.get("name", ""))
-        
-        # Third pass: collect models that reference removed gates
-        removed_models = set()
-        kept_models = set()
-        for item in ucf_data:
-            if item.get("collection") == "gates":
-                gate_name = item.get("name", "")
-                model_name = item.get("model", "")
-                if gate_name in removed_gates:
-                    removed_models.add(model_name)
-                elif gate_name in kept_gates:
-                    kept_models.add(model_name)
-        
-        # Final pass: build the filtered result
-        result = []
-        for item in ucf_data:
-            # Skip items that should be removed
-            if item.get("collection") == "parts":
-                if item.get("type") == "promoter" and item.get("name") not in selected_part_names:
+                if item.get("structure") not in existing_structure_names:
                     continue
-            elif item.get("collection") == "structures":
-                if item.get("name") in removed_structures:
-                    continue
-            elif item.get("collection") == "gates":
-                if item.get("name") in removed_gates:
-                    continue
-            elif item.get("collection") == "models":
-                if item.get("name") in removed_models:
-                    continue
-            elif item.get("collection") == "gate_parts":
-                # Skip gate parts for removed gates
-                if item.get("gate_name") in removed_gates:
-                    continue
-            elif item.get("collection") == "response_functions":
-                # Skip response functions for removed gates
-                if item.get("gate_name") in removed_gates:
-                    continue
-            
-            # Keep everything else
-            result.append(item)
+                else:
+                    resulting_ucf.append(item)
+            else:
+                resulting_ucf.append(item)
         
-        logger.info(f"Filtered UCF: removed {len(removed_promoters)} promoters, {len(removed_structures)} structures, "
-                   f"{len(removed_gates)} gates, {len(removed_models)} models")
-        return result
-    
-    def get_promoter_parameters(self, ucf_data: List[Dict], promoter_name: str) -> Dict:
-        """
-        Get the parameters associated with a promoter from its models.
-        
-        Args:
-            ucf_data: The UCF data
-            promoter_name: Name of the promoter
-            
-        Returns:
-            Dictionary with merged parameters from all models associated with the promoter
-        """
-        # Find structures that output this promoter
-        structures = []
-        for item in ucf_data:
-            if item.get("collection") == "structures" and promoter_name in item.get("outputs", []):
-                structures.append(item.get("name"))
-        
-        # Find gates that use these structures
-        gates = []
-        gate_to_model = {}
-        for item in ucf_data:
-            if item.get("collection") == "gates" and item.get("structure") in structures:
-                gates.append(item.get("name"))
-                gate_to_model[item.get("name")] = item.get("model")
-        
-        # Find models for these gates and extract parameters
-        parameters = {}
-        for item in ucf_data:
-            if item.get("collection") == "models" and item.get("name") in gate_to_model.values():
-                for param in item.get("parameters", []):
-                    param_name = param.get("name")
-                    param_value = param.get("value")
-                    if param_name and param_value is not None:
-                        # Store or update parameter value (use the most conservative one)
-                        if param_name == "ymin" and (param_name not in parameters or param_value < parameters[param_name]):
-                            parameters[param_name] = param_value
-                        elif param_name == "ymax" and (param_name not in parameters or param_value > parameters[param_name]):
-                            parameters[param_name] = param_value
-                        elif param_name == "K" and (param_name not in parameters or param_value > parameters[param_name]):
-                            parameters[param_name] = param_value
-                        elif param_name not in parameters:
-                            parameters[param_name] = param_value
-        
-        return parameters
+        # remove any models that reference removed gates
+        resulting_ucf_copy = copy.deepcopy(resulting_ucf)
+        resulting_ucf = []
+        existing_gate_names = [item.get("name") for item in resulting_ucf if item.get("collection") == "gates"]
+        for item in resulting_ucf_copy:
+            if item.get("collection") == "models":
+                if item.get("gate") not in existing_gate_names:
+                    continue
+                else:
+                    resulting_ucf.append(item)
+            else:
+                resulting_ucf.append(item)
+
+
+
+        return resulting_ucf
     
     def _add_default_parameters(self, part):
         """
@@ -400,7 +343,7 @@ class UCFCustomizer:
                          ucf_data: List[Dict],
                          selected_gates: List[str] = None,
                          selected_parts: List[Dict] = None,
-                         modified_parts: Dict[str, Dict] = None,
+                         modified_parts: List[Dict] = None,
                          new_parts: List[Dict] = None,
                          ucf_name: str = None,
                          output_dir: str = "outputs/custom_ucf") -> str:
@@ -410,7 +353,7 @@ class UCFCustomizer:
         Args:
             ucf_data: Base UCF data to customize
             selected_gates: List of gate IDs to include
-            selected_parts: List of part objects to include
+            selected_parts: List of part objects or IDs to include
             modified_parts: Dict of part_id -> modified properties
             new_parts: List of new part definitions to add
             ucf_name: Optional name for the UCF file
@@ -432,50 +375,63 @@ class UCFCustomizer:
         # Construct the output path
         output_path = os.path.join(output_dir, ucf_name)
         
-        # Handle selected parts (this now handles dependency cleanup)
+        # Handle selected parts
         if selected_parts:
-            logger.info(f"Filtering to {len(selected_parts)} selected parts")
+            # Extract part names from selected_parts if they are dictionaries
+
             custom_ucf = self.filter_parts(custom_ucf, selected_parts)
         
         # Handle selected gates
         if selected_gates:
             # TODO: Implement gate filtering
+            raise NotImplementedError("Gate filtering not implemented yet")
             pass
         
         # Handle modified parts
         if modified_parts:
-            for part_name, modifications in modified_parts.items():
-                part = self.get_part_by_name(custom_ucf, part_name)
-                if not part:
-                    logger.warning(f"Part {part_name} not found in UCF, cannot modify")
-                    continue
+            for modified_part in modified_parts:
+                part_name = modified_part.get("name")
+                collection = modified_part.get("collection")
                 
-                # Apply modifications
-                for key, value in modifications.items():
-                    if key == "sequence":
-                        part["dnasequence"] = value
-                    elif key == "parameters":
-                        # Handle parameters differently
-                        for param_name, param_value in value.items():
-                            # Find the parameter in the part
-                            param_found = False
-                            for param in part.get("parameters", []):
-                                if param.get("name") == param_name:
-                                    param["value"] = param_value
-                                    param_found = True
-                                    break
+                # Find the existing part in the UCF
+                found = False
+                for i, part in enumerate(custom_ucf):
+                    if part.get("collection") == collection and part.get("name") == part_name:
+                        found = True
+                        
+                        # For each parameter in the modified part, update the corresponding parameter in the existing part
+                        if "parameters" in modified_part:
+                            # Initialize parameters array if it doesn't exist
+                            if "parameters" not in part:
+                                part["parameters"] = []
                             
-                            # If parameter not found, add it
-                            if not param_found:
-                                if "parameters" not in part:
-                                    part["parameters"] = []
-                                part["parameters"].append({
-                                    "name": param_name,
-                                    "value": param_value
-                                })
-                    else:
-                        # Direct property update
-                        part[key] = value
+                            # Update existing parameters
+                            for mod_param in modified_part.get("parameters", []):
+                                param_name = mod_param.get("name")
+                                param_value = mod_param.get("value")
+                                
+                                # Find and update the parameter if it exists
+                                param_found = False
+                                for j, existing_param in enumerate(part["parameters"]):
+                                    if existing_param.get("name") == param_name:
+                                        part["parameters"][j]["value"] = param_value
+                                        param_found = True
+                                        break
+                                
+                                # If parameter doesn't exist, add it
+                                if not param_found:
+                                    part["parameters"].append({"name": param_name, "value": param_value})
+                        
+                        # Update other fields from the modified part (except parameters which we've handled)
+                        for key, value in modified_part.items():
+                            if key != "parameters":
+                                part[key] = value
+                        
+                        # The existing part is now updated
+                        break
+                
+                if not found:
+                    logger.warning(f"Part {part_name} (collection: {collection}) not found in UCF, cannot modify")
         
         # Handle new parts
         if new_parts:

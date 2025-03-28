@@ -1,14 +1,18 @@
+# Case 1 (NOT gate): 
+# “Design a NOT gate in E. coli that turns OFF GFP expression when Input A is high, ensuring an OFF state leak of less than 10% of the ON level.”
+#Example 2 (NOR gate): “Design a genetic NOR gate for E. coli where GFP is only expressed when both Input A and Input B are absent, and the internal gate promoter achieves at least a 20-fold difference between the ON and OFF states.”
+
 #!/usr/bin/env python3
 """
 Promoter Optimization Workflow Example
 
 This script demonstrates a complete workflow for optimizing a promoter in a genetic circuit:
-1. Generate a custom UCF with a specific promoter using LLM
-2. Extract the promoter from the generated UCF
+1. Generate a input json file with a specific promoter using LLM
+2. Extract the promoter sequence from the input json file
 3. Design a circuit using Cello
 4. Evaluate the circuit performance
 5. Optimize the promoter using the Promoter Calculator
-6. Update the UCF with the optimized promoter
+6. Update the input json  with the optimized promoter sequence and strength (y_max)
 7. Re-run Cello to compare results
 """
 

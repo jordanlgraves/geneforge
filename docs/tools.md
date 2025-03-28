@@ -1,3 +1,7 @@
+## BSim
+A computational ABM framework for modeling dynamics of bacteria in typical experimental environments. Gene regulatory networks can be modeled in BSim 2.0 by means of delayed differential equations.
+https://pubs.acs.org/doi/10.1021/acssynbio.7b00121
+
 ## OSTIR
 OSTIR is a Python package for predicting the rates at which ribosomes will bind to and initiate translation from different start codons in bacterial mRNAs. It uses the ViennaRNA Package to perform the necessary free energy calculations. The code builds on the last open source version of the RBS calculator.
 

@@ -27,7 +27,7 @@ sys.path.insert(0, project_root)
 # Now import from src
 from src.tools.cello_integration import CelloIntegration
 from src.tools.gpro_integration import PromoterOptimizer
-from src.library.ucf_customizer import UCFCustomizer
+from src.library.ucf_customizer import CelloUCFCustomizer
 from src.library.ucf_retrieval import list_promoters
 
 # Set up logging
@@ -43,7 +43,7 @@ class CircuitOptimizer:
         """Initialize the circuit optimizer."""
         self.cello = CelloIntegration()
         self.promoter_optimizer = PromoterOptimizer()
-        self.ucf_customizer = UCFCustomizer()
+        self.ucf_customizer = CelloUCFCustomizer()
         self.output_dir = output_dir
         
         # Create output directory if it doesn't exist
