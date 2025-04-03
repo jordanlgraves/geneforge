@@ -21,6 +21,119 @@ logger = logging.getLogger(__name__)
 
 DEBUG_MODEL = True
 
+def _check_for_repeated_errors(messages):
+    """
+    Checks for repeated errors in function calls and adds a system message if the same error 
+    is detected multiple times for the same function.
+    
+    Args:
+        messages (list): The conversation history
+        
+    Returns:
+        bool: True if a special message was added, False otherwise
+    """
+    if len(messages) < 4:
+        return False
+    
+    error_count = 0
+    last_error = None
+    last_function = None
+    
+    for j in range(len(messages) - 1, 0, -2):  # Check every other message (function responses)
+        if j < 3:  # Make sure we don't go out of bounds
+            break
+            
+        if messages[j].get("role") == "function" and messages[j-1].get("role") == "assistant":
+            try:
+                content = json.loads(messages[j].get("content", "{}"))
+                function_name = messages[j-1].get("function_call", {}).get("name")
+                
+                if "error" in content and function_name:
+                    current_error = content["error"]
+                    
+                    # If this is the same function and error as before
+                    if last_error == current_error and last_function == function_name:
+                        error_count += 1
+                    
+                    last_error = current_error
+                    last_function = function_name
+                    
+                    # If we see the same error 3 times in a row for the same function,
+                    # add a special message to break the loop
+                    if error_count >= 2:  # We've seen it 3 times (this one + 2 previous)
+                        logging.warning(f"Same error detected {error_count+1} times for function {function_name}: {current_error}")
+                        
+                        # Add a special message to help the model understand it should stop trying this function
+                        messages.append({
+                            "role": "system",
+                            "content": f"IMPORTANT: The function '{function_name}' is consistently returning the error: '{current_error}'. Please stop attempting to use this function and provide an alternative solution or a helpful response without it."
+                        })
+                        return True
+            except Exception as e:
+                logging.error(f"Error checking for repeated errors: {e}")
+    
+    return False
+
+def _handle_tool_call(client, messages, fn_call, i, model, max_rounds):
+    """
+    Handles executing a tool function call and processing its results.
+    
+    Args:
+        client: The API client
+        messages (list): The conversation history
+        fn_call: The function call information from the model response
+        i (int): The current message round count
+        model (str): The model name
+        max_rounds (int): Maximum rounds of conversation
+        
+    Returns:
+        The result of the recursive chat_with_tool call
+    """
+    fn_name = fn_call.name
+    fn_args_json = fn_call.arguments or "{}"
+    fn_args = json.loads(fn_args_json)
+    
+    logging.info(f"\n\nCalling function: {fn_name} with args: {fn_args}")
+    
+    try:
+        tool_result = library.call_tool_function(fn_name, fn_args)
+        logging.info(f"Tool result: {json.dumps(tool_result)[:500]}...\n\n")  # Log first 500 chars to avoid huge logs
+        
+        # Check if there was an error in the tool result
+        if isinstance(tool_result, dict) and "error" in tool_result:
+            logging.error(f"Tool error: {tool_result['error']}")
+        
+        # Append the function's result to the conversation history
+        messages.append({
+            "role": "assistant",
+            "function_call": {"name": fn_name, "arguments": fn_args_json},
+            "content": None
+        })
+        
+        messages.append({
+            "role": "function",
+            "name": fn_name,
+            "content": json.dumps(tool_result)
+        })
+        
+        return chat_with_tool(client, messages, i + 1, model, max_rounds)
+        
+    except Exception as e:
+        if DEBUG_MODEL:
+            # reraise so we can see the error in the debugger
+            raise e
+        else:
+            logging.error(f"Error calling function {fn_name}: {str(e)}")
+            error_result = {"error": f"Function execution failed: {str(e)}"}
+            
+            messages.append({
+                "role": "function",
+                "name": fn_name,
+                "content": json.dumps(error_result)
+            })
+            
+            return chat_with_tool(client, messages, i + 1, model, max_rounds)
+
 def chat_with_tool(client, messages, i=0, model="gpt-4o-mini", max_rounds=10):
     logging.info(f"Message round: {i}")
     
@@ -33,44 +146,8 @@ def chat_with_tool(client, messages, i=0, model="gpt-4o-mini", max_rounds=10):
         }
     
     # Check for repeated errors
-    if i >= 3 and len(messages) >= 4:
-        # Check the last three function calls
-        error_count = 0
-        last_error = None
-        last_function = None
-        
-        for j in range(len(messages) - 1, 0, -2):  # Check every other message (function responses)
-            if j < 3:  # Make sure we don't go out of bounds
-                break
-                
-            if messages[j].get("role") == "function" and messages[j-1].get("role") == "assistant":
-                try:
-                    content = json.loads(messages[j].get("content", "{}"))
-                    function_name = messages[j-1].get("function_call", {}).get("name")
-                    
-                    if "error" in content and function_name:
-                        current_error = content["error"]
-                        
-                        # If this is the same function and error as before
-                        if last_error == current_error and last_function == function_name:
-                            error_count += 1
-                        
-                        last_error = current_error
-                        last_function = function_name
-                        
-                        # If we see the same error 3 times in a row for the same function,
-                        # add a special message to break the loop
-                        if error_count >= 2:  # We've seen it 3 times (this one + 2 previous)
-                            logging.warning(f"Same error detected {error_count+1} times for function {function_name}: {current_error}")
-                            
-                            # Add a special message to help the model understand it should stop trying this function
-                            messages.append({
-                                "role": "system",
-                                "content": f"IMPORTANT: The function '{function_name}' is consistently returning the error: '{current_error}'. Please stop attempting to use this function and provide an alternative solution or a helpful response without it."
-                            })
-                            break
-                except Exception as e:
-                    logging.error(f"Error checking for repeated errors: {e}")
+    if i >= 3:
+        _check_for_repeated_errors(messages)
     
     response = client.chat.completions.create(
         model=model,
@@ -81,51 +158,14 @@ def chat_with_tool(client, messages, i=0, model="gpt-4o-mini", max_rounds=10):
     
     # If the model's response indicates a function call...
     if response.choices[0].finish_reason == "function_call":
-        fn_call = response.choices[0].message.function_call
-        fn_name = fn_call.name
-        fn_args_json = fn_call.arguments or "{}"
-        fn_args = json.loads(fn_args_json)
-        
-        logging.info(f"\n\nCalling function: {fn_name} with args: {fn_args}")
-        
-        try:
-            tool_result = library.call_tool_function(fn_name, fn_args)
-            logging.info(f"Tool result: {json.dumps(tool_result)[:500]}...\n\n")  # Log first 500 chars to avoid huge logs
-            
-            # Check if there was an error in the tool result
-            if isinstance(tool_result, dict) and "error" in tool_result:
-                logging.error(f"Tool error: {tool_result['error']}")
-            
-            # Append the function's result to the conversation history
-            messages.append({
-                "role": "assistant",
-                "function_call": {"name": fn_name, "arguments": fn_args_json},
-                "content": None
-            })
-            
-            messages.append({
-                "role": "function",
-                "name": fn_name,
-                "content": json.dumps(tool_result)
-            })
-            
-            return chat_with_tool(client, messages, i + 1, model, max_rounds)
-            
-        except Exception as e:
-            if DEBUG_MODEL:
-                # reraise so we can see the error in the debugger
-                raise e
-            else:
-                logging.error(f"Error calling function {fn_name}: {str(e)}")
-                error_result = {"error": f"Function execution failed: {str(e)}"}
-                
-                messages.append({
-                    "role": "function",
-                    "name": fn_name,
-                    "content": json.dumps(error_result)
-                })
-                
-                return chat_with_tool(client, messages, i + 1, model, max_rounds)
+        return _handle_tool_call(
+            client, 
+            messages, 
+            response.choices[0].message.function_call,
+            i, 
+            model, 
+            max_rounds
+        )
     else:
         logging.info("No function call made; returning the model's response.")
         return response.choices[0].message
