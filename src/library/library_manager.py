@@ -139,6 +139,19 @@ class LibraryManager:
         """
         return self.available_libraries
     
+    def describe_available_libraries(self) -> Dict[str, Dict[str, str]]:
+        """
+        Describe the available libraries.
+        """
+        # attempt to get the headers from the UCF file
+        library_metadata = dict()
+        for lib_id in self.available_libraries:
+            ucf_path = self.available_libraries[lib_id]["ucf"]
+            with open(ucf_path, 'r') as f:
+                header = [item for item in json.load(f) if item.get('collection','') == 'header'].pop()
+                library_metadata[lib_id] = header
+        return library_metadata
+
     def select_library(self, library_id: str) -> bool:
         """
         Select a library by ID.

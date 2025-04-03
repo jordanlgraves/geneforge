@@ -6,58 +6,25 @@ import glob
 import re
 from typing import Dict, List
 from src.library.ucf_customizer import CelloUCFCustomizer
-from src.library.ucf_retrieval import get_gates_by_type
 from src.tools.gpro_integration import PromoterOptimizer, RepressorOptimizer
-from src.library.llm_library_selector import RuleBasedLibrarySelector, LLMBasedLibrarySelector
+from src.library.llm_library_selector import LLMBasedLibrarySelector
 from src.library.library_manager import LibraryManager
 from src.tools.cello_integration import CelloIntegration
 from src.tools.deepseed_integration import DeepSeedIntegration
+
 tool_functions = [
     {
-        "name": "find_gates_by_type",
-        "description": "Find all gates in the library that match a certain type (e.g. NOR, AND, NOT). IMPORTANT: You must first select a library using analyze_and_select_library before using this function.",
-        "parameters": {
-            "type": "object",
-            "properties": {
-                "gate_type": {
-                    "type": "string",
-                    "description": "The type of gate to lookup."
-                }
-            },
-            "required": ["gate_type"]
-        }
-    },
-    {
-        "name": "get_gate_info",
-        "description": "Retrieve metadata for a specific gate by ID. IMPORTANT: You must first select a library using analyze_and_select_library before using this function.",
-        "parameters": {
-            "type": "object",
-            "properties": {
-                "gate_id": {
-                    "type": "string",
-                    "description": "Unique ID of the gate."
-                }
-            },
-            "required": ["gate_id"]
-        }
-    },
-    {
-        "name": "simulate_circuit",
-        "description": "Stub for simulating a circuit design. Provide a circuit specification in JSON.",
-        "parameters": {
-            "type": "object",
-            "properties": {
-                "circuit_spec": {
-                    "type": "string",
-                    "description": "A JSON string describing the circuit (list of gates, connections, etc.)."
-                }
-            },
-            "required": ["circuit_spec"]
-        }
-    },
-    {
         "name": "list_promoters",
-        "description": "Return a list of promoter parts from the selected library. IMPORTANT: You must first select a library using analyze_and_select_library before using this function.",
+        "description": "Return a list of promoter parts from the selected library. IMPORTANT: You must first select a library using select_library before using this function.",
+        "parameters": {
+            "type": "object",
+            "properties": {},
+            "required": []
+        }
+    },
+    {   
+        "name": "describe_available_libraries",
+        "description": "Return a description of the available libraries.",
         "parameters": {
             "type": "object",
             "properties": {},
@@ -65,8 +32,22 @@ tool_functions = [
         }
     },
     {
+        "name": "select_library",
+        "description": "Select a library using a library ID.",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "library_id": {
+                    "type": "string",
+                    "description": "The ID of the library to select."
+                }
+            },
+            "required": ["library_id"]
+        }
+    },
+    {
         "name": "choose_repressor",
-        "description": "Return a list of possible repressors. Optionally filter by family. IMPORTANT: You must first select a library using analyze_and_select_library before using this function.",
+        "description": "Return a list of possible repressors. Optionally filter by family. IMPORTANT: You must first select a library using select_library before using this function.",
         "parameters": {
             "type": "object",
             "properties": {
@@ -80,7 +61,7 @@ tool_functions = [
     },
     {
         "name": "get_dna_part_by_name",
-        "description": "Get a specific DNA part by name (like 'pTet'). IMPORTANT: You must first select a library using analyze_and_select_library before using this function.",
+        "description": "Get a specific DNA part by name (like 'pTet'). IMPORTANT: You must first select a library using select_library before using this function.",
         "parameters": {
             "type": "object",
             "properties": {
@@ -94,16 +75,7 @@ tool_functions = [
     },
     {
         "name": "list_terminators",
-        "description": "Return a list of terminator parts from the selected library. IMPORTANT: You must first select a library using analyze_and_select_library before using this function.",
-        "parameters": {
-            "type": "object",
-            "properties": {},
-            "required": []
-        }
-    },
-    {
-        "name": "list_misc_items",
-        "description": "Return a list of miscellaneous items from the selected library. IMPORTANT: You must first select a library using analyze_and_select_library before using this function.",
+        "description": "Return a list of terminator parts from the selected library. IMPORTANT: You must first select a library using select_library before using this function.",
         "parameters": {
             "type": "object",
             "properties": {},
@@ -135,7 +107,7 @@ tool_functions = [
     },
     {
         "name": "create_custom_ucf",
-        "description": "Create a customized UCF file with selected parts. IMPORTANT: You must first select a library using the analyze_and_select_library function before using this function.",
+        "description": "Create a customized UCF file with selected parts. IMPORTANT: You must first select a library using the select_library function before using this function.",
         "parameters": {
             "type": "object",
             "properties": {
@@ -242,30 +214,6 @@ tool_functions = [
         }
     },
     {
-        "name": "find_ucf_file",
-        "description": "Find the appropriate UCF file based on user specifications.",
-        "parameters": {
-            "type": "object",
-            "properties": {
-                "organism": {
-                    "type": "string",
-                    "description": "Organism for the circuit (e.g., 'E. coli', 'yeast')"
-                },
-                "inducers": {
-                    "type": "array",
-                    "items": {"type": "string"},
-                    "description": "List of inducers to use (e.g., 'arabinose', 'IPTG', 'aTc')"
-                },
-                "gate_types": {
-                    "type": "array",
-                    "items": {"type": "string"},
-                    "description": "List of gate types needed (e.g., 'NOT', 'NOR', 'AND')"
-                }
-            },
-            "required": ["organism"]
-        }
-    },
-    {
         "name": "design_circuit",
         "description": "Design a genetic circuit with automatic UCF file selection based on requirements.",
         "parameters": {
@@ -308,20 +256,6 @@ tool_functions = [
         }
     },
     {
-        "name": "analyze_and_select_library",
-        "description": "Analyze a user request and select the most appropriate library based on the requirements.",
-        "parameters": {
-            "type": "object",
-            "properties": {
-                "user_request": {
-                    "type": "string",
-                    "description": "The user's request describing their circuit design needs, including organism, parts, gates, etc."
-                }
-            },
-            "required": ["user_request"]
-        }
-    },
-    {
         "name": "evaluate_circuit_performance",
         "description": "Evaluate the performance of a designed genetic circuit by analyzing Cello output files",
         "parameters": {
@@ -341,21 +275,28 @@ tool_functions = [
 class ToolIntegration:
     def __init__(self, library_data):
         self.library_data = library_data
+        self.ucf_customizer = CelloUCFCustomizer()
 
-    def find_gates_by_type_func(self, gate_type: str):
+    def select_library_func(self, library_id: str):
         """
-        Query the library for gates of a specified type.
-        Returns a list of gate objects with ID, type, and description.
+        Select a library using a library ID.
         """
-        results = get_gates_by_type(self.library_data, gate_type)
-        gate_list = []
-        for g in results:
-            gate_list.append({
-                "id": g["id"],
-                "gate_type": g.get("gate_type", ""),
-                "notes": g["raw_data"].get("description", None)
-            })
-        return gate_list
+        library_manager = LibraryManager()
+        library_manager.select_library(library_id)  
+        return {
+            "success": True,
+            "message": f"Selected library {library_manager.current_library_id}"
+        }
+    
+    def describe_available_libraries_func(self):
+        """
+        Return a description of the available libraries.
+        """
+        library_manager = LibraryManager()
+        return  {
+            "success": True,
+            "libraries": library_manager.describe_available_libraries()
+        }
     
     def design_with_cello_func(self, verilog_code: str, config: dict = None):
         """
@@ -381,192 +322,6 @@ class ToolIntegration:
             "log": results['log']
         }
 
-    def get_gate_info_func(self, gate_id: str):
-        """Retrieve raw data for a specific gate by ID."""
-        gate = get_gate_by_name(self.library_data, gate_id)
-        if not gate:
-            return {"error": f"No gate found with id={gate_id}"}
-        # We can return the full raw_data or a condensed version
-        return {
-            "id": gate["id"],
-            "gate_type": gate.get("gate_type", ""),
-            "raw_data": gate["raw_data"]
-        }
-
-    def simulate_circuit_func(self, circuit_spec: str):
-        """
-        Stub for circuit simulation. For now, just return a dummy result.
-        """
-        # parse the circuit_spec if needed
-        try:
-            spec_data = json.loads(circuit_spec)
-            # We do no real simulation, just pretend
-            return {
-                "success": True,
-                "log": "Circuit simulated successfully. (Stub)",
-                "circuit_spec": spec_data
-            }
-        except Exception as e:
-            return {"error": f"Failed to parse circuit_spec as JSON: {e}"}
-
-    def find_ucf_file_func(self, organism: str, inducers: list = None, gate_types: list = None):
-        """
-        Find the appropriate UCF file based on user specifications.
-        
-        Args:
-            organism: Organism for the circuit (e.g., 'E. coli', 'yeast')
-            inducers: List of inducers to use (e.g., 'arabinose', 'IPTG', 'aTc')
-            gate_types: List of gate types needed (e.g., 'NOT', 'NOR', 'AND')
-            
-        Returns:
-            Dict containing matching UCF files and their properties
-        """
-        # Map organism names to directory prefixes
-        organism_map = {
-            "e. coli": "Eco",
-            "e.coli": "Eco",
-            "ecoli": "Eco",
-            "eco": "Eco",
-            "yeast": "SC",
-            "s. cerevisiae": "SC",
-            "bacillus": "Bth",
-            "b. subtilis": "Bth"
-        }
-        
-        # Map inducer names to search terms
-        inducer_map = {
-            "arabinose": ["arabinose", "AraC", "pBAD"],
-            "iptg": ["IPTG", "LacI", "pTac"],
-            "atc": ["aTc", "TetR", "pTet"],
-            "tetracycline": ["aTc", "TetR", "pTet"],
-            "3oxoc6hsl": ["3OC6HSL", "LuxR", "pLux"],
-            "hsl": ["HSL", "LuxR", "pLux"]
-        }
-        
-        # Map gate types to search terms
-        gate_type_map = {
-            "not": ["NOT", "inverter"],
-            "nor": ["NOR"],
-            "and": ["AND"],
-            "or": ["OR"],
-            "nand": ["NAND"],
-            "xor": ["XOR"]
-        }
-        
-        # Normalize organism input
-        org_key = organism.lower().strip()
-        if org_key not in organism_map:
-            return {
-                "error": f"Unsupported organism: {organism}. Supported organisms are: E. coli, S. cerevisiae, B. subtilis"
-            }
-        
-        org_prefix = organism_map[org_key]
-        
-        # Get all UCF files for the specified organism
-        ucf_dir = "ext_repos/Cello-UCF/files/v2/ucf"
-        ucf_files = glob.glob(f"{ucf_dir}/{org_prefix}/*.UCF.json")
-        
-        if not ucf_files:
-            return {
-                "error": f"No UCF files found for organism: {organism}"
-            }
-        
-        # If no specific requirements, return all available UCF files
-        if not inducers and not gate_types:
-            return {
-                "ucf_files": [os.path.basename(f) for f in ucf_files],
-                "message": f"Found {len(ucf_files)} UCF files for {organism}. No specific requirements provided."
-            }
-        
-        # Prepare search terms
-        search_terms = []
-        
-        if inducers:
-            for inducer in inducers:
-                inducer_key = inducer.lower().strip()
-                if inducer_key in inducer_map:
-                    search_terms.extend(inducer_map[inducer_key])
-                else:
-                    return {
-                        "error": f"Unsupported inducer: {inducer}. Supported inducers are: arabinose, IPTG, aTc, 3OC6HSL"
-                    }
-        
-        if gate_types:
-            for gate_type in gate_types:
-                gate_key = gate_type.lower().strip()
-                if gate_key in gate_type_map:
-                    search_terms.extend(gate_type_map[gate_key])
-                else:
-                    return {
-                        "error": f"Unsupported gate type: {gate_type}. Supported gate types are: NOT, NOR, AND, OR, NAND, XOR"
-                    }
-        
-        # Check each UCF file for the search terms
-        matching_files = []
-        
-        for ucf_file in ucf_files:
-            file_name = os.path.basename(ucf_file)
-            
-            # Use grep to search for terms in the file
-            matches = {}
-            for term in search_terms:
-                try:
-                    # Use grep to search for the term
-                    result = os.popen(f"grep -i '{term}' '{ucf_file}' | wc -l").read().strip()
-                    count = int(result)
-                    if count > 0:
-                        matches[term] = count
-                except Exception as e:
-                    print(f"Error searching for {term} in {file_name}: {e}")
-            
-            if matches:
-                matching_files.append({
-                    "file": file_name,
-                    "path": ucf_file,
-                    "matches": matches
-                })
-        
-        if not matching_files:
-            return {
-                "error": f"No UCF files found matching the specified requirements: organism={organism}, inducers={inducers}, gate_types={gate_types}",
-                "available_files": [os.path.basename(f) for f in ucf_files]
-            }
-        
-        # Sort matching files by number of matches
-        matching_files.sort(key=lambda x: sum(x["matches"].values()), reverse=True)
-        
-        return {
-            "matching_files": matching_files,
-            "message": f"Found {len(matching_files)} UCF files matching your requirements."
-        }
-
-    def analyze_and_select_library_func(self, user_request: str):
-        """
-        Analyze a user request and select the most appropriate library.
-        
-        Args:
-            user_request: The user's request describing their circuit design needs
-            
-        Returns:
-            Dict containing the selected library and analysis results
-        """
-        # Create a library selector
-        library_selector = LLMBasedLibrarySelector()
-        
-        # Analyze the request and select a library
-        result = library_selector.select_library(user_request)
-        
-        # If a library was selected, get its metadata
-        if result["success"]:
-            library_id = result["library_id"]
-            metadata = library_selector.get_library_metadata(library_id)
-            result["metadata"] = metadata
-            
-            # Update the library in the Cello integration if available
-            if hasattr(self, "cello_integration") and self.cello_integration:
-                self.cello_integration.select_library(library_id)
-        
-        return result
     
     def create_custom_ucf_func(self, selected_gates: List[str], selected_parts: List[str], modified_parts: Dict[str, Dict], ucf_name: str):
         """
@@ -581,8 +336,6 @@ class ToolIntegration:
         Returns:
             Dict containing the path to the created UCF file
         """
-        # Create a library manager to access the selected library
-        self.library_data
         ucf_customizer = CelloUCFCustomizer(base_ucf=self.library_data)
         custom_ucf_path = ucf_customizer.create_custom_ucf(selected_gates, selected_parts, modified_parts, ucf_name)
         return {
@@ -753,15 +506,11 @@ class ToolIntegration:
         Returns:
             Result of the function call
         """
-        if function_name == "find_gates_by_type":
-            gate_type = function_args["gate_type"]
-            return self.find_gates_by_type_func(gate_type)
-        elif function_name == "get_gate_info":
-            gate_id = function_args["gate_id"]
-            return self.get_gate_info_func(gate_id)
-        elif function_name == "simulate_circuit":
-            circuit_spec = function_args["circuit_spec"]
-            return self.simulate_circuit_func(circuit_spec)
+        if function_name == "select_library":
+            library_id = function_args["library_id"]
+            return self.select_library_func(library_id)
+        elif function_name == "describe_available_libraries":
+            return self.describe_available_libraries_func()
         elif function_name == "list_promoters":
             return self.list_promoters_func()
         elif function_name == "choose_repressor":
@@ -800,11 +549,6 @@ class ToolIntegration:
             starting_site = function_args["starting_site"]
             target_repression = function_args["target_repression"]
             return self.optimize_binding_site_func(repressor_id, starting_site, target_repression)
-        elif function_name == "find_ucf_file":
-            organism = function_args["organism"]
-            inducers = function_args.get("inducers", None)
-            gate_types = function_args.get("gate_types", None)
-            return self.find_ucf_file_func(organism, inducers, gate_types)
         elif function_name == "design_circuit":
             verilog_code = function_args["verilog_code"]
             organism = function_args["organism"]
@@ -886,8 +630,8 @@ class ToolIntegration:
         Get a specific DNA part by name.
         """
         try:
-            from src.library.ucf_customizer import get_part_by_name
-            part = get_part_by_name(self.library_data, name)
+            ucf_customizer = CelloUCFCustomizer()
+            part = ucf_customizer.get_part_by_name(self.library_data, name)
             if part:
                 return part
             else:
@@ -900,8 +644,7 @@ class ToolIntegration:
         Return a list of terminator parts from the selected library.
         """
         try:
-            from src.library.ucf_customizer import get_parts_by_type
-            terminators = get_parts_by_type(self.library_data, "terminator")
+            terminators = self.ucf_customizer.get_parts_by_type(self.library_data, "terminator")
             return terminators
         except Exception as e:
             return {"error": f"Error listing terminators: {str(e)}"}
