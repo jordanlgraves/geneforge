@@ -4,7 +4,9 @@ This repository contains an the foundation work for developing an automated AI-d
 
 ## Overview
 
-To core features of the system include a master LLM-agent which plans and orchestrates the design of a genetic circuit. The agent uses tool calls handle different parts of the design process. For example, a cell tool is used to assist with circuit simulation. The agent is able to generate verilog and manage a UCF, input and output library using other tools, allowing it to run the program with custom parts and logic. The agent also uses retrieval augmented generation, allowing it to search through scientific literature to find relevant information to assist in the design process. Other tools allow for predicting and optimizing genetic parts and sequences. The is should be used by providing an initial prompt and design specification. 
+To core features of the system include a master LLM-agent which plans and orchestrates the design of a genetic circuit. The agent uses tool calls handle different parts of the design process. For example, a cell tool is used to assist with circuit simulation. The agent is able to generate verilog and manage a UCF, input and output library using other tools, allowing it to run the program with custom parts and logic. The agent also uses retrieval augmented generation, allowing it to search through scientific literature to find relevant information to assist in the design process. Other tools allow for predicting and optimizing genetic parts and sequences. The is should be used by providing an initial prompt and design specification.
+
+**State Management:** The system uses a `SessionState` object to manage the context (like the currently selected library, custom UCF files, etc.) across multiple tool calls within a single user design request, ensuring consistency throughout the workflow.
 
 ## Examples and use cases:
 Examples of prompts can be found in `examples_and_prompts`. These range from simple to complex to aspirational and are designed to guide the implementation of this project and outline the vision of more sophisticated systems.

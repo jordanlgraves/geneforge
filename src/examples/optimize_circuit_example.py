@@ -27,7 +27,7 @@ sys.path.insert(0, project_root)
 # Now import from src
 from src.tools.cello_integration import CelloIntegration
 from src.tools.gpro_integration import PromoterOptimizer
-from src.library.ucf_customizer import CelloUCFCustomizer
+from src.library.part_library_customizer import PartLibraryCustomizer
 from src.library.ucf_retrieval import list_promoters
 
 # Set up logging
@@ -43,7 +43,7 @@ class CircuitOptimizer:
         """Initialize the circuit optimizer."""
         self.cello = CelloIntegration()
         self.promoter_optimizer = PromoterOptimizer()
-        self.ucf_customizer = CelloUCFCustomizer()
+        self.part_library_customizer = PartLibraryCustomizer()
         self.output_dir = output_dir
         
         # Create output directory if it doesn't exist
@@ -296,7 +296,7 @@ class CircuitOptimizer:
             if 'name' in p:
                 modified_parts[p['name']] = {'dnasequence': p['dnasequence']}
         
-        self.ucf_customizer.customize_ucf(
+        self.part_library_customizer.customize_ucf(
             input_ucf_path=ucf_path,
             output_ucf_path=new_ucf_path,
             modified_parts=modified_parts

@@ -1,3 +1,5 @@
+docs/curriculum
+
 __pycache__/
 *.pyc
 *.log

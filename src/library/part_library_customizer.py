@@ -6,15 +6,22 @@ import logging
 import tempfile
 from typing import Dict, List, Optional, Union, Any
 from pathlib import Path
+import dotenv
+
+dotenv.load_dotenv()
+
+CELLO_UCF_ROOT = os.getenv("CELLO_UCF_ROOT")
 
 import jsonschema
 from jsonschema import ValidationError
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger("ucf_customizer")
+logger = logging.getLogger("part_library_customizer")
 
-class CelloUCFCustomizer:
+VERBOSE = False
+
+class PartLibraryCustomizer:
     """
     Creates customized UCF files with selected parts for Cello circuit design.
     Follows the UCF schema structure to ensure valid output files.
@@ -22,27 +29,37 @@ class CelloUCFCustomizer:
     This class is designed to be stateless - it doesn't store UCF data
     internally but operates on data passed to its methods.
     """
-    def __init__(self, schema_path: str = "ext_repos/Cello-UCF/schemas/v2/ucf.schema.json"):
+    def __init__(self):
         """
         Initialize with schema for validation.
         
         Args:
-            schema_path: Path to UCF schema file
+            ucf_schema_path: Path to UCF schema file
         """
-        self.schema_path = schema_path
-        self.schema_dir = os.path.dirname(schema_path) if schema_path else None
+        
+        self.ucf_schema_path = os.path.join(CELLO_UCF_ROOT, "schemas", "v2", "ucf.schema.json")
+        self.schema_dir = os.path.dirname(self.ucf_schema_path)
+
+        self.input_sensor_schema_path = os.path.join(CELLO_UCF_ROOT, "schemas", "v2", "input_sensor_file.schema.json")
+        self.output_device_schema_path = os.path.join(CELLO_UCF_ROOT, "schemas", "v2", "output_device_file.schema.json")
         
         # Load schema
-        self.schema = None
-        self.validator = None
+        self.ucf_schema = None
+        self.ucf_validator = None
         
         # Check schema path
-        if not os.path.exists(schema_path):
-            raise FileNotFoundError(f"Schema file not found at {schema_path}. Cannot validate UCF files.")
+        if not os.path.exists(self.ucf_schema_path):
+            raise FileNotFoundError(f"Schema file not found at {self.ucf_schema_path}. Cannot validate UCF files.")
         
         # Load schema and set up validator
-        with open(schema_path, 'r') as f:
-            self.schema = json.load(f)
+        with open(self.ucf_schema_path, 'r') as f:
+            self.ucf_schema = json.load(f)
+
+        with open(self.input_sensor_schema_path, 'r') as f:
+            self.input_sensor_schema = json.load(f)
+
+        with open(self.output_device_schema_path, 'r') as f:
+            self.output_device_schema = json.load(f)
         
         # Cache resolved schemas to speed up validation
         self.resolved_schemas = {}
@@ -52,18 +69,29 @@ class CelloUCFCustomizer:
         
         # Set up a resolver for schema references
         schema_base_uri = f"file://{os.path.abspath(self.schema_dir)}/"
-        self.resolver = jsonschema.RefResolver(base_uri=schema_base_uri, referrer=self.schema)
+        self.ucf_resolver = jsonschema.RefResolver(base_uri=schema_base_uri, referrer=self.ucf_schema)
+        self.input_sensor_resolver = jsonschema.RefResolver(base_uri=schema_base_uri, referrer=self.input_sensor_schema)
+        self.output_device_resolver = jsonschema.RefResolver(base_uri=schema_base_uri, referrer=self.output_device_schema)
         
+
         # Create a validator with the resolver
-        self.validator = jsonschema.Draft7Validator(
-            schema=self.schema,
-            resolver=self.resolver
+        self.ucf_validator = jsonschema.Draft7Validator(
+            schema=self.ucf_schema,
+            resolver=self.ucf_resolver
         )
-        
-        logger.info(f"Loaded UCF schema from {schema_path}")
-        
-        # Pre-load common referenced schemas
-        self._preload_referenced_schemas()
+        self.input_sensor_validator = jsonschema.Draft7Validator(
+            schema=self.input_sensor_schema,
+            resolver=self.input_sensor_resolver
+        )
+        self.output_device_validator = jsonschema.Draft7Validator(
+            schema=self.output_device_schema,
+            resolver=self.output_device_resolver
+        )   
+
+        if VERBOSE:
+            logger.info(f"Loaded UCF schema from {self.ucf_schema_path}")   
+            logger.info(f"Loaded input sensor schema from {self.input_sensor_schema_path}")
+            logger.info(f"Loaded output device schema from {self.output_device_schema_path}")
             
     def _scan_schema_directory(self):
         """Scan the schema directory structure and report missing schemas"""
@@ -89,12 +117,13 @@ class CelloUCFCustomizer:
             raise IOError(f"Error scanning schema directory {self.schema_dir}: {e}")
         
         # Look for required schemas from schema references
-        if self.schema:
-            self._find_schema_references(self.schema, schema_files)
+        if self.ucf_schema:
+            self._find_schema_references(self.ucf_schema, schema_files)
             
         # Log the results
         if schema_files:
-            logger.info(f"Found {len(schema_files)} schema files in {self.schema_dir}: {', '.join(schema_files)}")
+            if VERBOSE:
+                logger.info(f"Found {len(schema_files)} schema files in {self.schema_dir}: {', '.join(schema_files)}")
         else:
             raise ValueError(f"No schema files found in {self.schema_dir}")
     
@@ -124,30 +153,6 @@ class CelloUCFCustomizer:
                     if isinstance(item, dict):
                         self._find_schema_references(item, found_schemas)
     
-    def _preload_referenced_schemas(self):
-        """Pre-load common schema references to speed up validation"""
-        if not self.schema_dir:
-            return
-            
-        try:
-            # These are commonly referenced schema files
-            common_schemas = [
-                "gate.schema.json",
-                "part.schema.json",
-                "gate_parts.schema.json",
-                "response_function.schema.json"
-            ]
-            
-            for schema_name in common_schemas:
-                schema_path = os.path.join(self.schema_dir, schema_name)
-                if os.path.exists(schema_path):
-                    with open(schema_path, 'r') as f:
-                        self.resolved_schemas[schema_name] = json.load(f)
-                else:
-                    logger.warning(f"Common schema reference not found: {schema_name}")
-        except Exception as e:
-            logger.error(f"Error preloading schema references: {e}")
-    
     def validate_ucf(self, ucf_data: List[Dict]) -> Dict[str, Any]:
         """
         Validate UCF data against the schema.
@@ -172,37 +177,17 @@ class CelloUCFCustomizer:
         
         try:
             # Validate the whole UCF
-            self.validator.validate(ucf_data)
+            self.ucf_validator.validate(ucf_data)
         except ValidationError as e:
             result["valid"] = False
             result["errors"].append(str(e))
             raise ValidationError(f"UCF validation failed: {e}")
         
-        logger.info(f"UCF validation passed: no schema errors found")
+        if VERBOSE:
+            logger.info(f"UCF validation passed: no schema errors found")
         return result
     
-    def index_collections(self, ucf_data: List[Dict]) -> Dict[str, List[Dict]]:
-        """
-        Index UCF data by collection for easier access.
-        
-        Args:
-            ucf_data: The UCF data to index
-            
-        Returns:
-            Dictionary mapping collection names to lists of items
-        """
-        collections = {}
-        
-        for item in ucf_data:
-            collection = item.get("collection")
-            if collection:
-                if collection not in collections:
-                    collections[collection] = []
-                collections[collection].append(item)
-        
-        return collections
-    
-    def get_parts_by_type(self, ucf_data: List[Dict], part_type: str) -> List[Dict]:
+    def get_parts_by_type(self, data: List[Dict], part_type: str) -> List[Dict]:
         """
         Get all parts of a specific type from UCF data.
         
@@ -215,13 +200,15 @@ class CelloUCFCustomizer:
         """
         result = []
         
-        for item in ucf_data:
+        for item in data:
             if item.get("collection") == "parts" and item.get("type") == part_type:
                 result.append(item)
         
         return result
     
-    def get_part_by_name(self, ucf_data: List[Dict], part_name: str) -> Optional[Dict]:
+
+    
+    def get_part_by_name(self, data: List[Dict], part_name: str) -> Optional[Dict]:
         """
         Get a specific part by name from UCF data.
         
@@ -232,13 +219,13 @@ class CelloUCFCustomizer:
         Returns:
             The part dictionary if found, None otherwise
         """
-        for item in ucf_data:
+        for item in data:
             if item.get("collection") == "parts" and item.get("name") == part_name:
                 return item
         
         return None
     
-    def filter_parts(self, ucf_data: List[Dict], selected_parts: List) -> List[Dict]:
+    def filter_parts(self, data: List[Dict], selected_parts: List) -> List[Dict]:
         """
         Filter UCF data to remove parts that are not in the selected parts list (by name) 
         and share a type with a selected parts.
@@ -252,30 +239,30 @@ class CelloUCFCustomizer:
         Returns:
             Filtered UCF data
         """
-        resulting_ucf = []
+        resulting_data = []
 
         selected_part_types = set([p['type'] for p in selected_parts])
         selected_part_names = set([p['name'] for p in selected_parts])
         removed_part_names = set()
         # Keep non-part items
-        for item in ucf_data:
+        for item in data:
             if item.get("collection") != "parts":
-                resulting_ucf.append(item)
+                resulting_data.append(item)
                 continue
                 
             # Keep parts that match the selected names
             if item.get("type") in selected_part_types:
                 if item.get("name") in selected_part_names:
-                    resulting_ucf.append(item)
+                    resulting_data.append(item)
                 else:
                     removed_part_names.add(item.get("name"))
             else:
-                resulting_ucf.append(item)
+                resulting_data.append(item)
 
         # Now, remove any structures that reference removed parts
-        resulting_ucf_copy = copy.deepcopy(resulting_ucf)
-        resulting_ucf = []
-        for item in resulting_ucf_copy:
+        resulting_copy = copy.deepcopy(resulting_data)
+        resulting_data = []
+        for item in resulting_copy:
             keep_item = True
             if item.get("collection") == "structures":
                 outputs = item.get("outputs", [])
@@ -290,39 +277,37 @@ class CelloUCFCustomizer:
                             if component in removed_part_names:
                                 keep_item = False
                     if keep_item:
-                        resulting_ucf.append(item)
+                        resulting_data.append(item)
             else:
-                resulting_ucf.append(item)
+                resulting_data.append(item)
 
-        existing_structure_names = [item.get("name") for item in resulting_ucf if item.get("collection") == "structures"]
+        existing_structure_names = [item.get("name") for item in resulting_data if item.get("collection") == "structures"]
         # remove any gates that reference removed structures
-        resulting_ucf_copy = copy.deepcopy(resulting_ucf)
-        resulting_ucf = []
-        for item in resulting_ucf_copy:
+        resulting_copy = copy.deepcopy(resulting_data)
+        resulting_data = []
+        for item in resulting_copy:
             if item.get("collection") == "gates":
                 if item.get("structure") not in existing_structure_names:
                     continue
                 else:
-                    resulting_ucf.append(item)
+                    resulting_data.append(item)
             else:
-                resulting_ucf.append(item)
+                resulting_data.append(item)
         
         # remove any models that reference removed gates
-        resulting_ucf_copy = copy.deepcopy(resulting_ucf)
-        resulting_ucf = []
-        existing_gate_names = [item.get("name") for item in resulting_ucf if item.get("collection") == "gates"]
-        for item in resulting_ucf_copy:
+        resulting_copy = copy.deepcopy(resulting_data)
+        resulting_data = []
+        existing_gate_names = [item.get("name") for item in resulting_data if item.get("collection") == "gates"]
+        for item in resulting_copy:
             if item.get("collection") == "models":
                 if item.get("gate") not in existing_gate_names:
                     continue
                 else:
-                    resulting_ucf.append(item)
+                    resulting_data.append(item)
             else:
-                resulting_ucf.append(item)
+                resulting_data.append(item)
 
-
-
-        return resulting_ucf
+        return resulting_data
     
     def _add_default_parameters(self, part):
         """
@@ -378,7 +363,6 @@ class CelloUCFCustomizer:
         # Handle selected parts
         if selected_parts:
             # Extract part names from selected_parts if they are dictionaries
-
             custom_ucf = self.filter_parts(custom_ucf, selected_parts)
         
         # Handle selected gates
@@ -457,7 +441,8 @@ class CelloUCFCustomizer:
         with open(output_path, 'w') as f:
             json.dump(custom_ucf, f, indent=2)
             
-        logger.info(f"Created custom UCF file: {output_path}")
+        if VERBOSE:
+            logger.info(f"Created custom UCF file: {output_path}")
         return output_path
     
     def customize_existing_ucf(self,

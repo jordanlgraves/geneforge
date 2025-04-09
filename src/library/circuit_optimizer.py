@@ -13,7 +13,7 @@ from typing import Dict, List, Optional, Any, Tuple
 
 from src.tools.cello_integration import CelloIntegration
 from src.tools.gpro_integration import PromoterOptimizer
-from src.library.ucf_customizer import CelloUCFCustomizer
+from src.library.part_library_customizer import PartLibraryCustomizer
 from src.library.promoter_parameter_predictor import PromoterParameterPredictor
 from src.library.ucf_retrieval import list_promoters
 
@@ -39,7 +39,7 @@ class CircuitOptimizer:
         """
         self.cello = CelloIntegration()
         self.promoter_optimizer = PromoterOptimizer()
-        self.ucf_customizer = CelloUCFCustomizer()
+        self.part_library_customizer = PartLibraryCustomizer()
         self.parameter_predictor = PromoterParameterPredictor()
         self.output_dir = output_dir
         
@@ -254,8 +254,8 @@ class CircuitOptimizer:
                 logger.info(f"Predicted strength: {result['predicted_strength']}")
                 
                 # Find the associated gate and its parameters
-                gate_name = self.ucf_customizer.find_gate_for_promoter(ucf_data, promoter.get('name'))
-                original_parameters = self.ucf_customizer.get_gate_parameters(ucf_data, gate_name)
+                gate_name = self.part_library_customizer.find_gate_for_promoter(ucf_data, promoter.get('name'))
+                original_parameters = self.part_library_customizer.get_gate_parameters(ucf_data, gate_name)
                 
                 logger.info(f"Associated gate: {gate_name}")
                 logger.info(f"Original parameters: {original_parameters}")
@@ -319,7 +319,7 @@ class CircuitOptimizer:
                 modified_parameters[p['gate_name']] = p['predicted_parameters']
         
         # Create the new UCF with both sequence and parameter changes
-        self.ucf_customizer.customize_ucf_with_parameters(
+        self.part_library_customizer.customize_ucf_with_parameters(
             input_ucf_path=ucf_path,
             output_ucf_path=new_ucf_path,
             modified_parts=modified_parts,

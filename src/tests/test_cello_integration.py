@@ -50,7 +50,6 @@ class TestCelloIntegration(unittest.TestCase):
         cello = CelloIntegration()
         self.assertIsNotNone(cello)
         self.assertIsNotNone(cello.library_manager)
-        self.assertIsNotNone(cello.cello_args)
         self.assertIsNotNone(cello.cello_config)
         
         # Test initialization with a specific library ID
@@ -66,16 +65,6 @@ class TestCelloIntegration(unittest.TestCase):
             success = cello.select_library(library_id)
             self.assertTrue(success)
             self.assertEqual(cello.library_manager.current_library_id, library_id)
-            
-            # Check that the Cello arguments were updated correctly
-            self.assertTrue(library_id in cello.cello_args['ucf_name'])
-            
-            # If input and output paths exist, they should be updated
-            lib_info = cello.library_manager.get_current_library_info()
-            if lib_info.get("input_path"):
-                self.assertTrue(library_id in cello.cello_args['in_name'])
-            if lib_info.get("output_path"):
-                self.assertTrue(library_id in cello.cello_args['out_name'])
         
         # Test selecting a non-existent library
         success = cello.select_library("NonExistentLibrary")
@@ -155,7 +144,7 @@ class TestCelloIntegration(unittest.TestCase):
         print(f"Cello arguments: {cello_args}")
         
         # Create Cello instance with custom args
-        cello = CelloIntegration(library_id='Eco1C1G1T1', cello_args=cello_args)
+        cello = CelloIntegration(library_id='Eco1C1G1T1') #, cello_args=cello_args)
         
         # Simple NOT gate Verilog code
         verilog_code = """

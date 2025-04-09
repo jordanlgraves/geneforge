@@ -8,7 +8,7 @@ import dotenv
 
 CELLO_UCF_ROOT = os.getenv("CELLO_UCF_ROOT")
 
-from src.library.ucf_customizer import CelloUCFCustomizer
+from src.library.part_library_customizer import PartLibraryCustomizer
 
 logger = logging.getLogger("library_manager")
 
@@ -20,37 +20,28 @@ class LibraryManager:
     Provides a unified interface for working with different library types.
     """
     
-    def __init__(self, default_library: str = "Eco1C1G1T1"):
+    def __init__(self):
         """
-        Initialize the library manager with default settings.
-        
-        Args:
-            default_library: Default library identifier (e.g., "Eco1C1G1T1")
+        Initialize the library manager. Scans for available libraries
+        but does not load a default one initially.
         """
         # Initialize the UCF customizer
-        self.ucf_customizer = CelloUCFCustomizer()
+        self.part_library_customizer = PartLibraryCustomizer()
         
         # Scan available libraries
         self.available_libraries = self._scan_libraries()
         
-        # Set initial state
-        self.default_library = default_library
-        self.current_library_id = None
-        self.current_ucf_data = None  # Store raw UCF data
-        self.current_ucf_path = None
-        self.current_input_path = None
-        self.current_output_path = None
+        # Set initial state - no library selected by default
+        self.current_library_id: Optional[str] = None
+        self.current_ucf_data: Optional[List[Dict]] = None
+        self.current_ucf_path: Optional[str] = None
+        self.current_input_path: Optional[str] = None
+        self.current_output_path: Optional[str] = None
 
-        # Try to load the default library
-        if self.available_libraries:
-            # If default library not available, use the first available one
-            if default_library not in self.available_libraries:
-                self.default_library = next(iter(self.available_libraries))
-                logger.info(f"Default library '{default_library}' not found. Using '{self.default_library}' instead.")
-            
-            self.select_library(self.default_library)
+        if not self.available_libraries:
+            logger.warning("No libraries found during scan.")
         else:
-            logger.warning("No libraries found. Library manager initialized without active library.")
+            logger.info(f"Library manager initialized. Found {len(self.available_libraries)} potential libraries.")
     
     def _scan_libraries(self) -> Dict[str, Dict[str, str]]:
         """
@@ -154,7 +145,7 @@ class LibraryManager:
 
     def select_library(self, library_id: str) -> bool:
         """
-        Select a library by ID.
+        Select a library by ID and load its data.
         
         Args:
             library_id: ID of the library to select
@@ -162,20 +153,37 @@ class LibraryManager:
         Returns:
             True if the library was successfully selected, False otherwise
         """
-        if library_id not in self.available_libraries.keys():
-            logger.error(f"Library {library_id} not found")
+        if library_id not in self.available_libraries:
+            logger.error(f"Library {library_id} not found in available libraries: {list(self.available_libraries.keys())}")
+            # Clear current state if selection fails
+            self.current_library_id = None
+            self.current_ucf_data = None
+            self.current_ucf_path = None
+            self.current_input_data = None
+            self.current_input_path = None
+            self.current_output_data = None
+            self.current_output_path = None
             return False
         
         # Get the library info
         library_info = self.available_libraries[library_id]
         
         # Check if the UCF file exists
-        if "ucf" not in library_info:
-            logger.error(f"Library {library_id} does not have a UCF file")
+        ucf_path = library_info.get("ucf")
+        if not ucf_path or not os.path.exists(ucf_path):
+            logger.error(f"UCF file path not found or file does not exist for library {library_id}: {ucf_path}")
+            # Clear current state if essential file missing
+            self.current_library_id = None
+            self.current_ucf_data = None
+            self.current_ucf_path = None
+            self.current_input_data = None
+            self.current_input_path = None
+            self.current_output_data = None
+            self.current_output_path = None
             return False
         
         # Store the UCF path
-        self.current_ucf_path = library_info["ucf"]
+        self.current_ucf_path = ucf_path
         
         # Load the UCF file - store raw UCF data
         try:
@@ -184,82 +192,51 @@ class LibraryManager:
             
             logger.info(f"Loaded raw UCF data from {self.current_ucf_path}")
             
+            # Load the input file - store raw input data
+            input_path = library_info.get("input")
+            if input_path and os.path.exists(input_path):
+                with open(input_path, 'r') as f:
+                    self.current_input_data = json.load(f)
+                    logger.info(f"Loaded raw input data from {input_path}")
+
+            # Load the output file - store raw output data
+            output_path = library_info.get("output")
+            if output_path and os.path.exists(output_path):
+                with open(output_path, 'r') as f:
+                    self.current_output_data = json.load(f)
+                    logger.info(f"Loaded raw output data from {output_path}")
+                    
+
         except Exception as e:
+            logger.error(f"Failed to load or parse UCF library '{library_id}' from {self.current_ucf_path}: {e}")
+            # Clear current state on load failure
+            self.current_library_id = None
+            self.current_ucf_data = None
+            self.current_ucf_path = None
+            self.current_input_path = None
+            self.current_output_path = None
             if DEBUG_MODEL:
-                # reraise so we can see the error in the debugger
-                raise e
-            
-            logger.error(f"Failed to load UCF library: {e}")
+                raise e # Reraise in debug mode
             return False
         
         # Store input and output file paths if available
-        if "input" in library_info:
-            self.current_input_path = library_info["input"]
-            logger.info(f"Registered input file: {self.current_input_path}")
-            
-        if "output" in library_info:
-            self.current_output_path = library_info["output"]
-            logger.info(f"Registered output file: {self.current_output_path}")
+        self.current_input_path = library_info.get("input")
+        if self.current_input_path:
+             logger.info(f"Registered input file: {self.current_input_path}")
+        else:
+             logger.info(f"No input file found for library {library_id}")
         
-        # Set the current library ID
+        self.current_output_path = library_info.get("output")
+        if self.current_output_path:
+            logger.info(f"Registered output file: {self.current_output_path}")
+        else:
+            logger.info(f"No output file found for library {library_id}")
+        
+        # Set the current library ID *after* successful loading
         self.current_library_id = library_id
-        logger.info(f"Selected library: {library_id}")
+        logger.info(f"Successfully selected library: {library_id}")
         
         return True
-    
-    def get_library_data(self) -> Optional[Dict[str, Any]]:
-        """
-        Get the current library data in a structured format.
-        This method converts raw UCF data to a structured format for easier querying.
-        
-        Returns:
-            Structured library data or None if no library is loaded
-        """
-        if not self.current_ucf_data:
-            return None
-            
-        # Convert raw UCF data to a structured format on-demand
-        structured_data = {
-            "parts": [],
-            "gates": []
-        }
-        
-        # Process parts and gates
-        for item in self.current_ucf_data:
-            if "collection" not in item:
-                continue
-                
-            collection = item["collection"]
-            
-            if collection == "parts":
-                part_data = {
-                    "id": item.get("name", ""),
-                    "name": item.get("name", ""),
-                    "type": item.get("type", ""),
-                    "sequence": item.get("dnasequence", ""),
-                    "raw_data": item
-                }
-                
-                # Process parameters
-                for param in item.get("parameters", []):
-                    param_name = param.get("name", "").lower()
-                    param_value = param.get("value", 0)
-                    part_data[param_name] = param_value
-                
-                structured_data["parts"].append(part_data)
-                
-            elif collection == "gates":
-                gate_data = {
-                    "id": item.get("name", ""),
-                    "name": item.get("name", ""),
-                    "type": item.get("type", ""),
-                    "raw_data": item
-                }
-                structured_data["gates"].append(gate_data)
-            
-            # Add other collections as needed
-        
-        return structured_data
     
     def get_ucf_data(self) -> Optional[List[Dict]]:
         """
@@ -269,6 +246,18 @@ class LibraryManager:
             Raw UCF data or None if no library is loaded
         """
         return self.current_ucf_data
+    
+    def get_input_sensor_data(self) -> Optional[List[Dict]]:
+        """
+        Get the raw input sensor data for the current library.
+        """
+        return self.current_input_data
+    
+    def get_output_device_data(self) -> Optional[List[Dict]]:
+        """
+        Get the raw output device data for the current library.
+        """
+        return self.current_output_data
     
     def get_input_file_path(self) -> Optional[str]:
         """
@@ -339,7 +328,7 @@ class LibraryManager:
             output_dir = "outputs/custom_ucf"
         
         # Create the custom UCF using our raw UCF data
-        return self.ucf_customizer.create_custom_ucf(
+        return self.part_library_customizer.create_custom_ucf(
             ucf_data=self.current_ucf_data,
             selected_gates=selected_gates,
             selected_parts=processed_parts,

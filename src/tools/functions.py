@@ -5,21 +5,33 @@ import os
 import glob
 import re
 from typing import Dict, List
-from src.library.ucf_customizer import CelloUCFCustomizer
+from src.library.part_library_customizer import PartLibraryCustomizer
 from src.tools.gpro_integration import PromoterOptimizer, RepressorOptimizer
-from src.library.llm_library_selector import LLMBasedLibrarySelector
 from src.library.library_manager import LibraryManager
-from src.tools.cello_integration import CelloIntegration
 from src.tools.deepseed_integration import DeepSeedIntegration
+from src.session_state import SessionState
+import traceback
 
-tool_functions = [
+DEBUG_MODE = True
+
+from langchain_community.tools import ReadFileTool
+from langchain_core.utils.function_calling import convert_to_openai_function
+
+
+
+tool_functions = [convert_to_openai_function(ReadFileTool()),
     {
         "name": "list_promoters",
         "description": "Return a list of promoter parts from the selected library. IMPORTANT: You must first select a library using select_library before using this function.",
         "parameters": {
             "type": "object",
-            "properties": {},
-            "required": []
+            "properties": {
+                "file_type": {
+                    "type": "string",
+                    "description": "The type of file to list parts from, must be 'input', 'output', or 'ucf'"
+                }
+            },
+            "required": ["file_type"]
         }
     },
     {   
@@ -46,31 +58,35 @@ tool_functions = [
         }
     },
     {
-        "name": "choose_repressor",
-        "description": "Return a list of possible repressors. Optionally filter by family. IMPORTANT: You must first select a library using select_library before using this function.",
+        "name": "list_repressors",
+        "description": "Return a list of possible repressors from the selected library. Optionally filter by family. IMPORTANT: You must first select a library using select_library before using this function.",
         "parameters": {
             "type": "object",
             "properties": {
-                "family": {
+                "file_type": {
                     "type": "string",
-                    "description": "Name of a repressor family, e.g. TetR, if desired. Otherwise omit."
+                    "description": "The type of file to list parts from, must be 'input', 'output', or 'ucf'"
                 }
             },
-            "required": []
+            "required": ["file_type"]
         }
     },
     {
         "name": "get_dna_part_by_name",
-        "description": "Get a specific DNA part by name (like 'pTet'). IMPORTANT: You must first select a library using select_library before using this function.",
+        "description": "Get a specific DNA part by name (like 'pTet') from the selected library in the user contrainsts file. IMPORTANT: You must first select a library using select_library before using this function.",
         "parameters": {
             "type": "object",
             "properties": {
                 "name": {
                     "type": "string",
                     "description": "Name or ID of the DNA part to retrieve."
+                },
+                "file_type": {
+                    "type": "string",
+                    "description": "The type of file to list parts from, must be 'input', 'output', or 'ucf'"
                 }
             },
-            "required": ["name"]
+            "required": ["name", "file_type"]
         }
     },
     {
@@ -78,8 +94,13 @@ tool_functions = [
         "description": "Return a list of terminator parts from the selected library. IMPORTANT: You must first select a library using select_library before using this function.",
         "parameters": {
             "type": "object",
-            "properties": {},
-            "required": []
+            "properties": {
+                "file_type": {
+                    "type": "string",
+                    "description": "The type of file to list parts from, must be 'input', 'output', or 'ucf'"
+                }
+            },
+            "required": ["file_type"]
         }
     },
     {
@@ -107,7 +128,7 @@ tool_functions = [
     },
     {
         "name": "create_custom_ucf",
-        "description": "Create a customized UCF file with selected parts. IMPORTANT: You must first select a library using the select_library function before using this function.",
+        "description": "Create a customized library file with selected parts. Parts referencing the selected parts will be included in the custom library. IMPORTANT: You must first select a library using the select_library function before using this function.",
         "parameters": {
             "type": "object",
             "properties": {
@@ -214,48 +235,6 @@ tool_functions = [
         }
     },
     {
-        "name": "design_circuit",
-        "description": "Design a genetic circuit with automatic UCF file selection based on requirements.",
-        "parameters": {
-            "type": "object",
-            "properties": {
-                "verilog_code": {
-                    "type": "string",
-                    "description": "The Verilog code representing the circuit design"
-                },
-                "organism": {
-                    "type": "string",
-                    "description": "Organism for the circuit (e.g., 'E. coli', 'yeast')"
-                },
-                "inducers": {
-                    "type": "array",
-                    "items": {"type": "string"},
-                    "description": "List of inducers to use (e.g., 'arabinose', 'IPTG', 'aTc')"
-                },
-                "outputs": {
-                    "type": "array",
-                    "items": {"type": "string"},
-                    "description": "List of outputs required (e.g., 'GFP', 'RFP')"
-                },
-                "gate_types": {
-                    "type": "array",
-                    "items": {"type": "string"},
-                    "description": "List of gate types needed (e.g., 'NOT', 'NOR', 'AND')"
-                },
-                "config": {
-                    "type": "object",
-                    "description": "Optional Cello configuration parameters",
-                    "properties": {
-                        "exhaustive": {"type": "boolean"},
-                        "total_iters": {"type": "integer"},
-                        "verbose": {"type": "boolean"}
-                    }
-                }
-            },
-            "required": ["verilog_code", "organism"]
-        }
-    },
-    {
         "name": "evaluate_circuit_performance",
         "description": "Evaluate the performance of a designed genetic circuit by analyzing Cello output files",
         "parameters": {
@@ -273,26 +252,33 @@ tool_functions = [
 
 
 class ToolIntegration:
-    def __init__(self, library_data):
-        self.library_data = library_data
-        self.ucf_customizer = CelloUCFCustomizer()
+    def __init__(self, session_state: SessionState):
+        self.session_state = session_state
+        self.part_library_customizer = PartLibraryCustomizer()
 
     def select_library_func(self, library_id: str):
         """
-        Select a library using a library ID.
+        Select a library using a library ID *within the current session*.
         """
-        library_manager = LibraryManager()
-        library_manager.select_library(library_id)  
-        return {
-            "success": True,
-            "message": f"Selected library {library_manager.current_library_id}"
-        }
+        success = self.session_state.select_library(library_id)
+        if success:
+            return {
+                "success": True,
+                "message": f"Session selected library {library_id}"
+            }
+        else:
+            available = list(self.session_state.get_library_manager().get_available_libraries().keys())
+            return {
+                "success": False,
+                "error": f"Failed to select library {library_id}. Available libraries: {available}",
+                "available_libraries": available
+            }
     
     def describe_available_libraries_func(self):
         """
-        Return a description of the available libraries.
+        Return a description of the available libraries found by the session's LibraryManager.
         """
-        library_manager = LibraryManager()
+        library_manager = self.session_state.get_library_manager()
         return  {
             "success": True,
             "libraries": library_manager.describe_available_libraries()
@@ -300,49 +286,85 @@ class ToolIntegration:
     
     def design_with_cello_func(self, verilog_code: str, config: dict = None):
         """
-        Interface with Cello to design genetic circuits from Verilog specifications.
+        Interface with Cello using the *currently selected* library context.
         """
+        library_manager = self.session_state.get_library_manager()
+        if not library_manager.current_library_id:
+            return {"error": "No library selected. Please use 'select_library' first."}
+
+        ucf_path = library_manager.current_ucf_path
+        input_path = library_manager.current_input_path
+        output_path = library_manager.current_output_path
+
+        if not ucf_path or not input_path:
+             return {"error": f"Missing UCF ({ucf_path}) or Input ({input_path}) file path for library {library_manager.current_library_id}."}
+
         from src.tools.cello_integration import CelloIntegration
-        
-        # Initialize Cello with optional custom config
-        cello = CelloIntegration(cello_config=config)
-        
-        # Run Cello and get results
+
+        # Pass the library_manager from the session state
+        cello = CelloIntegration(
+            cello_config=config or {},
+            library_manager=library_manager
+        )
+
+        output_dir = f"outputs/cello_run_{library_manager.current_library_id}"
         results = cello.run_cello(verilog_code)
-        
+
         if not results['success']:
             return {
                 "error": f"Cello design failed: {results.get('error', 'Unknown error')}",
-                "log": results['log']
+                "log": results.get('log', 'No log available.')
             }
-        
+
+        self.session_state.cello_results = results
+
         return {
             "success": True,
-            "dna_design": results['results']['dna_design'],
-            "log": results['log']
+            "library_id": library_manager.current_library_id,
+            "output_directory": results.get('output_dir'),
+            "dna_design": results.get('results', {}).get('dna_design'),
+            "log": results.get('log')
         }
 
     
-    def create_custom_ucf_func(self, selected_gates: List[str], selected_parts: List[str], modified_parts: Dict[str, Dict], ucf_name: str):
+    def create_custom_ucf_func(self, selected_gates: List[str] = None, selected_parts: List[str] = None, modified_parts: Dict[str, Dict] = None, ucf_name: str = None):
         """
-        Create a customized UCF file with selected parts.
-        
-        Args:
-            selected_gates: List of gate IDs to include in the UCF
-            selected_parts: List of part IDs to include in the UCF
-            modified_parts: Dictionary of parts to modify in the UCF
-            ucf_name: Name of the UCF file to create
-        
-        Returns:
-            Dict containing the path to the created UCF file
+        Create a customized UCF file based on the *currently selected* library.
+        The custom UCF path will be stored in the session state.
         """
-        ucf_customizer = CelloUCFCustomizer(base_ucf=self.library_data)
-        custom_ucf_path = ucf_customizer.create_custom_ucf(selected_gates, selected_parts, modified_parts, ucf_name)
-        return {
-            "success": True,
-            "custom_ucf_path": custom_ucf_path
-        }
-        
+        library_manager = self.session_state.get_library_manager()
+        if not library_manager.current_library_id:
+            return {"error": "No library selected as base for custom UCF. Please use 'select_library' first."}
+
+        base_ucf_data = library_manager.get_ucf_data()
+        if not base_ucf_data:
+             return {"error": f"Could not retrieve base UCF data for library {library_manager.current_library_id}."}
+
+        output_dir = "outputs/custom_ucf"
+        custom_ucf_name = ucf_name or f"custom_{library_manager.current_library_id}"
+
+        try:
+            custom_ucf_path = library_manager.create_custom_ucf(
+                selected_gates=selected_gates,
+                selected_parts=selected_parts,
+                modified_parts=modified_parts,
+                ucf_name=custom_ucf_name,
+                output_dir=output_dir
+            )
+
+            if custom_ucf_path:
+                self.session_state.custom_ucf_path = custom_ucf_path
+                return {
+                    "success": True,
+                    "library_id_base": library_manager.current_library_id,
+                    "custom_ucf_path": custom_ucf_path
+                }
+            else:
+                 return {"error": "UCF customization process failed to return a path."}
+
+        except Exception as e:
+             logger.error(f"Error creating custom UCF: {e}", exc_info=True)
+             return {"error": f"Error creating custom UCF: {str(e)}"}
         
     def get_ucf_metadata_func(self):
         """
@@ -506,31 +528,41 @@ class ToolIntegration:
         Returns:
             Result of the function call
         """
+        # Library functions
         if function_name == "select_library":
             library_id = function_args["library_id"]
             return self.select_library_func(library_id)
+        elif function_name == "read_file":
+            return ReadFileTool().run(function_args["file_path"])
         elif function_name == "describe_available_libraries":
             return self.describe_available_libraries_func()
         elif function_name == "list_promoters":
-            return self.list_promoters_func()
-        elif function_name == "choose_repressor":
-            family = function_args.get("family", None)
-            return self.choose_repressor_func(family)
+            return self.list_promoters_func(function_args["file_type"])
+        elif function_name == "list_repressors":
+            return self.list_repressors_func(function_args["file_type"])
         elif function_name == "get_dna_part_by_name":
             name = function_args["name"]
-            return self.get_dna_part_by_name_func(name)
+            return self.get_dna_part_by_name_func(name, function_args["file_type"])
         elif function_name == "list_terminators":
-            return self.list_terminators_func()
-        elif function_name == "design_with_cello":
-            verilog_code = function_args["verilog_code"]
-            config = function_args.get("config", None)
-            return self.design_with_cello_func(verilog_code, config)
+            return self.list_terminators_func(function_args["file_type"])
         elif function_name == "create_custom_ucf":
             selected_gates = function_args.get("selected_gates", None)
             selected_parts = function_args.get("selected_parts", None)
             modified_parts = function_args.get("modified_parts", None)
             ucf_name = function_args.get("ucf_name", "")
             return self.create_custom_ucf_func(selected_gates, selected_parts, modified_parts, ucf_name)
+        elif function_name == "get_ucf_metadata":
+            return self.get_ucf_metadata_func()
+        elif function_name == "llm_select_ucf":
+            user_request = function_args["user_request"]
+            llm_reasoning = function_args["llm_reasoning"]
+            return self.llm_select_ucf_func(user_request, llm_reasoning)
+        
+        # Design functions        
+        elif function_name == "design_with_cello":
+            verilog_code = function_args["verilog_code"]
+            config = function_args.get("config", None)
+            return self.design_with_cello_func(verilog_code, config)
         elif function_name == "predict_promoter_strength":
             sequence = function_args["sequence"]
             return self.predict_promoter_strength_func(sequence)
@@ -549,103 +581,108 @@ class ToolIntegration:
             starting_site = function_args["starting_site"]
             target_repression = function_args["target_repression"]
             return self.optimize_binding_site_func(repressor_id, starting_site, target_repression)
-        elif function_name == "design_circuit":
-            verilog_code = function_args["verilog_code"]
-            organism = function_args["organism"]
-            inducers = function_args.get("inducers", None)
-            outputs = function_args.get("outputs", None)
-            gate_types = function_args.get("gate_types", None)
-            config = function_args.get("config", None)
-            return self.design_circuit_func(verilog_code, organism, inducers, outputs, gate_types, config)
-        elif function_name == "analyze_and_select_library":
-            user_request = function_args["user_request"]
-            return self.analyze_and_select_library_func(user_request)
-        elif function_name == "get_ucf_metadata":
-            return self.get_ucf_metadata_func()
-        elif function_name == "llm_select_ucf":
-            user_request = function_args["user_request"]
-            llm_reasoning = function_args["llm_reasoning"]
-            return self.llm_select_ucf_func(user_request, llm_reasoning)
         elif function_name == "evaluate_circuit_performance":
             output_path = function_args["output_path"]
             return self.evaluate_circuit_performance_func(output_path)
         else:
             return {"error": f"No such function: {function_name}"}
 
-    def design_circuit_func(self, verilog_code: str, organism: str, inducers: list = None, 
-                           outputs: list = None, gate_types: list = None, config: dict = None):
+    
+    def list_promoters_func(self, file_type: str):
         """
-        Design a genetic circuit with automatic UCF file selection based on requirements.
-        
-        Args:
-            verilog_code: Verilog code for the circuit
-            organism: Target organism (e.g., 'E. coli')
-            inducers: List of inducers required (e.g., ['arabinose', 'IPTG'])
-            outputs: List of outputs required (e.g., ['GFP', 'RFP'])
-            gate_types: List of gate types required (e.g., ['NOT', 'NOR'])
-            config: Optional Cello configuration
-            
-        Returns:
-            Dict with design results or error
+        Return a list of promoter parts from the *currently selected* library.
         """
-        from src.design_module import DesignOrchestrator
-        
-        # Initialize the design orchestrator
-        orchestrator = DesignOrchestrator(self)
-        
-        # Design the circuit with automatic UCF selection
-        return orchestrator.design_circuit(
-            verilog_code=verilog_code,
-            organism=organism,
-            inducers=inducers,
-            outputs=outputs,
-            gate_types=gate_types,
-            cello_config=config
-        )
+        if file_type == "input":    
+            library_data, error = self._get_current_library_input_data()
+        elif file_type == "output":
+            library_data, error = self._get_current_library_output_data()
+        elif file_type == "ucf":
+            library_data, error = self._get_current_library_ucf_data()
+        else:
+            return {"error": f"Invalid file type: {file_type}, must be 'input', 'output', or 'ucf'"}
 
-    def list_promoters_func(self):
-        """
-        Return a list of promoter parts from the selected library.
-        """
         try:
-            from src.library.ucf_customizer import get_parts_by_type
-            promoters = get_parts_by_type(self.library_data, "promoter")
-            return promoters
+            promoters = self.part_library_customizer.get_parts_by_type(library_data, "promoter")
+            return {
+                "success": True,
+                "library_id": self.session_state.get_current_library_id(),
+                "promoters": promoters}
         except Exception as e:
-            return {"error": f"Error listing promoters: {str(e)}"}
-
-    def choose_repressor_func(self, family=None):
-        """
-        Return a list of possible repressors. Optionally filter by family.
-        """
-        try:
-            from src.library.ucf_customizer import get_parts_by_type
-            repressors = get_parts_by_type(self.library_data, "repressor")
-            return repressors
-        except Exception as e:
-            return {"error": f"Error choosing repressor: {str(e)}"}
-
-    def get_dna_part_by_name_func(self, name):
-        """
-        Get a specific DNA part by name.
-        """
-        try:
-            ucf_customizer = CelloUCFCustomizer()
-            part = ucf_customizer.get_part_by_name(self.library_data, name)
-            if part:
-                return part
+            if DEBUG_MODE:
+                traceback.print_exc()
+                raise e
             else:
-                return {"error": f"DNA part with name '{name}' not found"}
+                return {"error": f"Error listing promoters: {str(e)}"}
+
+    def list_repressors_func(self, file_type: str):
+        """
+        Return a list of possible repressors from the *currently selected* library. Optionally filter by family.
+        """
+        if file_type == "ucf":
+            library_data, error = self._get_current_library_ucf_data()
+        elif file_type == "input":
+            library_data, error = self._get_current_library_input_data()
+        elif file_type == "output":
+            library_data, error = self._get_current_library_output_data()
+        else:
+            return {"error": f"Invalid file type: {file_type}, must be 'ucf', 'input', or 'output'"}
+
+        try:
+            repressors = self.part_library_customizer.get_parts_by_type(library_data, "repressor")
+            return {
+                "success": True,
+                "library_id": self.session_state.get_current_library_id(),
+                "repressors": repressors
+            }
+        except Exception as e:
+            return {"error": f"Error listing repressors: {str(e)}"}
+
+    def get_dna_part_by_name_func(self, name, file_type: str):
+        """
+        Get a specific DNA part by name from the *currently selected* library.
+        """
+        if file_type == "ucf":
+            library_data, error = self._get_current_library_ucf_data()
+        elif file_type == "input":
+            library_data, error = self._get_current_library_input_data()
+        elif file_type == "output":
+            library_data, error = self._get_current_library_output_data()
+        else:
+            return {"error": f"Invalid file type: {file_type}, must be 'ucf', 'input', or 'output'"}
+
+        try:
+            part = self.part_library_customizer.get_part_by_name(library_data, name)
+            if part:
+                 return {
+                    "success": True,
+                    "library_id": self.session_state.get_current_library_id(),
+                    "part": part
+                }
+            else:
+                return {"error": f"DNA part with name '{name}' not found in library {self.session_state.get_current_library_id()}"}
         except Exception as e:
             return {"error": f"Error getting DNA part: {str(e)}"}
 
-    def list_terminators_func(self):
+    def list_terminators_func(self, file_type: str):
         """
-        Return a list of terminator parts from the selected library.
+        Return a list of terminator parts from the *currently selected* library.
         """
+        if file_type == "ucf":
+            library_data, error = self._get_current_library_ucf_data()
+        elif file_type == "input":
+            library_data, error = self._get_current_library_input_data()
+        elif file_type == "output":
+            library_data, error = self._get_current_library_output_data()
+        else:
+            return {"error": f"Invalid file type: {file_type}, must be 'ucf', 'input', or 'output'"}
+
         try:
-            terminators = self.ucf_customizer.get_parts_by_type(self.library_data, "terminator")
-            return terminators
+            terminators = self.part_library_customizer.get_parts_by_type(library_data, "terminator")
+            return {
+                "success": True,
+                "library_id": self.session_state.get_current_library_id(),
+                "terminators": terminators
+            }
         except Exception as e:
             return {"error": f"Error listing terminators: {str(e)}"}
 
@@ -730,3 +767,33 @@ class ToolIntegration:
         except Exception as e:
             return {"error": f"Error optimizing binding site: {str(e)}"}
 
+    def _get_current_library_ucf_data(self):
+        """Helper to get structured data for the currently selected library."""
+        library_manager = self.session_state.get_library_manager()
+        if not library_manager.current_library_id:
+             return None, {"error": "No library selected. Please use 'select_library' first."}
+        library_data = library_manager.get_ucf_data()
+        if not library_data:
+             return None, {"error": f"Could not load structured data for library {library_manager.current_library_id}."}
+        return library_data, None
+
+
+    def _get_current_library_input_data(self):
+        """Helper to get structured data for the currently selected library."""
+        library_manager = self.session_state.get_library_manager()
+        if not library_manager.current_library_id:
+             return None, {"error": "No library selected. Please use 'select_library' first."}
+        library_data = library_manager.get_input_sensor_data()
+        if not library_data:
+             return None, {"error": f"Could not load structured data for library {library_manager.current_library_id}."}
+        return library_data, None
+
+    def _get_current_library_output_data(self):
+        """Helper to get structured data for the currently selected library."""
+        library_manager = self.session_state.get_library_manager()
+        if not library_manager.current_library_id:
+             return None, {"error": "No library selected. Please use 'select_library' first."}
+        library_data = library_manager.get_output_device_data()
+        if not library_data:
+             return None, {"error": f"Could not load structured data for library {library_manager.current_library_id}."}
+        return library_data, None

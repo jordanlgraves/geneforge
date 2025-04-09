@@ -5,7 +5,7 @@ import json
 import tempfile
 
 from jsonschema import ValidationError
-from src.library.ucf_customizer import CelloUCFCustomizer
+from src.library.part_library_customizer import PartLibraryCustomizer
 from src.library.library_manager import LibraryManager
 
 class TestUCFCustomization(unittest.TestCase):
@@ -34,7 +34,7 @@ class TestUCFCustomization(unittest.TestCase):
             cls.base_data = json.load(f)
         
         # Create a customizer to help extract parts
-        cls.customizer = CelloUCFCustomizer()
+        cls.customizer = PartLibraryCustomizer()
 
     @classmethod
     def tearDownClass(cls):
@@ -46,7 +46,7 @@ class TestUCFCustomization(unittest.TestCase):
         This test checks that when a promoter is selected, all the other promoters are removed.
         It also checks that the structures and gates that reference the removed parts are also removed.
         """
-        customizer = CelloUCFCustomizer()
+        customizer = PartLibraryCustomizer()
         library_manager = LibraryManager()
         library_manager.select_library("Eco1C1G1T1")
         ucf_path = library_manager.create_custom_ucf(
@@ -80,7 +80,7 @@ class TestUCFCustomization(unittest.TestCase):
 
     def test_part_modification(self):
         """Test modifying part parameters"""
-        customizer = CelloUCFCustomizer()
+        customizer = PartLibraryCustomizer()
         
         # Grab a random promoter from the base UCF
         promoters = [item for item in self.base_data if item.get("collection") == "parts" and item.get("type") == "promoter"]
@@ -226,7 +226,7 @@ class TestUCFCustomization(unittest.TestCase):
 
     def test_validation_error_handling(self):
         """Test validation error handling with invalid UCF data"""
-        customizer = CelloUCFCustomizer()
+        customizer = PartLibraryCustomizer()
         
         # Create a deliberately invalid UCF - missing required collections
         invalid_ucf = [

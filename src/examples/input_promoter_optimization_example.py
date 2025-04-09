@@ -38,7 +38,7 @@ os.chdir(project_root)
 from src.tools.cello_integration import CelloIntegration
 from src.tools.promoter_calculator_integration import PromoterCalculatorIntegration
 from src.library.library_manager import LibraryManager
-from src.library.ucf_customizer import CelloUCFCustomizer
+from src.library.part_library_customizer import PartLibraryCustomizer
 from src.library.ucf_retrieval import get_dna_part_by_name, list_promoters
 from src.llm_module import chat_with_tool
 
@@ -116,10 +116,10 @@ def generate_custom_ucf(client, promoter_name, output_dir):
     custom_ucf_name = f"custom_Eco1C1G1T1_{promoter_name}.UCF.json"
     
     # Create the UCF customizer to extract parameters and create the custom UCF
-    ucf_customizer = CelloUCFCustomizer()
+    part_library_customizer = PartLibraryCustomizer()
     
     # Get the promoter's parameters from its associated models
-    promoter_params = ucf_customizer.get_promoter_parameters(ucf_data, promoter_data.get("name"))
+    promoter_params = part_library_customizer.get_promoter_parameters(ucf_data, promoter_data.get("name"))
     
     # Create the custom UCF - we pass only the selected promoter part
     ucf_path = library_manager.create_custom_ucf(
@@ -162,11 +162,11 @@ def extract_promoter_from_ucf(ucf_path, promoter_name):
     print_section("Extracting Promoter from UCF")
     
     # Use the UCF customizer to load the UCF and access its data
-    ucf_customizer = CelloUCFCustomizer(ucf_path)
+    part_library_customizer = PartLibraryCustomizer(ucf_path)
     
     # Get promoter data from the UCF
     promoter_data = None
-    for collection in ucf_customizer.collections.values():
+    for collection in part_library_customizer.collections.values():
         for item in collection:
             if item.get("name") == promoter_name and item.get("type", "").lower() == "promoter":
                 promoter_data = item
@@ -417,14 +417,14 @@ def update_ucf_with_optimized_promoter(original_ucf_path, promoter_info, output_
     print_section("Updating UCF with Optimized Promoter")
     
     # Load the original UCF
-    ucf_customizer = CelloUCFCustomizer(original_ucf_path)
+    part_library_customizer = PartLibraryCustomizer(original_ucf_path)
     
     # Find and update the promoter
     promoter_name = promoter_info["name"]
     logger.info(f"Updating promoter {promoter_name} in UCF")
     
     # Update the promoter parameters
-    ucf_customizer.update_part(
+    part_library_customizer.update_part(
         part_name=promoter_name,
         sequence=promoter_info["sequence"],
         parameters={
@@ -438,7 +438,7 @@ def update_ucf_with_optimized_promoter(original_ucf_path, promoter_info, output_
     updated_ucf_filename = f"updated_{os.path.basename(original_ucf_path)}"
     updated_ucf_path = os.path.join(output_dir, updated_ucf_filename)
     
-    ucf_customizer.save_ucf(updated_ucf_path)
+    part_library_customizer.save_ucf(updated_ucf_path)
     logger.info(f"Saved updated UCF to: {updated_ucf_path}")
     
     return updated_ucf_path

@@ -1,9 +1,15 @@
 import logging
 import json
+import os
 from typing import Dict, List, Optional, Any
 
+from openai import OpenAI
+
 from src.tools.functions import ToolIntegration
-from src.library.ucf_customizer import CelloUCFCustomizer
+from src.library.part_library_customizer import PartLibraryCustomizer
+from src.llm_module import chat_with_tool, get_llm_client
+
+client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
 class DesignOrchestrator:
     """
@@ -100,29 +106,8 @@ class DesignOrchestrator:
         
         # Otherwise, we need to call the LLM to generate reasoning
         try:
-            import os
-            from openai import OpenAI
-            
-            # Get API key and determine which client to use
-            openai_api_key = os.getenv("OPENAI_API_KEY")
-            deepseek_api_key = os.getenv("DEEPSEEK_API_KEY")
-            deepseek_base_url = os.getenv("DEEPSEEK_BASE_URL")
-            
-            if deepseek_api_key and deepseek_base_url:
-                self.logger.info("Using DeepSeek API")
-                client = OpenAI(api_key=deepseek_api_key, base_url=deepseek_base_url)
-                model = "deepseek-reasoner"
-            elif openai_api_key:
-                self.logger.info("Using OpenAI API")
-                client = OpenAI(api_key=openai_api_key)
-                model = "gpt-4o-mini"  # Use a smaller model for cost efficiency
-            else:
-                self.logger.error("No API keys found for OpenAI or DeepSeek")
-                return {
-                    "success": False,
-                    "message": "No API keys found for LLM services"
-                }
-            
+            client = get_llm_client()
+
             # Get metadata for all available UCF libraries
             ucf_metadata = self.tools.get_ucf_metadata_func()
             

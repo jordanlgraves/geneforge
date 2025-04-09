@@ -12,8 +12,8 @@ class TestDesignOrchestrator(unittest.TestCase):
         """Set up test environment"""
         # Load library data for testing
         library_manager = LibraryManager()
-        library_data = library_manager.select_library('Eco1C1G1T1')
-        cls.library_data = library_manager.get_library_data()
+        library_manager.select_library('Eco1C1G1T1')
+        cls.library_data = library_manager.get_ucf_data()
         cls.tool_integration = ToolIntegration(cls.library_data)
         
     def test_select_ucf_file_basic(self):
