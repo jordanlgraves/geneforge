@@ -8,7 +8,8 @@ import dotenv
 
 CELLO_UCF_ROOT = os.getenv("CELLO_UCF_ROOT")
 
-from src.library.part_library_customizer import PartLibraryCustomizer
+# Import the module functions directly instead of the class
+import src.library.part_library_customizer as part_library_customizer
 
 logger = logging.getLogger("library_manager")
 
@@ -24,10 +25,7 @@ class LibraryManager:
         """
         Initialize the library manager. Scans for available libraries
         but does not load a default one initially.
-        """
-        # Initialize the UCF customizer
-        self.part_library_customizer = PartLibraryCustomizer()
-        
+        """        
         # Scan available libraries
         self.available_libraries = self._scan_libraries()
         
@@ -327,8 +325,8 @@ class LibraryManager:
         if not output_dir:
             output_dir = "outputs/custom_ucf"
         
-        # Create the custom UCF using our raw UCF data
-        return self.part_library_customizer.create_custom_ucf(
+        # Use the module function directly instead of calling through a class instance
+        return part_library_customizer.create_custom_ucf(
             ucf_data=self.current_ucf_data,
             selected_gates=selected_gates,
             selected_parts=processed_parts,
@@ -338,7 +336,20 @@ class LibraryManager:
             output_dir=output_dir
         )
 
+    def create_custom_input(self, 
+                            input_name: str = None, 
+                            selected_parts: List = None,
+                            modified_parts: List = None,
+                            new_parts: List = None,
+                            output_dir: str = None) -> Optional[str]:
+        """
+        Create a custom input file.
+        """
+        # This function needs to be implemented properly
+        # It was previously calling a non-existent method on self.library_customizer
+        raise NotImplementedError("create_custom_input not yet implemented")
     
+
     def get_current_library_info(self) -> Dict[str, Any]:
         """
         Get information about the currently selected library.

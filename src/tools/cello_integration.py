@@ -13,7 +13,7 @@ from pathlib import Path
 
 from core_algorithm.celloAlgo import CELLO3
 
-from src.library.part_library_customizer import PartLibraryCustomizer
+
 from src.library.library_manager import LibraryManager
 
 class CelloIntegration:

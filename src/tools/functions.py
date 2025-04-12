@@ -5,7 +5,7 @@ import os
 import glob
 import re
 from typing import Dict, List
-from src.library.part_library_customizer import PartLibraryCustomizer
+import src.library.part_library_customizer as part_library_customizer
 from src.tools.gpro_integration import PromoterOptimizer, RepressorOptimizer
 from src.library.library_manager import LibraryManager
 from src.tools.deepseed_integration import DeepSeedIntegration
@@ -254,7 +254,6 @@ tool_functions = [convert_to_openai_function(ReadFileTool()),
 class ToolIntegration:
     def __init__(self, session_state: SessionState):
         self.session_state = session_state
-        self.part_library_customizer = PartLibraryCustomizer()
 
     def select_library_func(self, library_id: str):
         """
@@ -602,7 +601,7 @@ class ToolIntegration:
             return {"error": f"Invalid file type: {file_type}, must be 'input', 'output', or 'ucf'"}
 
         try:
-            promoters = self.part_library_customizer.get_parts_by_type(library_data, "promoter")
+            promoters = part_library_customizer.get_parts_by_type(library_data, "promoter")
             return {
                 "success": True,
                 "library_id": self.session_state.get_current_library_id(),
@@ -628,7 +627,7 @@ class ToolIntegration:
             return {"error": f"Invalid file type: {file_type}, must be 'ucf', 'input', or 'output'"}
 
         try:
-            repressors = self.part_library_customizer.get_parts_by_type(library_data, "repressor")
+            repressors = part_library_customizer.get_parts_by_type(library_data, "repressor")
             return {
                 "success": True,
                 "library_id": self.session_state.get_current_library_id(),
@@ -651,7 +650,7 @@ class ToolIntegration:
             return {"error": f"Invalid file type: {file_type}, must be 'ucf', 'input', or 'output'"}
 
         try:
-            part = self.part_library_customizer.get_part_by_name(library_data, name)
+            part = part_library_customizer.get_part_by_name(library_data, name)
             if part:
                  return {
                     "success": True,
@@ -677,7 +676,7 @@ class ToolIntegration:
             return {"error": f"Invalid file type: {file_type}, must be 'ucf', 'input', or 'output'"}
 
         try:
-            terminators = self.part_library_customizer.get_parts_by_type(library_data, "terminator")
+            terminators = part_library_customizer.get_parts_by_type(library_data, "terminator")
             return {
                 "success": True,
                 "library_id": self.session_state.get_current_library_id(),
@@ -766,7 +765,7 @@ class ToolIntegration:
             }
         except Exception as e:
             return {"error": f"Error optimizing binding site: {str(e)}"}
-
+        
     def _get_current_library_ucf_data(self):
         """Helper to get structured data for the currently selected library."""
         library_manager = self.session_state.get_library_manager()
@@ -797,3 +796,4 @@ class ToolIntegration:
         if not library_data:
              return None, {"error": f"Could not load structured data for library {library_manager.current_library_id}."}
         return library_data, None
+        
