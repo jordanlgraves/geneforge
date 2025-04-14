@@ -212,12 +212,30 @@ def get_part_by_name(data: List[Dict], part_name: str) -> Optional[Dict]:
     
     return None
 
+def get_input_sensors(data: List[Dict]) -> List[Dict]:
+    """
+    Get all input sensors
+    
+    Args:
+        data: The UCF data to search
+        
+    Returns:
+        List of input sensors
+    """
+    result = []
+    
+    for item in data:
+        if item.get("collection") == "input_sensors":
+            result.append(item)
+    
+    return result
+    
+
 def filter_parts(data: List[Dict], selected_parts: List) -> List[Dict]:
     """
-    Filter UCF data to remove parts that are not in the selected parts list (by name) 
-    and share a type with a selected parts.
-    Only removes parts if they share a type with the selected parts.
-    Cleans up any references to removed parts.
+    Filter UCF data to keep only parts that are needed based on the selected parts
+    and their dependencies. Dependencies include any parts referenced in structures,
+    gates, and models that relate back to the selected parts.
     
     Args:
         data: The UCF data to filter
@@ -226,77 +244,121 @@ def filter_parts(data: List[Dict], selected_parts: List) -> List[Dict]:
     Returns:
         Filtered UCF data
     """
-    resulting_data = []
-
-    selected_part_types = set([p['type'] for p in selected_parts])
-    selected_part_names = set([p['name'] for p in selected_parts])
-    removed_part_names = set()
+    # Step 1: Extract initial set of selected part names
+    selected_part_names = set(p['name'] for p in selected_parts)
     
-    # Keep non-part items
+    # Step 2: Build dependency graph by identifying what references what
+    # Map of part names to the structures that use them
+    part_to_structures = {}
+    # Map of structure names to the gates that use them
+    structure_to_gates = {}
+    # Map of gate names to the models that use them
+    gate_to_models = {}
+    
+    # Build the mappings
     for item in data:
-        if item.get("collection") != "parts":
-            resulting_data.append(item)
-            continue
+        collection = item.get("collection")
+        
+        # Map parts to structures
+        if collection == "structures":
+            structure_name = item.get("name")
+            # Check outputs
+            for output in item.get("outputs", []):
+                if output.startswith("#"):
+                    continue
+                if output not in part_to_structures:
+                    part_to_structures[output] = []
+                part_to_structures[output].append(structure_name)
             
-        # Keep parts that match the selected names
-        if item.get("type") in selected_part_types:
-            if item.get("name") in selected_part_names:
-                resulting_data.append(item)
-            else:
-                removed_part_names.add(item.get("name"))
-        else:
-            resulting_data.append(item)
-
-    # Now, remove any structures that reference removed parts
-    resulting_copy = copy.deepcopy(resulting_data)
-    resulting_data = []
-    for item in resulting_copy:
-        keep_item = True
-        if item.get("collection") == "structures":
-            outputs = item.get("outputs", [])
-            if any(output in removed_part_names for output in outputs):
-                keep_item = False
-            else:
-                # check device components
-                devices = item.get("devices", [])
-                for device in devices:
-                    device_components = device.get("components", [])
-                    for component in device_components:
-                        if component in removed_part_names:
-                            keep_item = False
-                if keep_item:
-                    resulting_data.append(item)
-        else:
-            resulting_data.append(item)
-
-    existing_structure_names = [item.get("name") for item in resulting_data if item.get("collection") == "structures"]
+            # Check device components
+            for device in item.get("devices", []):
+                for component in device.get("components", []):
+                    if component.startswith("#"):
+                        continue
+                    if component not in part_to_structures:
+                        part_to_structures[component] = []
+                    part_to_structures[component].append(structure_name)
+        
+        # Map structures to gates
+        elif collection == "gates":
+            gate_name = item.get("name")
+            structure_name = item.get("structure")
+            if structure_name not in structure_to_gates:
+                structure_to_gates[structure_name] = []
+            structure_to_gates[structure_name].append(gate_name)
+        
+        # Map gates to models
+        elif collection == "models":
+            model_name = item.get("name")
+            gate_name = item.get("gate")
+            if not gate_name and model_name.endswith("_model"): # Some models might not directly reference a gate
+                gate_name = '_'.join(model_name.split("_model")[:-1])
+            if gate_name:  
+                if gate_name not in gate_to_models:
+                    gate_to_models[gate_name] = []
+                gate_to_models[gate_name].append(model_name)
     
-    # Remove any gates that reference removed structures
-    resulting_copy = copy.deepcopy(resulting_data)
-    resulting_data = []
-    for item in resulting_copy:
-        if item.get("collection") == "gates":
-            if item.get("structure") not in existing_structure_names:
-                continue
-            else:
-                resulting_data.append(item)
-        else:
-            resulting_data.append(item)
+    # Step 3: Traverse dependencies to find all required parts, structures, gates, and models
+    required_parts = set(selected_part_names)
+    required_structures = set()
+    required_gates = set()
+    required_models = set()
     
-    # Remove any models that reference removed gates
-    resulting_copy = copy.deepcopy(resulting_data)
-    resulting_data = []
-    existing_gate_names = [item.get("name") for item in resulting_data if item.get("collection") == "gates"]
-    for item in resulting_copy:
-        if item.get("collection") == "models":
-            if item.get("gate") not in existing_gate_names:
-                continue
-            else:
-                resulting_data.append(item)
+    # Find dependent structures for selected parts
+    for part_name in required_parts:
+        structures = part_to_structures.get(part_name, [])
+        required_structures.update(structures)
+    
+    # Find dependent gates for required structures
+    for structure_name in required_structures:
+        gates = structure_to_gates.get(structure_name, [])
+        required_gates.update(gates)
+    
+    # Find dependent models for required gates
+    for gate_name in required_gates:
+        models = gate_to_models.get(gate_name, [])
+        required_models.update(models)
+    
+    # Step 4: Find all parts referenced by required structures
+    # This needs a second pass to capture parts used in structures but not directly selected
+    temp_required_parts = set(required_parts)
+    
+    for item in data:
+        if item.get("collection") == "structures" and item.get("name") in required_structures:
+            # Add output parts
+            temp_required_parts.update(item.get("outputs", []))
+            
+            # Add device component parts
+            for device in item.get("devices", []):
+                temp_required_parts.update(device.get("components", []))
+    
+    # Update required parts with the additional dependencies
+    required_parts = temp_required_parts
+    
+    # Step 5: Filter UCF data to keep only required elements
+    filtered_data = []
+    
+    for item in data:
+        collection = item.get("collection")
+        name = item.get("name")
+        
+        if collection == "parts":
+            if name in required_parts:
+                filtered_data.append(item)
+        elif collection == "structures":
+            if name in required_structures:
+                filtered_data.append(item)
+        elif collection == "gates":
+            if name in required_gates:
+                filtered_data.append(item)
+        elif collection == "models":
+            if name in required_models:
+                filtered_data.append(item)
         else:
-            resulting_data.append(item)
-
-    return resulting_data
+            # Keep all other collection types (header, measurement_std, etc.)
+            filtered_data.append(item)
+    
+    return filtered_data
 
 def _add_default_parameters(part):
     """
@@ -473,4 +535,270 @@ def customize_existing_ucf(
         new_parts=new_parts,
         ucf_name=os.path.basename(output_ucf_path),
         output_dir=os.path.dirname(output_ucf_path)
+    )
+
+def filter_input_sensors(data: List[Dict], selected_sensors: List[str]) -> List[Dict]:
+    """
+    Filter input sensor file data to keep only sensors that are selected
+    and their dependencies (models, structures, parts, functions).
+    
+    Args:
+        data: The input sensor file data to filter
+        selected_sensors: List of input sensor names to keep
+        
+    Returns:
+        Filtered input sensor file data
+    """
+    # Step 1: Extract selected sensor names
+    selected_sensor_names = set(selected_sensors)
+    
+    # Step 2: Build dependency graph
+    # Map sensor names to their models and structures
+    sensor_to_model = {}
+    sensor_to_structure = {}
+    # Map structure names to the parts they use
+    structure_to_parts = {}
+    # Map model names to the functions they use
+    model_to_functions = {}
+    
+    # Build the mappings
+    for item in data:
+        collection = item.get("collection")
+        
+        # Map sensors to models and structures
+        if collection == "input_sensors":
+            sensor_name = item.get("name")
+            model_name = item.get("model")
+            structure_name = item.get("structure")
+            
+            sensor_to_model[sensor_name] = model_name
+            sensor_to_structure[sensor_name] = structure_name
+        
+        # Map structures to parts
+        elif collection == "structures":
+            structure_name = item.get("name")
+            output_parts = item.get("outputs", [])
+            
+            if structure_name not in structure_to_parts:
+                structure_to_parts[structure_name] = set()
+            structure_to_parts[structure_name].update(output_parts)
+        
+        # Map models to functions
+        elif collection == "models":
+            model_name = item.get("name")
+            functions = item.get("functions", {})
+            
+            if model_name not in model_to_functions:
+                model_to_functions[model_name] = set()
+            
+            for function_ref in functions.values():
+                model_to_functions[model_name].add(function_ref)
+    
+    # Step 3: Traverse dependencies to find all required elements
+    required_sensors = set(selected_sensor_names)
+    required_models = set()
+    required_structures = set()
+    required_functions = set()
+    required_parts = set()
+    
+    # Find required models and structures from sensors
+    for sensor_name in required_sensors:
+        model_name = sensor_to_model.get(sensor_name)
+        structure_name = sensor_to_structure.get(sensor_name)
+        
+        if model_name:
+            required_models.add(model_name)
+        
+        if structure_name:
+            required_structures.add(structure_name)
+    
+    # Find required functions from models
+    for model_name in required_models:
+        functions = model_to_functions.get(model_name, set())
+        required_functions.update(functions)
+    
+    # Find required parts from structures
+    for structure_name in required_structures:
+        parts = structure_to_parts.get(structure_name, set())
+        required_parts.update(parts)
+    
+    # Step 4: Filter the data to keep only required elements
+    filtered_data = []
+    
+    for item in data:
+        collection = item.get("collection")
+        name = item.get("name")
+        
+        if collection == "input_sensors":
+            if name in required_sensors:
+                filtered_data.append(item)
+        elif collection == "models":
+            if name in required_models:
+                filtered_data.append(item)
+        elif collection == "structures":
+            if name in required_structures:
+                filtered_data.append(item)
+        elif collection == "functions":
+            if name in required_functions:
+                filtered_data.append(item)
+        elif collection == "parts":
+            if name in required_parts:
+                filtered_data.append(item)
+    
+    return filtered_data
+
+def create_custom_input_sensors_file(
+                                   input_sensor_data: List[Dict],
+                                   selected_sensors: List[str] = None,
+                                   modified_models: List[Dict] = None,
+                                   new_sensors: List[Dict] = None,
+                                   output_filename: str = None,
+                                   output_dir: str = "outputs/custom_sensors") -> str:
+    """
+    Create a custom input sensor file with selected sensors and modifications.
+    
+    Args:
+        input_sensor_data: Base input sensor data to customize
+        selected_sensors: List of sensor names to include
+        modified_models: List of model objects with modified parameters
+        new_sensors: List of new sensor definitions to add
+        output_filename: Optional name for the output file
+        output_dir: Optional directory to save the output file
+        
+    Returns:
+        Path to the created input sensor file
+    """
+    # Create a deep copy of the input data to avoid modifying the original
+    custom_data = copy.deepcopy(input_sensor_data)
+    
+    # Create output directory if it doesn't exist
+    os.makedirs(output_dir, exist_ok=True)
+    
+    # Generate an output filename if not provided
+    if not output_filename:
+        output_filename = f"custom_input_sensors_{str(uuid.uuid4())[:8]}.input.json"
+    
+    # Construct the output path
+    output_path = os.path.join(output_dir, output_filename)
+    
+    # Make sure the selected sensors are in the data
+    if selected_sensors:
+        for sensor in selected_sensors:
+            if sensor not in [s['name'] for s in custom_data]:
+                raise ValueError(f"Sensor {sensor} not found in input sensor data")
+
+    # Handle selected sensors
+    if selected_sensors:
+        custom_data = filter_input_sensors(custom_data, selected_sensors)
+    
+    # Handle modified models
+    if modified_models:
+        for modified_model in modified_models:
+            model_name = modified_model.get("name")
+            
+            # Find the existing model in the data
+            found = False
+            for i, model in enumerate(custom_data):
+                if model.get("collection") == "models" and model.get("name") == model_name:
+                    found = True
+                    
+                    # Update parameters
+                    if "parameters" in modified_model:
+                        # Initialize parameters array if it doesn't exist
+                        if "parameters" not in model:
+                            model["parameters"] = []
+                        
+                        # Update existing parameters
+                        for mod_param in modified_model.get("parameters", []):
+                            param_name = mod_param.get("name")
+                            param_value = mod_param.get("value")
+                            
+                            # Find and update the parameter if it exists
+                            param_found = False
+                            for j, existing_param in enumerate(model["parameters"]):
+                                if existing_param.get("name") == param_name:
+                                    custom_data[i]["parameters"][j]["value"] = param_value
+                                    param_found = True
+                                    break
+                            
+                            # If parameter doesn't exist, add it
+                            if not param_found:
+                                model["parameters"].append({"name": param_name, "value": param_value})
+                    
+                    # Update functions if specified
+                    if "functions" in modified_model:
+                        for func_name, func_value in modified_model["functions"].items():
+                            model["functions"][func_name] = func_value
+                    
+                    # The existing model is now updated
+                    break
+            
+            if not found and VERBOSE:
+                logger.warning(f"Model {model_name} not found in input sensor data, cannot modify")
+    
+    # Handle new sensors
+    if new_sensors:
+        for new_sensor in new_sensors:
+            # Ensure it has a collection field
+            if "collection" not in new_sensor:
+                new_sensor["collection"] = "input_sensors"
+            
+            # Add it to the custom data
+            custom_data.append(new_sensor)
+    
+    # Validate the custom data
+    try:
+        # Use input_sensor_validator when available
+        # TODO: Implement proper validation against input_sensor_file schema
+        pass
+    except ValidationError as e:
+        logger.error(f"Custom input sensor file validation failed: {e}")
+        raise
+    
+    # Save the custom data to a file
+    with open(output_path, 'w') as f:
+        json.dump(custom_data, f, indent=2)
+        
+    if VERBOSE:
+        logger.info(f"Created custom input sensor file: {output_path}")
+    
+    return output_path
+
+def customize_existing_input_sensors_file(
+                                        input_file_path: str,
+                                        output_file_path: str = None,
+                                        selected_sensors: List[str] = None,
+                                        modified_models: List[Dict] = None,
+                                        new_sensors: List[Dict] = None) -> str:
+    """
+    Customize an existing input sensor file.
+    
+    Args:
+        input_file_path: Path to the input sensor file
+        output_file_path: Path to save the output file
+        selected_sensors: List of sensor names to include
+        modified_models: List of model objects with modified parameters
+        new_sensors: List of new sensor definitions to add
+        
+    Returns:
+        Path to the created input sensor file
+    """
+    # Load the input file
+    with open(input_file_path, 'r') as f:
+        input_data = json.load(f)
+    
+    # Generate an output path if not provided
+    if not output_file_path:
+        output_dir = os.path.dirname(input_file_path)
+        filename = os.path.basename(input_file_path)
+        output_file_path = os.path.join(output_dir, f"custom_{filename}")
+    
+    # Create the custom input sensor file
+    return create_custom_input_sensors_file(
+        input_sensor_data=input_data,
+        selected_sensors=selected_sensors,
+        modified_models=modified_models,
+        new_sensors=new_sensors,
+        output_filename=os.path.basename(output_file_path),
+        output_dir=os.path.dirname(output_file_path)
     )

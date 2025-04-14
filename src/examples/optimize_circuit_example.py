@@ -334,7 +334,7 @@ class CircuitOptimizer:
             verilog_code = verilog_code.replace("input Wire", "input").replace("output Wire", "output")
             logger.info("Updated Verilog code to remove Wire type declarations")
             
-        results = self.cello.run_cello(verilog_code, custom_ucf)
+        results = self.cello.run_cello(verilog_code, os.path.basename(ucf_path))
         
         if not results['success']:
             logger.error(f"Error running Cello: {results.get('error', 'Unknown error')}")

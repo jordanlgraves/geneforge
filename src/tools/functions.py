@@ -44,7 +44,7 @@ class Tool:
             "parameters": cls.parameters,
         }
 
-class ListPromotorsTool(Tool):
+class ListPromotersTool(Tool):
     name = "list_promoters"
     description = "Return a list of promoter parts from the selected library. IMPORTANT: You must first select a library using select_library before using this function."
     parameters = {
@@ -116,6 +116,34 @@ class ListPromotorsTool(Tool):
         if not library_data:
              return None, {"error": f"Could not load structured data for library {library_manager.current_library_id}."}
         return library_data, None
+
+class ListInputSensorsTool(Tool):
+    name = "list_input_sensors"
+    description = "Return a list of input sensors from the selected library. IMPORTANT: You must first select a library using select_library before using this function."
+    parameters = {
+        "type": "object",
+        "properties": {},
+        "required": []
+    }
+    
+    def execute(self) -> Dict[str, Any]:
+        """Return a list of input sensors from the currently selected library."""
+        library_data = self.session_state.get_library_manager().get_input_sensor_data()
+        
+        try:
+            sensors = part_library_customizer.get_input_sensors(library_data)
+            return {
+                "success": True,
+                "library_id": self.session_state.get_current_library_id(),
+                "input_sensors": sensors
+            }
+        except Exception as e:
+            if DEBUG_MODE:
+                traceback.print_exc()
+                raise e
+            else:
+                return {"error": f"Error listing input sensors: {str(e)}"}
+
 
 class DescribeAvailableLibrariesTool(Tool):
     name = "describe_available_libraries"
@@ -233,7 +261,7 @@ class ListRepressorsTool(Tool):
              return None, {"error": f"Could not load structured data for library {library_manager.current_library_id}."}
         return library_data, None
 
-# Add these new tool classes after the ListRepressorsTool class
+
 
 class GetDnaPartByNameTool(Tool):
     name = "get_dna_part_by_name"
@@ -482,7 +510,7 @@ class CreateCustomUcfTool(Tool):
              return {"error": f"Could not retrieve base UCF data for library {library_manager.current_library_id}."}
 
         output_dir = "outputs/custom_ucf"
-        custom_ucf_name = ucf_name or f"custom_{library_manager.current_library_id}"
+        custom_ucf_name = ucf_name or f"custom_{library_manager.current_library_id}.UCF.json"
 
         try:
             custom_ucf_path = library_manager.create_custom_ucf(
@@ -506,6 +534,71 @@ class CreateCustomUcfTool(Tool):
         except Exception as e:
              logger.error(f"Error creating custom UCF: {e}", exc_info=True)
              return {"error": f"Error creating custom UCF: {str(e)}"}
+
+class CreateCustomInputSensorsFileTool(Tool):
+    name = "create_custom_input_sensors_file"
+    description = "Create a customized input sensors file with selected sensors. Dependencies such as models, structures, parts, and functions used by the selected sensors will be included. IMPORTANT: You must first select a library using the select_library function before using this function."
+    parameters = {
+        "type": "object",
+        "properties": {
+            "selected_sensors": {
+                "type": "array",
+                "items": {"type": "string"},
+                "description": "List of sensor names to include in the custom input sensors file"
+            },
+            "modified_models": {
+                "type": "array",
+                "items": {"type": "object"},
+                "description": "List of model objects with modified parameters"
+            },
+            "new_sensors": {
+                "type": "array",
+                "items": {"type": "object"},
+                "description": "List of new sensor definitions to add to the file"
+            },
+            "output_filename": {
+                "type": "string",
+                "description": "Optional name for the output file"
+            }
+        },
+        "required": ["selected_sensors"]
+    }
+    
+    def execute(self, selected_sensors: List[str], modified_models: List[Dict] = None, new_sensors: List[Dict] = None, output_filename: str = None) -> Dict[str, Any]:
+        """Create a customized input sensors file based on the currently selected library."""
+        library_manager = self.session_state.get_library_manager()
+        if not library_manager.current_library_id:
+            return {"error": "No library selected as base for custom input sensors file. Please use 'select_library' first."}
+
+        input_sensor_data = library_manager.get_input_sensor_data()
+        if not input_sensor_data:
+             return {"error": f"Could not retrieve input sensor data for library {library_manager.current_library_id}."}
+
+        output_dir = "outputs/custom_sensors"
+        custom_filename = output_filename or f"custom_{library_manager.current_library_id}.input.json"
+
+        try:
+            custom_file_path = library_manager.create_custom_input_sensors_file(
+                selected_sensors=selected_sensors,
+                modified_models=modified_models,
+                new_sensors=new_sensors,
+                output_filename=custom_filename,
+                output_dir=output_dir
+            )
+
+            if custom_file_path:
+                self.session_state.custom_input_path = custom_file_path
+                return {
+                    "success": True,
+                    "library_id_base": library_manager.current_library_id,
+                    "custom_input_sensors_path": custom_file_path
+                }
+            else:
+                 return {"error": "Input sensors file customization process failed to return a path."}
+
+        except Exception as e:
+             logger.error(f"Error creating custom input sensors file: {e}", exc_info=True)
+             return {"error": f"Error creating custom input sensors file: {str(e)}"}
 
 class PredictPromoterStrengthTool(Tool):
     name = "predict_promoter_strength"
@@ -698,14 +791,16 @@ class EvaluateCircuitPerformanceTool(Tool):
 
 # Update the TOOL_REGISTRY to include all the new tools
 TOOL_REGISTRY: Dict[str, Type[Tool]] = {
-    ListPromotorsTool.name: ListPromotorsTool,
+    ListPromotersTool.name: ListPromotersTool,
     DescribeAvailableLibrariesTool.name: DescribeAvailableLibrariesTool,
     SelectLibraryTool.name: SelectLibraryTool,
     ListRepressorsTool.name: ListRepressorsTool,
+    ListInputSensorsTool.name: ListInputSensorsTool,
     GetDnaPartByNameTool.name: GetDnaPartByNameTool,
     ListTerminatorsTool.name: ListTerminatorsTool,
     DesignWithCelloTool.name: DesignWithCelloTool,
     CreateCustomUcfTool.name: CreateCustomUcfTool,
+    CreateCustomInputSensorsFileTool.name: CreateCustomInputSensorsFileTool,
     PredictPromoterStrengthTool.name: PredictPromoterStrengthTool,
     OptimizePromoterTool.name: OptimizePromoterTool,
     GeneratePromotersTool.name: GeneratePromotersTool,

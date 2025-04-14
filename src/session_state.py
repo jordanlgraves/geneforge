@@ -18,6 +18,7 @@ class SessionState:
         self.library_manager = LibraryManager()
         self.current_ucf_data: Optional[list] = None
         self.custom_ucf_path: Optional[str] = None
+        self.custom_input_path: Optional[str] = None
         self.cello_results: Optional[Dict[str, Any]] = None
         # Add other state variables as needed, e.g.:
         # self.verilog_code: Optional[str] = None

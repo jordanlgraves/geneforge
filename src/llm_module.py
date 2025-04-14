@@ -238,9 +238,10 @@ def chat_with_tool(
     """
     Main chat loop that interacts with the LLM, handling function calls via ToolIntegration.
     """
-    logger.info(f"\n--- Message round: {i} ---\n")
+    logger.info(f"\n\n--- Message round: {i} ---\n\n")
     # Log current messages (optional, can be verbose)
-    logger.debug(f"Messages sent to LLM:\n{json.dumps(messages, indent=2)}")
+    for mi, message in enumerate(messages):
+        logger.info(f"\nMessage {mi}: {message}")
 
     # Safety check
     if i >= max_rounds:
@@ -270,6 +271,7 @@ def chat_with_tool(
     )
 
     response_message = response.choices[0].message
+    logger.info(f"\nResponse message: {response_message}")
     finish_reason = response.choices[0].finish_reason
 
     # The reason the model stopped generating tokens. This will be stop if the model hit a natural stop point or a provided stop sequence, length if the maximum number of tokens specified in the request was reached, content_filter if content was omitted due to a flag from our content filters, tool_calls if the model called a tool

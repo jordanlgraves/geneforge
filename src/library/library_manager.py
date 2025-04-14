@@ -326,7 +326,7 @@ class LibraryManager:
             output_dir = "outputs/custom_ucf"
         
         # Use the module function directly instead of calling through a class instance
-        return part_library_customizer.create_custom_ucf(
+        custom_ucf_path = part_library_customizer.create_custom_ucf(
             ucf_data=self.current_ucf_data,
             selected_gates=selected_gates,
             selected_parts=processed_parts,
@@ -335,20 +335,71 @@ class LibraryManager:
             ucf_name=ucf_name,
             output_dir=output_dir
         )
-
-    def create_custom_input(self, 
-                            input_name: str = None, 
-                            selected_parts: List = None,
-                            modified_parts: List = None,
-                            new_parts: List = None,
-                            output_dir: str = None) -> Optional[str]:
-        """
-        Create a custom input file.
-        """
-        # This function needs to be implemented properly
-        # It was previously calling a non-existent method on self.library_customizer
-        raise NotImplementedError("create_custom_input not yet implemented")
+        self.current_ucf_path = custom_ucf_path
+        return custom_ucf_path
     
+    def create_custom_input_sensors_file(self,
+                                       selected_sensors: List[str] = None,
+                                       modified_models: List[Dict] = None,
+                                       new_sensors: List[Dict] = None,
+                                       output_filename: str = None,
+                                       output_dir: str = None) -> Optional[str]:
+        """
+        Create a custom input sensors file with selected sensors and modifications.
+        
+        Args:
+            selected_sensors: List of sensor names to include
+            modified_models: List of model objects with modified parameters
+            new_sensors: List of new sensor definitions to add
+            output_filename: Optional name for the output file
+            output_dir: Optional directory to save the output file
+            
+        Returns:
+            Path to the created input sensor file or None if creation failed
+        """
+        if not self.current_input_data:
+            logger.error("No input sensor data loaded, cannot create custom input sensors file")
+            return None
+        
+        # Process selected_sensors to ensure they exist in the input data
+        if selected_sensors:
+            available_sensors = [item.get("name") for item in self.current_input_data 
+                                if item.get("collection") == "input_sensors"]
+            
+            for sensor in selected_sensors:
+                if sensor not in available_sensors:
+                    logger.warning(f"Sensor {sensor} not found in input sensor data")
+        
+        # Default output directory
+        if not output_dir:
+            output_dir = "outputs/custom_sensors"
+        
+        # Use the module function directly
+        try:
+            custom_input_path = part_library_customizer.create_custom_input_sensors_file(
+                input_sensor_data=self.current_input_data,
+                selected_sensors=selected_sensors,
+                modified_models=modified_models,
+                new_sensors=new_sensors,
+                output_filename=output_filename,
+                output_dir=output_dir
+            )
+            
+            # Update the current input path to use the custom file
+            self.current_input_path = custom_input_path
+            logger.info(f"Created custom input sensors file: {custom_input_path}")
+            
+            # Reload the input sensor data from the new file
+            with open(custom_input_path, 'r') as f:
+                self.current_input_data = json.load(f)
+            
+            return custom_input_path
+        
+        except Exception as e:
+            logger.error(f"Failed to create custom input sensors file: {str(e)}")
+            if DEBUG_MODEL:
+                raise e  # Reraise in debug mode
+            return None
 
     def get_current_library_info(self) -> Dict[str, Any]:
         """

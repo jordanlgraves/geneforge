@@ -179,7 +179,7 @@ class CelloIntegration:
             self.logger.warning("Please install Yosys and ensure it's in your system PATH.")
         return yosys_available
 
-    def run_cello(self, verilog_code: str = None, custom_ucf: Dict[str, Any] = None) -> Dict:
+    def run_cello(self, verilog_code: str = None, custom_ucf: str = None) -> Dict:
         """
         Run Cello with configured parameters and return results
         
@@ -206,25 +206,6 @@ class CelloIntegration:
                 'log': '\n'.join(self.log_buffer),
                 'error': "Yosys is not installed or not in the system PATH. Yosys is required for Cello's logic synthesis."
             }
-        
-
-        
-        # Create custom UCF if requested
-        if custom_ucf:
-            custom_ucf_path = self.create_custom_ucf(
-                selected_gates=custom_ucf.get("selected_gates"),
-                selected_parts=custom_ucf.get("selected_parts"),
-                modified_parts=custom_ucf.get("modified_parts"),
-                new_parts=custom_ucf.get("new_parts"),
-                ucf_name=custom_ucf.get("ucf_name")
-            )
-            
-            if not custom_ucf_path:
-                return {
-                    'success': False,
-                    'log': '\n'.join(self.log_buffer),
-                    'error': "Failed to create custom UCF"
-                }
 
         self.logger.info("Starting Cello run with configuration: %s", self.cello_config)
         
@@ -243,18 +224,51 @@ class CelloIntegration:
             f.write(verilog_code)
 
         # Write input, output and custom UCF files
-        input_path = os.path.join(constraints_path, "input_sensors.json")
-        output_device_path = os.path.join(constraints_path, "output_devices.json")
-        ucf_path = os.path.join(constraints_path, "ucf.json")
 
-        # copy the input, output and custom UCF files from the library manager
-        shutil.copy(self.library_manager.current_input_path, input_path)
-        shutil.copy(self.library_manager.current_output_path, output_device_path)
-        if custom_ucf:
-            with open(ucf_path, 'w') as f:
-                f.write(custom_ucf)
+        INPUT_SENSOR_FILE_NAME = "input_sensors.json"
+        OUTPUT_DEVICES_FILE_NAME = "output_devices.json"
+        UCF_FILE_NAME = "ucf.json"
+
+        # Get file paths from library manager
+        ucf_path = self.library_manager.current_ucf_path
+        input_path = self.library_manager.current_input_path
+        output_path = self.library_manager.current_output_path
+
+        if not ucf_path:
+            return {
+                'success': False,
+                'log': '\n'.join(self.log_buffer),
+                'error': "No UCF file found in the selected library"
+            }
+
+        if not input_path:
+            return {
+                'success': False,
+                'log': '\n'.join(self.log_buffer),
+                'error': "No input sensors file found in the selected library"
+            }
+        
+        if not output_path:
+            return {
+                'success': False,
+                'log': '\n'.join(self.log_buffer),
+                'error': "No output devices file found in the selected library"
+            }
+            
+        # Copy files to constraints folder
+        input_sensors_path = os.path.join(constraints_path, INPUT_SENSOR_FILE_NAME)
+        output_devices_path = os.path.join(constraints_path, OUTPUT_DEVICES_FILE_NAME)
+        ucf_path_in_constraints = os.path.join(constraints_path, UCF_FILE_NAME)
+
+        shutil.copy(input_path, input_sensors_path)
+        shutil.copy(output_path, output_devices_path)
+        
+        # Handle custom UCF case differently if custom_ucf is a dictionary with settings
+        if isinstance(custom_ucf, dict) and custom_ucf:
+            # Already handled earlier in the method, use the modified ucf_path
+            shutil.copy(ucf_path, ucf_path_in_constraints)
         else:
-            shutil.copy(self.library_manager.current_ucf_path, ucf_path)
+            shutil.copy(ucf_path, ucf_path_in_constraints)
 
         # create an output path for the cello run
         output_path = os.path.join(run_folder, "output")
@@ -264,9 +278,9 @@ class CelloIntegration:
             "v_name": VERILOG_FILE_NAME,
             "verilogs_path": verilogs_path,
             "constraints_path": constraints_path,
-            "ucf_name": "ucf.json",
-            "in_name": "input_sensors.json",
-            "out_name": "output_devices.json",
+            "ucf_name": UCF_FILE_NAME,
+            "in_name": INPUT_SENSOR_FILE_NAME,
+            "out_name": OUTPUT_DEVICES_FILE_NAME,
             "out_path": output_path
         }
 

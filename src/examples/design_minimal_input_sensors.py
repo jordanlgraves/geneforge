@@ -4,11 +4,15 @@ from src.examples.example_harness import ExampleRunner
 
 # Set up logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-logger = logging.getLogger("SimpleCircuitExample")
+logger = logging.getLogger("MinimalInputSensorsExample")
 
-PROMPT = """Design and simulate in Cello a NOT gate circuit for E. coli that produces GFP when arabinose is absent. Use the provided tools to simulate the circuit in Cello. After the simulation is complete, read the circuit score from the output file and return it as a JSON object with the key 'circuit_score'."""
+PROMPT = """Design and simulate in Cello a NOT gate circuit for E. coli that uses only a single input sensor.
+Start by selecting a library. List the available input sensors in the library's default input sensors file.
+Choose one input sensor (like the arabinose sensor) and create a custom minimal input sensors file containing just that sensor.
+Use Cello to design the circuit with your custom input sensor file.
+After the simulation is complete, read the circuit score from the output file and return it as a JSON object with the key 'circuit_score'."""
 
-class SimpleCircuitRunner(ExampleRunner):
+class MinimalInputSensorsRunner(ExampleRunner):
     """Extension of ExampleRunner to check for both custom input sensors file and Cello results."""
     
     def check_success(self) -> bool:
@@ -23,21 +27,21 @@ class SimpleCircuitRunner(ExampleRunner):
         
         return has_custom_input and has_cello_results
 
-
 def run_example():
     """
-    Uses the LLM modules with session state to execute the design of a simple circuit.
+    Uses the LLM modules with session state to execute the design of a circuit
+    with a minimal set of input sensors.
     """
-    # Create and run the example using the reusable harness
-    runner = SimpleCircuitRunner(
-        example_name="Simple Circuit",
+    # Create and run the example using the customized runner
+    runner = MinimalInputSensorsRunner(
+        example_name="Minimal Input Sensors",
         prompt=PROMPT,
-        max_rounds=15,
-        max_attempts=2
+        max_rounds=20,
+        max_attempts=4
     )
     
     final_result = runner.run()
     runner.log_results(final_result)
 
 if __name__ == "__main__":
-    run_example()
+    run_example() 
