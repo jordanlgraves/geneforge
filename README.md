@@ -24,6 +24,7 @@ Part Optimization:
 
 - Promoter Calculator (https://salislab.net/software/predict_promoter_calculator) A tool for generating, optimizing and predicting the performance of promoters.
 - RBS Calculator (https://salislab.net/software/predict_promoter_calculator) A tool for modifying RBS parts (e.g. specifying transcription rates).
+- Any other tools from https://salislab.net/software/predict_promoter_calculator can be integrated through REST APIs
 
 UCF Library Manager:
 - Scans directories for JSON files
@@ -35,12 +36,12 @@ UCF Library Manager:
 
 ## Retrieval Augmented Generation 
 Retrieval Augmented Generation: [https://arxiv.org/abs/2005.11401]
-While not yet implemented, RAG will be used to provide the agent with access to a wide range of information. This will give the planning agent the ability to search through scientific literature to find relevant information to assist in the design process.
+While not yet implemented, RAG will be used to provide the agent with access to a wide range of information. This will give the planning agent the ability to search through scientific literature to find relevant information to assist in the reasoning and design process.
 
 ## Reinforcement learning
 Reinforcement learning with verifiable rewards (RLVF): <https://arxiv.org/html/2503.23829v1>  
-GeneForge is designed to be trainable because every design run produces artefacts (Cello output files, custom UCFs, etc.) that can be validated **programmatically**.  
-Our proof-of-concept pipeline is split into two complementary stages:
+GeneForge is designed to be trainable because every design run produces artifacts (Cello output files, custom UCFs, etc.) that can be validated **programmatically**.  
+The RL portion of the proof-of-concept is split into two complementary stages:
 
 ### 1  Outer-loop policy learning (SB3)
 1. **Environment** – Wrap `ExampleRunner` + `SessionState` in a Gymnasium-style env (`GeneCircuitToolEnv`).  
@@ -58,7 +59,7 @@ Our proof-of-concept pipeline is split into two complementary stages:
 2. Switch to an open-weights model (e.g. Llama, DeepSeek) and fine-tune with `trl`  (SFT warm-start → PPO/DPO for reward optimisation).  
 3. The language model gradually learns to emit the needed tool calls directly in natural language, reducing reliance on the outer wrapper.
 
-### Implementation roadmap
+### RL implementation roadmap
 - [ ] Build `RewardEvaluator` to verify Cello outputs and compute scalar rewards.  
 - [ ] Create `GeneCircuitToolEnv` and a minimal PPO training script.  
 - [ ] Collect ≥ 500 high-reward traces with the SB3 policy.  
@@ -71,7 +72,10 @@ This staged strategy lets us start learning **immediately** with the OpenAI API 
 
 Example scripts are provided in the `examples` directory. These range from simple integration, library management, to system level orchestration.
 
+## Technical Debt
 
+- [ ] We should be using a dockerized version of Cello instead of running from source code.
+  
 ## Contributing
 
 Contributions are welcome! Please feel free to submit a pull request.
