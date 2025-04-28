@@ -4,25 +4,26 @@ This repository contains an the foundation work for developing an automated AI-d
 
 ## Overview
 
-To core features of the system include a master LLM-agent which plans and orchestrates the design of a genetic circuit. The agent uses tool calls handle different parts of the design process. For example, a cell tool is used to assist with circuit simulation. The agent is able to generate verilog and manage a UCF, input and output library using other tools, allowing it to run the program with custom parts and logic. The agent also uses retrieval augmented generation, allowing it to search through scientific literature to find relevant information to assist in the design process. Other tools allow for predicting and optimizing genetic parts and sequences. The is should be used by providing an initial prompt and design specification.
+To core features of the system include a master LLM-agent which plans and orchestrates the design of a genetic circuit. The agent uses tool calls handle different parts of the design process. The agent is able to generate verilog and manage a UCF, input and output library using other tools, allowing it to run Cello with custom parts and logic. The agent also uses retrieval augmented generation, allowing it to search through scientific literature to find relevant information to assist in the design process. Other tools allow for predicting and optimizing genetic parts and sequences. The high-level interface accepts an initial natural language prompt and with a design specification.
 
-**State Management:** The system uses a `SessionState` object to manage the context (like the currently selected library, custom UCF files, etc.) across multiple tool calls within a single user design request, ensuring consistency throughout the workflow.
+**State Management:** The system uses a `SessionState` object to manage the context (like the currently selected library, custom UCF files, etc.) across multiple tool calls within a single user design request..
 
 ## Examples and use cases:
 Examples of prompts can be found in `examples_and_prompts`. These range from simple to complex to aspirational and are designed to guide the implementation of this project and outline the vision of more sophisticated systems.
 
-
 ## Tool Use
 
-Several tools will be used to design and optimize genetic circuits. These tools are be wrapped in an integration layer which will be used by the agents. Listed below are some of the key tools that will be used:
+Several tools will be used to design and optimize genetic circuits. These tools are be wrapped in an integration layer which will be used by the agent. Listed below are some of the key tools that will be used:
 
 Cello:
-- Includes tools to search through as well as manage a custom UCF library. This enables the agent to select appropriate parts for the design.
+- Includes tools to search through and select a specific library (UCF, input and output files). This enables the agent to select appropriate parts for the design.
 - Includes a tool to run the cello program and capture the output.
-- Includes a tool to parse the results of the cello program, returning various metrics and data.
+- Includes a tool to parse the results of the cello program, returning various metrics and data (e.g. truth tables, circuit scores).
 
-PromoterCalculator:
-- A tool for generating, optimizing and predicting the performance of promoters.
+Part Optimization:
+
+- Promoter Calculator (https://salislab.net/software/predict_promoter_calculator) A tool for generating, optimizing and predicting the performance of promoters.
+- RBS Calculator (https://salislab.net/software/predict_promoter_calculator) A tool for modifying RBS parts (e.g. specifying transcription rates).
 
 UCF Library Manager:
 - Scans directories for JSON files
@@ -30,15 +31,41 @@ UCF Library Manager:
 - Determines file types based on filename patterns
 - Validates file selections for compatibility
 - Finds alternative files if the selected files are not valid
-- Allows the agent to select appropriate files based on the user's request (e.g. "I want a **NOT gate** for **E. coli**")
-
+- Allows the agent to select appropriate files based on the user's request (e.g. "I want a **NOT gate** for **E. coli** with input using **specific sensor X**, **specific sensor Y**. The output shoud be **YFP**")
 
 ## Retrieval Augmented Generation 
 Retrieval Augmented Generation: [https://arxiv.org/abs/2005.11401]
 While not yet implemented, RAG will be used to provide the agent with access to a wide range of information. This will give the planning agent the ability to search through scientific literature to find relevant information to assist in the design process.
 
 ## Reinforcement learning
-Reinforcement learning with verifiable rewards: [https://arxiv.org/html/2503.23829v1]. Another core feature of the system is it's amenability to reinforcement learning. The initial reinforcement learning goal is to establish successful outputs from a wide range of prompts with high temperature values to ensure a wide range of reasoning streams. Successful outputs, determined using in-silico validation/simulation, will be used as training data to improve the agent's performance. 
+Reinforcement learning with verifiable rewards (RLVF): <https://arxiv.org/html/2503.23829v1>  
+GeneForge is designed to be trainable because every design run produces artefacts (Cello output files, custom UCFs, etc.) that can be validated **programmatically**.  
+Our proof-of-concept pipeline is split into two complementary stages:
+
+### 1  Outer-loop policy learning (SB3)
+1. **Environment** – Wrap `ExampleRunner` + `SessionState` in a Gymnasium-style env (`GeneCircuitToolEnv`).  
+   • *Observation* = compact numeric vector summarising the current session (flags, counts, last circuit score, etc).  
+   • *Action* = discrete choice of a `ToolIntegration` function and its argument indices.  
+2. **Policy network** – a small MLP trained with PPO/A2C from `stable-baselines3`.  
+   The network learns the best **sequence of tool calls** for a given design specification.  
+3. **Reward** – computed by a standalone `RewardEvaluator` module:  
+   • intermediate bonuses (correct library, valid sensor file, valid Verilog, etc)  
+   • final reward, possibly incorporating a final Cello circuit score.
+4. **Data collection** – all high-reward traces are saved as JSONL; they form the foundation for the next stage.
+
+### 2  In-model fine-tuning (TRL / RLHF)
+1. Export the best trajectories from stage 1 as supervised examples.  
+2. Switch to an open-weights model (e.g. Llama, DeepSeek) and fine-tune with `trl`  (SFT warm-start → PPO/DPO for reward optimisation).  
+3. The language model gradually learns to emit the needed tool calls directly in natural language, reducing reliance on the outer wrapper.
+
+### Implementation roadmap
+- [ ] Build `RewardEvaluator` to verify Cello outputs and compute scalar rewards.  
+- [ ] Create `GeneCircuitToolEnv` and a minimal PPO training script.  
+- [ ] Collect ≥ 500 high-reward traces with the SB3 policy.  
+- [ ] Fine-tune an open model using `trl`, seeded with the collected traces.  
+- [ ] Iterate: improved model replaces parts of the wrapper; new data refreshes fine-tuning.
+
+This staged strategy lets us start learning **immediately** with the OpenAI API while producing verifiable data that directly powers full RLVF in the next phase.
 
 ## Examples
 
@@ -47,7 +74,7 @@ Example scripts are provided in the `examples` directory. These range from simpl
 
 ## Contributing
 
-Contributions are welcome! Please feel free to submit a Pull Request.
+Contributions are welcome! Please feel free to submit a pull request.
 
 ## License
 
