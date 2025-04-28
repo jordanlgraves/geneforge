@@ -20,8 +20,10 @@ class SessionState:
         self.custom_ucf_path: Optional[str] = None
         self.custom_input_path: Optional[str] = None
         self.cello_results: Optional[Dict[str, Any]] = None
+        # New attributes to support RL and Verilog generation workflows
+        self.design_spec: Optional[str] = None  # Natural-language high-level specification
+        self.verilog_code: Optional[str] = None  # Latest generated/updated Verilog source
         # Add other state variables as needed, e.g.:
-        # self.verilog_code: Optional[str] = None
         # self.design_requirements: Dict[str, Any] = {}
 
     def select_library(self, library_id: str) -> bool:
@@ -58,6 +60,20 @@ class SessionState:
     def get_cello_results(self) -> Optional[Dict[str, Any]]:
         """Gets the Cello results for the current session."""
         return self.cello_results
+
+    def set_design_spec(self, spec: str):
+        """Store the high-level design specification for the session."""
+        self.design_spec = spec
+
+    def get_design_spec(self) -> Optional[str]:
+        return self.design_spec
+
+    def set_verilog_code(self, verilog: str):
+        """Persist Verilog code generated during this session."""
+        self.verilog_code = verilog
+
+    def get_verilog_code(self) -> Optional[str]:
+        return self.verilog_code
 
     # Add methods to update and retrieve other state variables as needed
     # e.g., set_custom_ucf_path, get_cello_results, etc. 

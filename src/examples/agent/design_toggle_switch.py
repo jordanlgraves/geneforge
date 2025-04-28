@@ -1,18 +1,17 @@
 #!/usr/bin/env python3
 import logging
-from src.examples.example_harness import ExampleRunner
+from src.examples.agent.example_harness import ExampleRunner
 
 # Set up logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 logger = logging.getLogger("SimpleCircuitExample")
 
-PROMPT = """Design and simulate in a genetic circuit with toggle switch in E. coli that turns on when two different signals are present (X and Y). It should turn off whenever a third, separate signal (Z) is present. 
+PROMPT = """Design and simulate a genetic toggle switch in E. coli that turns on when two different signals are present (X and Y). It should turn off whenever a third, separate signal (Z) is present. 
 Use the provided tools to simulate the circuit in Cello with exhaustive set to False.
 After the simulation is complete, read the circuit score from the output file and return it as a JSON object with the key 'circuit_score'."""
 
 class SimpleCircuitRunner(ExampleRunner):
-    """Extension of ExampleRunner to check for both custom input sensors file and Cello results."""
-    
+    """Extension of ExampleRunner to check for both custom input sensors file and Cello results and store the initial design spec."""
     def check_success(self) -> bool:
         """
         Check if both a custom input sensors file was created and Cello results were obtained.

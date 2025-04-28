@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 import logging
-from src.examples.example_harness import ExampleRunner
+from src.examples.agent.example_harness import ExampleRunner
 
 # Set up logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
@@ -14,7 +14,7 @@ After the simulation is complete, read the circuit score from the output file an
 
 class MinimalInputSensorsRunner(ExampleRunner):
     """Extension of ExampleRunner to check for both custom input sensors file and Cello results."""
-    
+
     def check_success(self) -> bool:
         """
         Check if both a custom input sensors file was created and Cello results were obtained.

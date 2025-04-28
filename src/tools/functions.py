@@ -96,7 +96,6 @@ class ListPromotersTool(Tool):
              return None, {"error": f"Could not load structured data for library {library_manager.current_library_id}."}
         return library_data, None
 
-
     def _get_current_library_input_data(self):
         """Helper to get structured data for the currently selected library."""
         library_manager = self.session_state.get_library_manager()
@@ -793,6 +792,66 @@ class EvaluateCircuitPerformanceTool(Tool):
             "error": metrics.get('error')
         }
 
+class GenerateVerilogToolLLM(Tool):
+    name = "generate_verilog"
+    description = (
+        "Generate Verilog code for the current design specification. "
+        "If a 'spec' argument is supplied it will be used, otherwise the tool "
+        "will look for a `design_spec` attribute on the current SessionState."
+    )
+    parameters = {
+        "type": "object",
+        "properties": {
+            "spec": {
+                "type": "string",
+                "description": "Optional free-text specification of the circuit to implement. If omitted, the tool will use session_state.design_spec if available."
+            }
+        },
+        "required": []
+    }
+
+    def execute(self, spec: str = None) -> Dict[str, Any]:
+        """Generate Verilog code by delegating to an LLM (OpenAI chat API)."""
+        # Determine which specification to use
+        if not spec:
+            spec = getattr(self.session_state, "design_spec", None)
+        if not spec:
+            return {"error": "No specification provided and none found in session_state.design_spec."}
+
+        try:
+            from openai import OpenAI  # Local import to avoid mandatory dependency at import time
+            import os
+
+            client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+            messages = [
+                {
+                    "role": "system",
+                    "content": (
+                        "You are an expert digital logic designer. "
+                        "Generate synthesizable Verilog-2001 code that meets the user's specification. "
+                        "Only return the Verilog code, no explanation."
+                    ),
+                },
+                {"role": "user", "content": spec},
+            ]
+
+            response = client.chat.completions.create(
+                model="gpt-4o-mini",
+                messages=messages,
+                temperature=0.7,
+            )
+            verilog_code = response.choices[0].message.content.strip()
+
+            # Persist for downstream tools
+            self.session_state.verilog_code = verilog_code
+
+            return {
+                "success": True,
+                "verilog_code": verilog_code,
+            }
+        except Exception as e:
+            return {"error": f"Error generating Verilog: {str(e)}"}
+
 # Update the TOOL_REGISTRY to include all the new tools
 TOOL_REGISTRY: Dict[str, Type[Tool]] = {
     ListPromotersTool.name: ListPromotersTool,
@@ -810,6 +869,7 @@ TOOL_REGISTRY: Dict[str, Type[Tool]] = {
     GeneratePromotersTool.name: GeneratePromotersTool,
     OptimizeBindingSiteTool.name: OptimizeBindingSiteTool,
     EvaluateCircuitPerformanceTool.name: EvaluateCircuitPerformanceTool,
+    GenerateVerilogToolLLM.name: GenerateVerilogToolLLM,
 }
 
 # Generate OpenAI function schemas from tools

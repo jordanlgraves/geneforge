@@ -37,6 +37,8 @@ class ExampleRunner:
         
         # Set up session state and other components
         self.session_state = SessionState()
+        self.session_state.set_design_spec(self.prompt)
+
         self.tool_integration = ToolIntegration(self.session_state)
         self.client = None
         self.model = None

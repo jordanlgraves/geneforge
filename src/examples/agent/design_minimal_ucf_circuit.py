@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 import logging
-from src.examples.example_harness import ExampleRunner
+from src.examples.agent.example_harness import ExampleRunner
 
 # Set up logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')

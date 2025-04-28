@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 import logging
-from src.examples.example_harness import ExampleRunner
+from src.examples.agent.example_harness import ExampleRunner
 
 # Set up logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
@@ -10,7 +10,7 @@ PROMPT = """Design and simulate in Cello a NOT gate circuit for E. coli that pro
 
 class SimpleCircuitRunner(ExampleRunner):
     """Extension of ExampleRunner to check for both custom input sensors file and Cello results."""
-    
+
     def check_success(self) -> bool:
         """
         Check if both a custom input sensors file was created and Cello results were obtained.
