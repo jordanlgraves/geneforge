@@ -1,0 +1,102 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rdf:RDF
+	xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+	xmlns:xsd="http://www.w3.org/2001/XMLSchema#"
+	xmlns:sbol="http://sbols.org/v1#"
+	xmlns:sublime="http://clarkparsia.com/sublime#"
+	xmlns:rdfs="http://www.w3.org/2000/01/rdf-schema#">
+<sbol:DnaComponent rdf:about="urn:2a5251ca-94bd-4cbf-a249-3ea3932d36f5">
+	<sbol:displayId>psicA-rfp-top</sbol:displayId>
+	<sbol:name></sbol:name>
+	<sbol:description></sbol:description>
+	<sbol:dnaSequence>
+		<sbol:DnaSequence rdf:about="urn:cf506445-36b8-43b1-bf4d-6efea13c7390">
+			<sbol:nucleotides>ccacaagaaacgaggtacggcattgagccgcgtaaggcagtagcgatgtattcattgggcgttttttgaatgttcactaaccaccgtcggggtttaataactgcaccaggcatcaaataaaacgaaaggctcagtcgaaagactgggcctttcgttttatctgttgtttgtcggtgaacgctctcatggcttcctccgaagacgttatcaaagagttcatgcgtttcaaagttcgtatggaaggttccgttaacggtcacgagttcgaaatcgaaggtgaaggtgaaggtcgtccgtacgaaggtacgcagaccgctaaactgaaagttaccaaaggtggtccgctgccgttcgcttgggacatcctgtccccgcagttccagtacggttccaaagcttacgttaaacacccggctgacatcccggactacctgaaactgtccttcccggaaggtttcaaatgggaacgtgttatgaacttcgaagacggtggtgttgttaccgttacccaggactcctccctgcaagacggtgagttcatctacaaagttaaactgcgtggtactaacttcccgtccgacggtccggttatgcagaaaaaaaccatgggttgggaagcttccaccgaacgtatgtacccggaagacggtgctctgaaaggtgaaatcaaaatgcgtctgaaactgaaagacggtggtcactacgacgctgaagttaaaaccacctacatggctaaaaaaccggttcagctgccgggtgcttacaaaaccgacatcaaactggacatcacctcccacaacgaagactacaccatcgttgaacagtacgaacgtgctgaaggtcgtcactccaccggtgctgcagcaaacgacgaaaactacgcttaa</sbol:nucleotides>
+		</sbol:DnaSequence>
+	</sbol:dnaSequence>
+	<sbol:annotation>
+		<sbol:SequenceAnnotation rdf:about="urn:bc9458d0-1107-4b7d-ba77-0860217332b1">
+			<sbol:bioStart>1</sbol:bioStart>
+			<sbol:bioEnd>887</sbol:bioEnd>
+			<sbol:strand>+</sbol:strand>
+			<sbol:subComponent>
+				<sbol:DnaComponent rdf:about="urn:28ad3016-6da4-4554-8ec8-3edc1b121df6">
+					<sbol:displayId>psicA-rfp</sbol:displayId>
+					<sbol:name></sbol:name>
+					<sbol:description></sbol:description>
+					<sbol:dnaSequence>
+						<sbol:DnaSequence rdf:about="urn:ceac7565-7d06-4edf-a949-6bfd8a17be37">
+							<sbol:nucleotides>ccacaagaaacgaggtacggcattgagccgcgtaaggcagtagcgatgtattcattgggcgttttttgaatgttcactaaccaccgtcggggtttaataactgcaccaggcatcaaataaaacgaaaggctcagtcgaaagactgggcctttcgttttatctgttgtttgtcggtgaacgctctcatggcttcctccgaagacgttatcaaagagttcatgcgtttcaaagttcgtatggaaggttccgttaacggtcacgagttcgaaatcgaaggtgaaggtgaaggtcgtccgtacgaaggtacgcagaccgctaaactgaaagttaccaaaggtggtccgctgccgttcgcttgggacatcctgtccccgcagttccagtacggttccaaagcttacgttaaacacccggctgacatcccggactacctgaaactgtccttcccggaaggtttcaaatgggaacgtgttatgaacttcgaagacggtggtgttgttaccgttacccaggactcctccctgcaagacggtgagttcatctacaaagttaaactgcgtggtactaacttcccgtccgacggtccggttatgcagaaaaaaaccatgggttgggaagcttccaccgaacgtatgtacccggaagacggtgctctgaaaggtgaaatcaaaatgcgtctgaaactgaaagacggtggtcactacgacgctgaagttaaaaccacctacatggctaaaaaaccggttcagctgccgggtgcttacaaaaccgacatcaaactggacatcacctcccacaacgaagactacaccatcgttgaacagtacgaacgtgctgaaggtcgtcactccaccggtgctgcagcaaacgacgaaaactacgcttaa</sbol:nucleotides>
+						</sbol:DnaSequence>
+					</sbol:dnaSequence>
+					<sbol:annotation>
+						<sbol:SequenceAnnotation rdf:about="urn:993dc955-0e6d-4d05-a437-45b5c44dfc91">
+							<sbol:precedes rdf:resource="urn:4d9f0cf1-5fd0-429c-a1c1-85dcd2d3d25b"/>
+							<sbol:bioStart>1</sbol:bioStart>
+							<sbol:bioEnd>105</sbol:bioEnd>
+							<sbol:strand>+</sbol:strand>
+							<sbol:subComponent>
+								<sbol:DnaComponent rdf:about="urn:123d308e-64cf-4be2-8510-c5366362e629">
+									<sbol:displayId>psicA</sbol:displayId>
+									<sbol:name></sbol:name>
+									<sbol:description></sbol:description>
+									<sbol:dnaSequence>
+										<sbol:DnaSequence rdf:about="urn:afa14ac2-ef50-49f0-9964-efbbb200c4ee">
+											<sbol:nucleotides>ccacaagaaacgaggtacggcattgagccgcgtaaggcagtagcgatgtattcattgggcgttttttgaatgttcactaaccaccgtcggggtttaataactgca</sbol:nucleotides>
+										</sbol:DnaSequence>
+									</sbol:dnaSequence>
+									<rdf:type rdf:resource="http://purl.obolibrary.org/obo/SO_0000167"/>
+								</sbol:DnaComponent>
+							</sbol:subComponent>
+						</sbol:SequenceAnnotation>
+					</sbol:annotation>
+					<sbol:annotation>
+						<sbol:SequenceAnnotation rdf:about="urn:4d9f0cf1-5fd0-429c-a1c1-85dcd2d3d25b">
+							<sbol:precedes rdf:resource="urn:af9f9001-559c-4905-9662-f2bab9463f93"/>
+							<sbol:bioStart>106</sbol:bioStart>
+							<sbol:bioEnd>185</sbol:bioEnd>
+							<sbol:strand>+</sbol:strand>
+							<sbol:subComponent>
+								<sbol:DnaComponent rdf:about="urn:90e58290-7008-4e06-94c4-38d9fea9736b">
+									<sbol:displayId>Ter</sbol:displayId>
+									<sbol:name></sbol:name>
+									<sbol:description></sbol:description>
+									<sbol:dnaSequence>
+										<sbol:DnaSequence rdf:about="urn:fdf2a668-4e45-4f3e-9d43-ebe9a19cf03b">
+											<sbol:nucleotides>ccaggcatcaaataaaacgaaaggctcagtcgaaagactgggcctttcgttttatctgttgtttgtcggtgaacgctctc</sbol:nucleotides>
+										</sbol:DnaSequence>
+									</sbol:dnaSequence>
+									<rdf:type rdf:resource="http://purl.obolibrary.org/obo/SO_0000141"/>
+								</sbol:DnaComponent>
+							</sbol:subComponent>
+						</sbol:SequenceAnnotation>
+					</sbol:annotation>
+					<sbol:annotation>
+						<sbol:SequenceAnnotation rdf:about="urn:af9f9001-559c-4905-9662-f2bab9463f93">
+							<sbol:bioStart>186</sbol:bioStart>
+							<sbol:bioEnd>887</sbol:bioEnd>
+							<sbol:strand>+</sbol:strand>
+							<sbol:subComponent>
+								<sbol:DnaComponent rdf:about="urn:445b17a9-84f9-45f6-9013-1db0cea97e2c">
+									<sbol:displayId>rfp</sbol:displayId>
+									<sbol:name></sbol:name>
+									<sbol:description></sbol:description>
+									<sbol:dnaSequence>
+										<sbol:DnaSequence rdf:about="urn:33fd64bf-93ca-4189-8779-c358e70a69c7">
+											<sbol:nucleotides>atggcttcctccgaagacgttatcaaagagttcatgcgtttcaaagttcgtatggaaggttccgttaacggtcacgagttcgaaatcgaaggtgaaggtgaaggtcgtccgtacgaaggtacgcagaccgctaaactgaaagttaccaaaggtggtccgctgccgttcgcttgggacatcctgtccccgcagttccagtacggttccaaagcttacgttaaacacccggctgacatcccggactacctgaaactgtccttcccggaaggtttcaaatgggaacgtgttatgaacttcgaagacggtggtgttgttaccgttacccaggactcctccctgcaagacggtgagttcatctacaaagttaaactgcgtggtactaacttcccgtccgacggtccggttatgcagaaaaaaaccatgggttgggaagcttccaccgaacgtatgtacccggaagacggtgctctgaaaggtgaaatcaaaatgcgtctgaaactgaaagacggtggtcactacgacgctgaagttaaaaccacctacatggctaaaaaaccggttcagctgccgggtgcttacaaaaccgacatcaaactggacatcacctcccacaacgaagactacaccatcgttgaacagtacgaacgtgctgaaggtcgtcactccaccggtgctgcagcaaacgacgaaaactacgcttaa</sbol:nucleotides>
+										</sbol:DnaSequence>
+									</sbol:dnaSequence>
+									<rdf:type rdf:resource="http://purl.obolibrary.org/obo/SO_0000316"/>
+								</sbol:DnaComponent>
+							</sbol:subComponent>
+						</sbol:SequenceAnnotation>
+					</sbol:annotation>
+					<rdf:type rdf:resource="http://purl.obolibrary.org/obo/SO_0000110"/>
+				</sbol:DnaComponent>
+			</sbol:subComponent>
+		</sbol:SequenceAnnotation>
+	</sbol:annotation>
+	<rdf:type rdf:resource="http://purl.obolibrary.org/obo/SO_0000110"/>
+</sbol:DnaComponent>
+
+</rdf:RDF>
