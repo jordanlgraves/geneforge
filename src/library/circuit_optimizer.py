@@ -96,7 +96,7 @@ class CircuitOptimizer:
             return {'success': False, 'error': f"UCF file not found at: {ucf_path}"}
         
         # Run Cello
-        results = self.cello.run_cello(verilog_code)
+        results = self.cello.run_cello(run_name="initial_circuit", verilog_code=verilog_code)
         
         if not results['success']:
             logger.error(f"Error running Cello: {results.get('error', 'Unknown error')}")
@@ -334,7 +334,7 @@ class CircuitOptimizer:
             'new_ucf_path': new_ucf_path
         }
     
-    def run_optimization_iteration(self, verilog_code, ucf_path):
+    def run_optimization_iteration(self, run_name, verilog_code, ucf_path):
         """
         Run one iteration of the optimization process.
         
@@ -358,7 +358,7 @@ class CircuitOptimizer:
             verilog_code = verilog_code.replace("input Wire", "input").replace("output Wire", "output")
             logger.info("Updated Verilog code to remove Wire type declarations")
             
-        results = self.cello.run_cello(verilog_code, os.path.basename(ucf_path))
+        results = self.cello.run_cello(run_name=run_name, verilog_code=verilog_code, custom_ucf=os.path.basename(ucf_path))
         
         if not results['success']:
             logger.error(f"Error running Cello: {results.get('error', 'Unknown error')}")

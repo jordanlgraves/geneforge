@@ -33,11 +33,12 @@ UCF Library Manager:
 - Allows the agent to select appropriate files based on the user's request (e.g. "I want a **NOT gate** for **E. coli**")
 
 
-## Retrieval Augmented Generation
+## Retrieval Augmented Generation 
+Retrieval Augmented Generation: [https://arxiv.org/abs/2005.11401]
 While not yet implemented, RAG will be used to provide the agent with access to a wide range of information. This will give the planning agent the ability to search through scientific literature to find relevant information to assist in the design process.
 
 ## Reinforcement learning
-Another core feature of the system is it's amenability to reinforcement learning. The initial reinforcement learning goal is to establish successful outputs from a wide range of prompts with high temperature values to ensure a wide range of reasoning streams. Successful outputs, determined using in-silico validation/simulation, will be used as training data to improve the agent's performance.
+Reinforcement learning with verifiable rewards: [https://arxiv.org/html/2503.23829v1]. Another core feature of the system is it's amenability to reinforcement learning. The initial reinforcement learning goal is to establish successful outputs from a wide range of prompts with high temperature values to ensure a wide range of reasoning streams. Successful outputs, determined using in-silico validation/simulation, will be used as training data to improve the agent's performance. 
 
 ## Examples
 
