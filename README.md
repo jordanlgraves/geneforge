@@ -24,7 +24,7 @@ Part Optimization:
 
 - Promoter Calculator (https://salislab.net/software/predict_promoter_calculator) A tool for generating, optimizing and predicting the performance of promoters.
 - RBS Calculator (https://salislab.net/software/predict_promoter_calculator) A tool for modifying RBS parts (e.g. specifying transcription rates).
-- Any other tools from https://salislab.net/software/predict_promoter_calculator can be integrated through REST APIs
+- Any other tools from https://salislab.net/software/ can be integrated through REST APIs
 
 UCF Library Manager:
 - Scans directories for JSON files
