@@ -414,6 +414,10 @@ class DesignWithCelloTool(Tool):
     parameters = {
         "type": "object",
         "properties": {
+            "run_name": {
+                "type": "string",
+                "description": "The name of the run to use for the Cello design"
+            },
             "verilog_code": {
                 "type": "string",
                 "description": "The Verilog code representing the circuit design"
@@ -428,10 +432,10 @@ class DesignWithCelloTool(Tool):
                 }
             }
         },
-        "required": ["verilog_code"]
+        "required": ["run_name", "verilog_code"]
     }
     
-    def execute(self, verilog_code: str, config: dict = None) -> Dict[str, Any]:
+    def execute(self, run_name: str, verilog_code: str, config: dict = None) -> Dict[str, Any]:
         """Interface with Cello using the currently selected library context."""
         library_manager = self.session_state.get_library_manager()
         if not library_manager.current_library_id:
@@ -453,7 +457,7 @@ class DesignWithCelloTool(Tool):
         )
 
         output_dir = f"outputs/cello_run_{library_manager.current_library_id}"
-        results = cello.run_cello(verilog_code)
+        results = cello.run_cello(run_name=run_name, verilog_code=verilog_code, custom_ucf=os.path.basename(ucf_path))
 
         if not results['success']:
             return {

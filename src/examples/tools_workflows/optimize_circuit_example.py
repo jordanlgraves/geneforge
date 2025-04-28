@@ -106,7 +106,7 @@ class CircuitOptimizer:
         # In a real implementation, we would check for the parts and add them if missing
         
         # Run Cello
-        results = self.cello.run_cello(verilog_code)
+        results = self.cello.run_cello(run_name="initial_circuit", verilog_code=verilog_code)
         
         if not results['success']:
             logger.error(f"Error running Cello: {results.get('error', 'Unknown error')}")
@@ -334,7 +334,7 @@ class CircuitOptimizer:
             verilog_code = verilog_code.replace("input Wire", "input").replace("output Wire", "output")
             logger.info("Updated Verilog code to remove Wire type declarations")
             
-        results = self.cello.run_cello(verilog_code, os.path.basename(ucf_path))
+        results = self.cello.run_cello(run_name="optimization_iteration", verilog_code=verilog_code, custom_ucf=os.path.basename(ucf_path))
         
         if not results['success']:
             logger.error(f"Error running Cello: {results.get('error', 'Unknown error')}")

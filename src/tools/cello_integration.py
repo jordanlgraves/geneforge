@@ -26,10 +26,10 @@ class CelloIntegration:
         self.cello_config = {
             'verbose': True,  # Enable detailed logging
             'print_iters': True,  
-            'exhaustive': False,
+            # 'exhaustive': False,
             'test_configs': False,
             'log_overwrite': True,
-            'total_iters': 1_000
+            'total_iters': 1000
         } if cello_config is None else cello_config
 
         self.java_process = None
@@ -179,7 +179,7 @@ class CelloIntegration:
             self.logger.warning("Please install Yosys and ensure it's in your system PATH.")
         return yosys_available
 
-    def run_cello(self, verilog_code: str = None, custom_ucf: str = None) -> Dict:
+    def run_cello(self, run_name: str = None, verilog_code: str = None, custom_ucf: Dict[str, Any] = None) -> Dict:
         """
         Run Cello with configured parameters and return results
         
@@ -210,7 +210,8 @@ class CelloIntegration:
         self.logger.info("Starting Cello run with configuration: %s", self.cello_config)
         
         # create a run folder for this run
-        run_folder = tempfile.mkdtemp()
+        run_folder = os.path.join("outputs", "cello_run", run_name)
+        os.makedirs(run_folder, exist_ok=True)
         verilogs_path = os.path.join(run_folder, "verilogs") # folder to hold verilog files
         constraints_path = os.path.join(run_folder, "constraints") # folder to hold input, output and custom UCF files 
 
@@ -224,7 +225,6 @@ class CelloIntegration:
             f.write(verilog_code)
 
         # Write input, output and custom UCF files
-
         INPUT_SENSOR_FILE_NAME = "input_sensors.json"
         OUTPUT_DEVICES_FILE_NAME = "output_devices.json"
         UCF_FILE_NAME = "ucf.json"
@@ -648,6 +648,7 @@ if __name__ == "__main__":
     
     # Run Cello with the custom UCF
     result = cello.run_cello(
+        run_name="custom_test",
         verilog_code="module main(input a, input b, output y); assign y = a & b; endmodule",
         custom_ucf=custom_ucf
     )

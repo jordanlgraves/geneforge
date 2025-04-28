@@ -151,7 +151,7 @@ def main():
             print("\nRunning Cello with the NOT gate circuit...")
             try:
                 # Actually run Cello
-                result = integration.run_cello(verilog_code=verilog_code)
+                result = integration.run_cello(run_name="example_NOT_gate", verilog_code=verilog_code)
                 
                 print(f"\nCello run completed with success: {result['success']}")
                 

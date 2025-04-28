@@ -159,7 +159,7 @@ class TestCelloIntegration(unittest.TestCase):
         print(f"Running Cello with Verilog code for a NOT gate...")
         
         # Run Cello
-        result = cello.run_cello(verilog_code=verilog_code)
+        result = cello.run_cello(run_name="test_end_to_end_cello", verilog_code=verilog_code)
         
         # Print full result for debugging
         print(f"Cello run result: {result}")
