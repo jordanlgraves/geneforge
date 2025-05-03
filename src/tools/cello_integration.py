@@ -11,6 +11,15 @@ import json
 import tempfile
 from pathlib import Path
 
+# get Cello path and add to system path
+import dotenv
+import sys
+
+env = dotenv.load_dotenv()
+CELLO_ROOT = os.getenv("CELLO_ROOT")
+sys.path.append(CELLO_ROOT)
+
+
 from core_algorithm.celloAlgo import CELLO3
 
 

@@ -3,7 +3,6 @@ import logging
 import json
 from typing import Optional, List, Dict, Any, Union
 from dotenv import load_dotenv
-import weave
 
 from src.llm_module import get_llm_client, chat_with_tool
 from src.prompt_manager import get_system_prompt
@@ -74,9 +73,7 @@ class ExampleRunner:
         self.setup()
         self.logger.info("Starting LLM interaction...")
         
-        try:
-            weave.init(self.example_name.lower().replace(" ", "-"))
-            
+        try:            
             attempt = 0
             final_result_msg = None
             

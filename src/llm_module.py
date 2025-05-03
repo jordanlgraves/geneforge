@@ -6,7 +6,7 @@ from typing import List, Dict, Any, Tuple, Optional
 
 from src.tools.functions import ToolIntegration, tool_functions
 from src.session_state import SessionState
-import weave
+
 
 # Configure logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
@@ -225,8 +225,7 @@ def _handle_tool_call(
             raise e # Reraise in debug mode for easier debugging
 
         return messages, True  # Function was attempted but failed
-
-@weave.op()
+        
 def chat_with_tool(
     client: OpenAI,
     messages: List[Dict[str, Any]],

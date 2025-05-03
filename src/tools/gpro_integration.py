@@ -14,10 +14,13 @@ logger = logging.getLogger("gpro_integration")
 sys.path.append('ext_repos/GPro')
 
 # Import GPro modules
-from gpro.predictor.densenet.densenet import DenseNet_language
-from gpro.optimizer.heuristic.genetic import GeneticAlgorithm
-from gpro.generator.wgan.wgan import WGAN_language
-logger.info("GPro package successfully imported")
+try:
+    from gpro.predictor.densenet.densenet import DenseNet_language
+    from gpro.optimizer.heuristic.genetic import GeneticAlgorithm
+    from gpro.generator.wgan.wgan import WGAN_language
+    logger.info("GPro package successfully imported")
+except ImportError:
+    logger.error("Failed to import GPro package. GPro integration will not work.")
 
 class PromoterOptimizer:
     """

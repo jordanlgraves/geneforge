@@ -6,12 +6,22 @@ import glob
 import re
 from typing import Dict, List, Any, Optional, Type, ClassVar
 import src.library.part_library_customizer as part_library_customizer
-from src.tools.gpro_integration import PromoterOptimizer, RepressorOptimizer
 from src.library.library_manager import LibraryManager
-from src.tools.deepseed_integration import DeepSeedIntegration
+import logging
 from src.session_state import SessionState
 import traceback
 import logging
+
+try:
+    from src.tools.deepseed_integration import DeepSeedIntegration
+except ImportError:
+    logging.warning("Failed to import DeepSeedIntegration. DeepSeed integration will not work.")
+try:
+    from src.tools.gpro_integration import PromoterOptimizer, RepressorOptimizer
+except ImportError:
+    logging.warning("Failed to import GProIntegration. GPro integration will not work.")
+
+
 
 from langchain_community.tools import ReadFileTool
 from langchain_core.utils.function_calling import convert_to_openai_function
