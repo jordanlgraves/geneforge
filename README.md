@@ -24,7 +24,6 @@ Part Optimization:
 
 - Promoter Calculator (https://salislab.net/software/predict_promoter_calculator) A tool for generating, optimizing and predicting the performance of promoters.
 - RBS Calculator (https://salislab.net/software/predict_promoter_calculator) A tool for modifying RBS parts (e.g. specifying transcription rates).
-- Any other tools from https://salislab.net/software/ can be integrated through REST APIs
 
 UCF Library Manager:
 - Scans directories for JSON files
@@ -36,12 +35,12 @@ UCF Library Manager:
 
 ## Retrieval Augmented Generation 
 Retrieval Augmented Generation: [https://arxiv.org/abs/2005.11401]
-While not yet implemented, RAG will be used to provide the agent with access to a wide range of information. This will give the planning agent the ability to search through scientific literature to find relevant information to assist in the reasoning and design process.
+While not yet implemented, RAG will be used to provide the agent with access to a wide range of information. This will give the planning agent the ability to search through scientific literature to find relevant information to assist in the design process.
 
 ## Reinforcement learning
 Reinforcement learning with verifiable rewards (RLVF): <https://arxiv.org/html/2503.23829v1>  
-GeneForge is designed to be trainable because every design run produces artifacts (Cello output files, custom UCFs, etc.) that can be validated **programmatically**.  
-The RL portion of the proof-of-concept is split into two complementary stages:
+GeneForge is designed to be trainable because every design run produces artefacts (Cello output files, custom UCFs, etc.) that can be validated **programmatically**.  
+Our proof-of-concept pipeline is split into two complementary stages:
 
 ### 1  Outer-loop policy learning (SB3)
 1. **Environment** – Wrap `ExampleRunner` + `SessionState` in a Gymnasium-style env (`GeneCircuitToolEnv`).  
@@ -59,7 +58,7 @@ The RL portion of the proof-of-concept is split into two complementary stages:
 2. Switch to an open-weights model (e.g. Llama, DeepSeek) and fine-tune with `trl`  (SFT warm-start → PPO/DPO for reward optimisation).  
 3. The language model gradually learns to emit the needed tool calls directly in natural language, reducing reliance on the outer wrapper.
 
-### RL implementation roadmap
+### Implementation roadmap
 - [ ] Build `RewardEvaluator` to verify Cello outputs and compute scalar rewards.  
 - [ ] Create `GeneCircuitToolEnv` and a minimal PPO training script.  
 - [ ] Collect ≥ 500 high-reward traces with the SB3 policy.  
@@ -72,10 +71,7 @@ This staged strategy lets us start learning **immediately** with the OpenAI API 
 
 Example scripts are provided in the `examples` directory. These range from simple integration, library management, to system level orchestration.
 
-## Technical Debt
 
-- [ ] We should be using a dockerized version of Cello instead of running from source code.
-  
 ## Contributing
 
 Contributions are welcome! Please feel free to submit a pull request.
@@ -86,16 +82,22 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 
 ## Minimal Setup steps
 1. git clone the repo
-2. `$cd geneforge`
-2. `$pip install -r requirements.txt`
-3. `$mkdir ext_repos`
-4. `$cd ext_repos`
-5. `$git clone Cello-UCf`
-6. `$cd ..` 
-7. `$git clone Cello`
-7. `$cd ..`
-8. create  file `.env` in geneforge folder (project root)
-9. Add the following keys to `.env`:
+2. `cd geneforge`
+3. `python3 -m venv venv` # create a virtual env
+4. `source venv/bin/activate` # activate the environment
+5. `pip3 install -r requirements.txt` # install project requirements
+6. `mkdir ext_repos` # create a directory to hold external repos 
+7. `cd ext_repos`    # cd into the created repo
+8. `git clone https://github.com/CIDARLAB/Cello-UCF.git`   # clone cello libs
+9. `cd ..`  # cd back to ext_repos 
+10. `git clone https://github.com/CIDARLAB/Cello-v2-1-Core.git` # clone cello
+11. `cd ..`  # cd back into ext_repos
+12. `pip3 install -r ext_repos/Cello-v2-1-Core/requirements.txt` # install cello requirements
+13. `git clone https://github.com/barricklab/promoter-calculator.git` # clone promoter calculator
+14. `touch .env` # create file `.env` in geneforge folder (project root) to hole env variables
+15. `mkdir logs` # create the logs folder
+16. Add the following keys to `.env`:
+
 ```
 OPENAI_API_KEY={Your open ai api key}
 DEEPSEEK_API_KEY={Your deepseek api key (if using deepseek)}
@@ -106,7 +108,9 @@ PROMOTER_CALCULATOR_PATH=ext_repos/promoter-calculator/promoter-calculator
 CELLO_UCF_ROOT=ext_repos/Cello-UCF
 CELLO_ROOT=ext_repos/Cello-v2-1-Core
 ```
-10. Set python path: 
+17. For using a debugger such as in VS Code or Cursor, it is helpful to set the env in the config:
 ```
-"PYTHONPATH": "${workspaceFolder}/src:${workspaceFolder}:${workspaceFolder}/ext_repos/Cello-v2-1-Core"
+      "env": {
+            "PYTHONPATH": "${workspaceFolder}/src:${workspaceFolder}:${workspaceFolder}/ext_repos/Cello-v2-1-Core:${workspaceFolder}/ext_repos/GPro:${workspaceFolder}/ext_repos/deepseed/Optimizer:${workspaceFolder}/ext_repos/Deep_promoter:${workspaceFolder}/ext_repos/ProD"
+      },
 ```
