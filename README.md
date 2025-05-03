@@ -80,6 +80,29 @@ Contributions are welcome! Please feel free to submit a pull request.
 
 This project is licensed under the MIT License - see the LICENSE file for details.
 
+## Minimal Setup steps
+1. git clone the repo
+2. `$cd geneforge`
+2. `$pip install -r requirements.txt`
+3. `$mkdir ext_repos`
+4. `$cd ext_repos`
+5. `$git clone Cello-UCf`
+6. `$cd ..` 
+7. `$git clone Cello`
+7. `$cd ..`
+8. create  file `.env` in geneforge folder (project root)
+9. Add the following keys to `.env`:
+```
+OPENAI_API_KEY={Your open ai api key}
+DEEPSEEK_API_KEY={Your deepseek api key (if using deepseek)}
+DEEPSEEK_BASE_URL=https://api.deepseek.com
 
+PROMOTER_CALCULATOR_PATH=ext_repos/promoter-calculator/promoter-calculator
 
-
+CELLO_UCF_ROOT=ext_repos/Cello-UCF
+CELLO_ROOT=ext_repos/Cello-v2-1-Core
+```
+10. Set python path: 
+```
+"PYTHONPATH": "${workspaceFolder}/src:${workspaceFolder}:${workspaceFolder}/ext_repos/Cello-v2-1-Core"
+```

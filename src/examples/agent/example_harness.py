@@ -43,6 +43,7 @@ class ExampleRunner:
         self.client = None
         self.model = None
         self.messages = []
+        self.rounds_seen = 0        # ❶ counter
         
     def setup(self):
         """Set up the LLM client and initial messages."""
@@ -108,10 +109,14 @@ class ExampleRunner:
                     break
                     
                 attempt += 1
+                self.rounds_seen += 1    # ❷ increment after each model call
                 
             if attempt == self.max_attempts and not self.check_success():
                 self.logger.warning("Failed to complete task after maximum attempts")
                 
+            # Persist chat_rounds for reward calculation
+            self.session_state.chat_rounds = self.rounds_seen
+            
             return final_result_msg
                 
         except Exception as e:
@@ -160,4 +165,4 @@ class ExampleRunner:
         if hasattr(self.session_state, 'custom_input_path'):
             self.logger.info(f"Custom Input Sensors Path: {self.session_state.custom_input_path}")
         if self.session_state.get_cello_results():
-            self.logger.info(f"Cello Results: {json.dumps(self.session_state.cello_results, indent=2)}") 
+            self.logger.info(f"Cello Results: {json.dumps(self.session_state.cello_results, indent=2)}")

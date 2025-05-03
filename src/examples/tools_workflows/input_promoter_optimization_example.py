@@ -38,8 +38,8 @@ os.chdir(project_root)
 from src.tools.cello_integration import CelloIntegration
 from src.tools.promoter_calculator_integration import PromoterCalculatorIntegration
 from src.library.library_manager import LibraryManager
-from src.library.part_library_customizer import PartLibraryCustomizer
-from src.library.ucf_retrieval import get_dna_part_by_name, list_promoters
+# from src.library.part_library_customizer import PartLibraryCustomizer
+# from src.library.ucf_retrieval import get_dna_part_by_name, list_promoters
 from src.llm_module import chat_with_tool
 
 # For OpenAI client

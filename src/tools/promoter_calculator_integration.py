@@ -402,3 +402,198 @@ class PromoterCalculatorIntegration:
         rpu = (calculator_value / reference_value) * reference_rpu
         return rpu
     
+import json
+import re
+from pathlib import Path
+from typing import Tuple
+
+
+
+
+def get_reference_promoter_from_ucf(
+    ucf_path: str | Path,
+    promoter_label: str = "J23101",
+    upstream: int = 70,
+    downstream: int = 20
+) -> str:
+    """
+    Return the promoter (with context) needed for Promoter Calculator.
+
+    Parameters
+    ----------
+    ucf_path :  path to the UCF JSON file
+    promoter_label :  '/label=' string that marks the reference promoter feature
+    upstream :  number of nucleotides to include before the promoter (default 70)
+    downstream :  number of nucleotides after the +1 position to include (default 20)
+
+    Returns
+    -------
+    str :  DNA sequence 5'→3' with specified context
+    """
+    def _clean_dna(raw: str) -> str:
+        """Remove line numbers, whitespace and non‑ACGT letters from a GenBank ORIGIN block."""
+        return re.sub(r'[^ACGTacgt]', '', raw)
+
+    def _extract_origin(genbank: str) -> str:
+        """Return the raw DNA string from an embedded GenBank record."""
+        m = re.search(r'ORIGIN(.*)//', genbank, re.S | re.I)
+        if not m:
+            raise ValueError("Could not find ORIGIN section.")
+        return _clean_dna(m.group(1))
+
+    def _find_feature_coords(genbank: str, label: str) -> Tuple[int, int]:
+        """
+        Locate the genomic coordinates (1‑based, inclusive) of the feature whose
+        /label= matches *label*.  Works for simple single‑segment locations.
+        """
+        # find the feature block containing `/label=label`
+        pattern = rf'misc_feature\s+([^\n]+).*?/label={re.escape(label)}'
+        m = re.search(pattern, genbank, re.S | re.I)
+        if not m:
+            raise ValueError(f"Feature with label '{label}' not found.")
+        loc = m.group(1).strip()          # e.g. "20..54" or "complement(214..243)"
+        # strip complement() if present
+        loc = re.sub(r'complement\(([^)]+)\)', r'\1', loc)
+        start, end = map(int, loc.split('..'))
+        return start, end                 # 1‑based coordinates
+    
+    ucf = json.loads(Path(ucf_path).read_text())
+    # 1) grab the measurement_std block
+    ms_block = next(
+        block for block in ucf if block.get("collection") == "measurement_std"
+    )
+    genbank_str = "\n".join(ms_block["plasmid_sequence"])
+
+    # 2) extract full plasmid sequence & promoter coords
+    full_seq = _extract_origin(genbank_str).upper()
+    start, end = _find_feature_coords(genbank_str, promoter_label)
+
+    # 3) build context window (convert 1‑based → 0‑based indices)
+    left = max(0, start - 1 - upstream)
+    right = min(len(full_seq), start - 1 + downstream)  # +1 position is start‑1
+    context_seq = full_seq[left:right]
+
+    return context_seq
+
+
+def filter_forward_promoters(
+    pc_out: dict,
+    require_sigma70: bool = True,
+    sigma_min: float = 0.8,
+    dg10_max: float = 0.0,
+    dg35_max: float = 0.0,
+    spacing_range: tuple[int, int] = (16, 18),
+) -> list:
+    """
+    Keep Forward‑strand promoters that satisfy:
+      • σ70 ≥ sigma_min  (unless require_sigma70 = False)
+      • –35/–10 spacing in spacing_range
+      • dG10 and dG35 not worse than dg*_max
+    Returns a list sorted by descending Tx_rate.
+    """
+
+    # σ‑factor fraction comes from the *global* dict
+    sigma70_frac = pc_out.get("sigmaLevels", {}).get("70", 1.0)
+
+    if require_sigma70 and sigma70_frac < sigma_min:
+        raise ValueError(
+            f"Run appears not to be σ70 (sigma70 = {sigma70_frac:.2f} < {sigma_min})."
+        )
+
+    forward = pc_out["Forward_Predictions_per_TSS"]
+
+    def spacing_ok(h35: tuple[int, int], h10: tuple[int, int]) -> bool:
+        return spacing_range[0] <= (h10[0] - h35[1]) <= spacing_range[1]
+
+    good = []
+    for obj in forward.values():
+        if not spacing_ok(obj.hex35_position, obj.hex10_position):
+            continue
+        if obj.dG_10 > dg10_max or obj.dG_35 > dg35_max:
+            continue
+        good.append(obj)
+
+    return sorted(good, key=lambda p: p.Tx_rate, reverse=True)
+
+def get_new_promoter_sequences(parent_seq: str,
+                               pc: PromoterCalculatorIntegration,
+                               n_best: int = 10,
+                               spacing_ok: tuple[int, int] = (16, 18)
+                              ) -> list[tuple[str, float]]:
+    """
+    Return up to n_best mutated promoter sequences with higher Tx_rate than parent.
+    Returns list of (sequence, Tx_rate) sorted by descending Tx_rate.
+    """
+
+    # 1. Run calculator once on the parent to locate TSS and motifs
+    parent_out   = pc.predict_promoter_strength(parent_seq)
+    parent_best  = filter_forward_promoters(parent_out)[0]
+    motifs       = {
+        "hex35": parent_best.hex35_position,
+        "hex10": parent_best.hex10_position,
+        "disc" : parent_best.disc_position,
+        "UP"   : parent_best.UP_position,
+    }
+    parent_rate  = parent_best.Tx_rate
+
+    # 2. Enumerate all single‑nt mutations in −35 and −10 hexamers
+    cand_seqs = []
+    bases = "ATGC"
+    for tag in ("hex35", "hex10"):
+        i0, i1 = motifs[tag]                    # 0‑based inclusive/exclusive
+        for idx in range(i0, i1):
+            for b in bases:
+                if b == parent_seq[idx]:
+                    continue
+                mut = parent_seq[:idx] + b + parent_seq[idx+1:]
+                cand_seqs.append(mut)
+
+    # 3. Optional: add spacer‑length edits if spacing is off
+    spacing = motifs["hex10"][0] - motifs["hex35"][1]
+    if spacing < spacing_ok[0]:
+        # insert 'A' right after −35
+        pos = motifs["hex35"][1]
+        cand_seqs.append(parent_seq[:pos] + "A" + parent_seq[pos:])
+    elif spacing > spacing_ok[1]:
+        # delete 1 nt at spacer midpoint
+        pos = motifs["hex35"][1] + (spacing // 2)
+        cand_seqs.append(parent_seq[:pos] + parent_seq[pos+1:])
+
+    # 4. Batch‑evaluate (vectorised calculator call if available, else loop)
+    better = []
+    for seq in cand_seqs:
+        out = pc.predict_promoter_strength(seq)
+        best = filter_forward_promoters(out)
+        if not best:
+            continue
+        rate = best[0].Tx_rate
+        if rate > parent_rate * 1.05:           # require ≥5 % improvement
+            better.append((seq, rate))
+
+    # 5. Sort and return top n_best
+    better.sort(key=lambda t: t[1], reverse=True)
+    return better[:n_best]
+
+
+if __name__ == "__main__":
+    calculator = PromoterCalculatorIntegration()
+
+    ucf_file = "ext_repos/Cello-UCF/files/v2/ucf/Eco/Eco1C1G1T1.UCF.json"
+    seq = get_reference_promoter_from_ucf(ucf_file, upstream=70, downstream=20)
+    ref_output = calculator.predict_promoter_strength(seq)
+    
+    candidates = filter_forward_promoters(ref_output)
+    if not candidates:
+        raise RuntimeError("No forward‑strand promoters passed the filters!")
+    best = candidates[0]      # highest Tx_rate that looks biologically sound
+    
+    current_promoter = seq # 'ACCAGGAATCTGAACGATTCGTTACCAATTGACATATTTAAAATTCTTGTTTAAAatgctagc'
+    current_promoter = 'CGCTCATTCACTAGGTCTGATTCGTTACCAATTGACAACTGGTGGTCGAATCAAGATAATAGACCAGTCACTATATTT'
+    current_strength = calculator.predict_promoter_strength(current_promoter)
+    
+    new_promoters = get_new_promoter_sequences(current_promoter, calculator)
+    print(new_promoters)
+
+
+
+    

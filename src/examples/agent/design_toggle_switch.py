@@ -6,7 +6,8 @@ from src.examples.agent.example_harness import ExampleRunner
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 logger = logging.getLogger("SimpleCircuitExample")
 
-PROMPT = """Design and simulate a genetic toggle switch in E. coli that turns on when two different signals are present (X and Y). It should turn off whenever a third, separate signal (Z) is present. 
+PROMPT = """Design and simulate a genetic toggle switch in E. coli that turns on when two different signals are present (X and Y). 
+It should turn off whenever a third, separate signal (Z) is present. 
 Use the provided tools to simulate the circuit in Cello with exhaustive set to False.
 After the simulation is complete, read the circuit score from the output file and return it as a JSON object with the key 'circuit_score'."""
 

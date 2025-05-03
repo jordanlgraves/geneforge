@@ -23,6 +23,7 @@ class SessionState:
         # New attributes to support RL and Verilog generation workflows
         self.design_spec: Optional[str] = None  # Natural-language high-level specification
         self.verilog_code: Optional[str] = None  # Latest generated/updated Verilog source
+        self.chat_rounds: int = 0  # Number of LLM-tool interaction rounds in current session
         # Add other state variables as needed, e.g.:
         # self.design_requirements: Dict[str, Any] = {}
 
@@ -74,6 +75,9 @@ class SessionState:
 
     def get_verilog_code(self) -> Optional[str]:
         return self.verilog_code
+
+    def get_chat_rounds(self) -> int:
+        return self.chat_rounds
 
     # Add methods to update and retrieve other state variables as needed
     # e.g., set_custom_ucf_path, get_cello_results, etc. 
