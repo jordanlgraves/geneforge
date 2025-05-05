@@ -35,7 +35,8 @@ UCF Library Manager:
 
 ## Retrieval Augmented Generation 
 Retrieval Augmented Generation: [https://arxiv.org/abs/2005.11401]
-While not yet implemented, RAG will be used to provide the agent with access to a wide range of information. This will give the planning agent the ability to search through scientific literature to find relevant information to assist in the design process.
+A narrow implementation of RAG is implemented through tool use. For example, the agent has the option to query available libraries and parts within those libraries. The responses from these tools calls allow the model to integrate drop-in libraries in the design process. 
+While not yet fully implemented, RAG will be used to provide the agent with access to a wide range of background information. This will give the planning agent the ability to search through scientific literature to find relevant information to assist in the design process.
 
 ## Reinforcement learning
 Reinforcement learning with verifiable rewards (RLVF): <https://arxiv.org/html/2503.23829v1>  
