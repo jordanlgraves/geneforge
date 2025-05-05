@@ -216,7 +216,17 @@ class CelloIntegration:
                 'error': "Yosys is not installed or not in the system PATH. Yosys is required for Cello's logic synthesis."
             }
 
-        self.logger.info("Starting Cello run with configuration: %s", self.cello_config)
+        # Check that miniEugene is running
+        if not self.java_process:
+            self._start_minieugene_server()
+
+        self.logger.info("-------------------------------------------")
+        self.logger.info("\nStarting Cello run with configuration: %s", self.cello_config)
+        self.logger.info("\nverilog: %s", verilog_code)
+        self.logger.info("\ncustom_ucf: %s", custom_ucf)
+        self.logger.info("\nrun_name: %s", run_name)
+        self.logger.info("\nlibrary_id: %s", self.library_manager.current_library_id)
+
         
         # create a run folder for this run
         run_folder = os.path.join("outputs", "cello_run", run_name)
