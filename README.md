@@ -84,7 +84,7 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 ## Minimal Setup steps
 1. git clone the repo
 2. `cd geneforge`
-3. `python3 -m venv venv` # create a virtual env
+3. `virtualenv venv --python=3.12` # create a virtual env -- Important: Use python version <3.13
 4. `source venv/bin/activate` # activate the environment
 5. `pip3 install -r requirements.txt` # install project requirements
 6. `mkdir ext_repos` # create a directory to hold external repos 
