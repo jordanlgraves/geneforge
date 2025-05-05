@@ -114,3 +114,4 @@ CELLO_ROOT=ext_repos/Cello-v2-1-Core
             "PYTHONPATH": "${workspaceFolder}/src:${workspaceFolder}:${workspaceFolder}/ext_repos/Cello-v2-1-Core:${workspaceFolder}/ext_repos/GPro:${workspaceFolder}/ext_repos/deepseed/Optimizer:${workspaceFolder}/ext_repos/Deep_promoter:${workspaceFolder}/ext_repos/ProD"
       },
 ```
+18. Test the setup by running `python3 src/examples/agent/design_simple_circuit.py`
