@@ -116,3 +116,8 @@ CELLO_ROOT=ext_repos/Cello-v2-1-Core
       },
 ```
 18. Test the setup by running `python3 src/examples/agent/design_simple_circuit.py`
+
+
+## References:
+
+CodeV: Empowering LLMs for Verilog Generation through Multi-Level Summarization[https://arxiv.org/html/2407.10424v4]
