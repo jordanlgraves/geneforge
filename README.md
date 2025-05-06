@@ -60,59 +60,58 @@ Our proof-of-concept pipeline is split into two complementary stages:
 3. The language model gradually learns to emit the needed tool calls directly in natural language, reducing reliance on the outer wrapper.
 
 ### Implementation roadmap
-- [ ] Build `RewardEvaluator` to verify Cello outputs and compute scalar rewards.  
-- [ ] Create `GeneCircuitToolEnv` and a minimal PPO training script.  
+- [x] Build `RewardEvaluator` to verify Cello outputs and compute scalar rewards.  
+- [x] Create `GeneCircuitToolEnv` and a minimal PPO training script.  
 - [ ] Collect ≥ 500 high-reward traces with the SB3 policy.  
 - [ ] Fine-tune an open model using `trl`, seeded with the collected traces.  
 - [ ] Iterate: improved model replaces parts of the wrapper; new data refreshes fine-tuning.
 
-This staged strategy lets us start learning **immediately** with the OpenAI API while producing verifiable data that directly powers full RLVF in the next phase.
-
 ## Examples
 
-Example scripts are provided in the `examples` directory. These range from simple integration, library management, to system level orchestration.
-
-
-## Contributing
-
-Contributions are welcome! Please feel free to submit a pull request.
-
-## License
-
-This project is licensed under the MIT License - see the LICENSE file for details.
+Example scripts are provided in the `examples` directory. 
 
 ## Minimal Setup steps
 1. git clone the repo
 2. `cd geneforge`
 3. `virtualenv venv --python=3.12` # create a virtual env -- Important: Use python version <3.13
 4. `source venv/bin/activate` # activate the environment
-5. `pip3 install -r requirements.txt` # install project requirements
+5. `pip install -r requirements.txt` # install project requirements
 6. `mkdir ext_repos` # create a directory to hold external repos 
 7. `cd ext_repos`    # cd into the created repo
 8. `git clone https://github.com/CIDARLAB/Cello-UCF.git`   # clone cello libs
-9. `cd ..`  # cd back to ext_repos 
-10. `git clone https://github.com/CIDARLAB/Cello-v2-1-Core.git` # clone cello
-11. `cd ..`  # cd back into ext_repos
-12. `pip3 install -r ext_repos/Cello-v2-1-Core/requirements.txt` # install cello requirements
-13. `git clone https://github.com/barricklab/promoter-calculator.git` # clone promoter calculator
-14. `touch .env` # create file `.env` in geneforge folder (project root) to hole env variables
-15. `mkdir logs` # create the logs folder
-16. Add the following keys to `.env`:
-
+9. `git clone https://github.com/CIDARLAB/Cello-v2-1-Core.git` # clone cello
+10. `git clone https://github.com/barricklab/promoter-calculator.git` # clone promoter calculator
+12. `pip install -r ext_repos/Cello-v2-1-Core/requirements.txt` # install cello requirements
+13. `pip install -r ext_repos/Cello-UCF/requirements.txt` # install Cello-UCF requirements
+14. `pip install -r ext_repos/promoter-calculator/requirements.txt` # install promoter-calculator requirements
+15. `cd ..` # cd back into project root (geneforge directory)
+16. `mkdir logs` # create the logs folder
+17. `touch .env` # create file `.env` in geneforge folder (project root) to hold environment variables
+18. Add the following keys to `.env`:
 ```
-OPENAI_API_KEY={Your open ai api key}
-DEEPSEEK_API_KEY={Your deepseek api key (if using deepseek)}
+OPENAI_API_KEY={Your open ai api key}   # this or deepseek api key required to use LLMs
+DEEPSEEK_API_KEY={Your deepseek api key (if using deepseek)} # not required
 DEEPSEEK_BASE_URL=https://api.deepseek.com
 
 PROMOTER_CALCULATOR_PATH=ext_repos/promoter-calculator/promoter-calculator
-
 CELLO_UCF_ROOT=ext_repos/Cello-UCF
 CELLO_ROOT=ext_repos/Cello-v2-1-Core
 ```
-17. For using a debugger such as in VS Code or Cursor, it is helpful to set the env in the config:
+18. For using a debugger such as in VS Code or Cursor, set the PYTHONPATH in the config to the project root:
 ```
       "env": {
-            "PYTHONPATH": "${workspaceFolder}/src:${workspaceFolder}:${workspaceFolder}/ext_repos/Cello-v2-1-Core:${workspaceFolder}/ext_repos/GPro:${workspaceFolder}/ext_repos/deepseed/Optimizer:${workspaceFolder}/ext_repos/Deep_promoter:${workspaceFolder}/ext_repos/ProD"
+            "PYTHONPATH": "${workspaceFolder}"
       },
 ```
-18. Test the setup by running `python3 src/examples/agent/design_simple_circuit.py`
+19. Test the setup by running `python src/examples/agent/design_simple_circuit.py` from `geneforge` directory.
+
+
+## References/Links
+
+- Cello [Github](https://github.com/CIDARLAB/Cello-v2-1-Core.git)
+- Cello Libs [Github](https://github.com/CIDARLAB/Cello-UCF.git)
+- Promoter Calculator [Github](https://github.com/barricklab/promoter-calculator.git)
+
+### Verilog Generation
+- CodeV: Empowering LLMs for Verilog Generation through Multi-Level Summarization [Paper](https://arxiv.org/html/2407.10424v4)
+- RTLCoder: Fully Open-Source and Efficient LLM-Assisted RTL Code Generation Technique [Paper](https://arxiv.org/pdf/2312.08617) [Model](https://huggingface.co/ishorn5/RTLCoder-Deepseek-v1.1)
