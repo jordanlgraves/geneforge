@@ -66,20 +66,9 @@ Our proof-of-concept pipeline is split into two complementary stages:
 - [ ] Fine-tune an open model using `trl`, seeded with the collected traces.  
 - [ ] Iterate: improved model replaces parts of the wrapper; new data refreshes fine-tuning.
 
-This staged strategy lets us start learning **immediately** with the OpenAI API while producing verifiable data that directly powers full RLVF in the next phase.
-
 ## Examples
 
-Example scripts are provided in the `examples` directory. These range from simple integration, library management, to system level orchestration.
-
-
-## Contributing
-
-Contributions are welcome! Please feel free to submit a pull request.
-
-## License
-
-This project is licensed under the MIT License - see the LICENSE file for details.
+Example scripts are provided in the `examples` directory. 
 
 ## Minimal Setup steps
 1. git clone the repo
