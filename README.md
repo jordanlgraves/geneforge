@@ -60,8 +60,8 @@ Our proof-of-concept pipeline is split into two complementary stages:
 3. The language model gradually learns to emit the needed tool calls directly in natural language, reducing reliance on the outer wrapper.
 
 ### Implementation roadmap
-- [ ] Build `RewardEvaluator` to verify Cello outputs and compute scalar rewards.  
-- [ ] Create `GeneCircuitToolEnv` and a minimal PPO training script.  
+- [x] Build `RewardEvaluator` to verify Cello outputs and compute scalar rewards.  
+- [x] Create `GeneCircuitToolEnv` and a minimal PPO training script.  
 - [ ] Collect ≥ 500 high-reward traces with the SB3 policy.  
 - [ ] Fine-tune an open model using `trl`, seeded with the collected traces.  
 - [ ] Iterate: improved model replaces parts of the wrapper; new data refreshes fine-tuning.
