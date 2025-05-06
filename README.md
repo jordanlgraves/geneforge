@@ -95,9 +95,10 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 12. `pip install -r ext_repos/Cello-v2-1-Core/requirements.txt` # install cello requirements
 13. `pip install -r ext_repos/Cello-UCF/requirements.txt` # install Cello-UCF requirements
 14. `pip install -r ext_repos/promoter-calculator/requirements.txt` # install promoter-calculator requirements
-15. `mkdir logs` # create the logs folder
-16. `touch .env` # create file `.env` in geneforge folder (project root) to hold environment variables
-17. Add the following keys to `.env`:
+15. `cd ..` # cd back into project root (geneforge directory)
+16. `mkdir logs` # create the logs folder
+17. `touch .env` # create file `.env` in geneforge folder (project root) to hold environment variables
+18. Add the following keys to `.env`:
 ```
 OPENAI_API_KEY={Your open ai api key}   # this or deepseek api key required to use LLMs
 DEEPSEEK_API_KEY={Your deepseek api key (if using deepseek)} # not required
