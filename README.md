@@ -86,36 +86,34 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 2. `cd geneforge`
 3. `virtualenv venv --python=3.12` # create a virtual env -- Important: Use python version <3.13
 4. `source venv/bin/activate` # activate the environment
-5. `pip3 install -r requirements.txt` # install project requirements
+5. `pip install -r requirements.txt` # install project requirements
 6. `mkdir ext_repos` # create a directory to hold external repos 
 7. `cd ext_repos`    # cd into the created repo
 8. `git clone https://github.com/CIDARLAB/Cello-UCF.git`   # clone cello libs
-9. `cd ..`  # cd back to ext_repos 
-10. `git clone https://github.com/CIDARLAB/Cello-v2-1-Core.git` # clone cello
-11. `cd ..`  # cd back into ext_repos
-12. `pip3 install -r ext_repos/Cello-v2-1-Core/requirements.txt` # install cello requirements
-13. `git clone https://github.com/barricklab/promoter-calculator.git` # clone promoter calculator
-14. `touch .env` # create file `.env` in geneforge folder (project root) to hole env variables
+9. `git clone https://github.com/CIDARLAB/Cello-v2-1-Core.git` # clone cello
+10. `git clone https://github.com/barricklab/promoter-calculator.git` # clone promoter calculator
+12. `pip install -r ext_repos/Cello-v2-1-Core/requirements.txt` # install cello requirements
+13. `pip install -r ext_repos/Cello-UCF/requirements.txt` # install Cello-UCF requirements
+14. `pip install -r ext_repos/promoter-calculator/requirements.txt` # install promoter-calculator requirements
 15. `mkdir logs` # create the logs folder
-16. Add the following keys to `.env`:
-
+16. `touch .env` # create file `.env` in geneforge folder (project root) to hold environment variables
+17. Add the following keys to `.env`:
 ```
-OPENAI_API_KEY={Your open ai api key}
-DEEPSEEK_API_KEY={Your deepseek api key (if using deepseek)}
+OPENAI_API_KEY={Your open ai api key}   # this or deepseek api key required to use LLMs
+DEEPSEEK_API_KEY={Your deepseek api key (if using deepseek)} # not required
 DEEPSEEK_BASE_URL=https://api.deepseek.com
 
 PROMOTER_CALCULATOR_PATH=ext_repos/promoter-calculator/promoter-calculator
-
 CELLO_UCF_ROOT=ext_repos/Cello-UCF
 CELLO_ROOT=ext_repos/Cello-v2-1-Core
 ```
-17. For using a debugger such as in VS Code or Cursor, it is helpful to set the env in the config:
+18. For using a debugger such as in VS Code or Cursor, set the PYTHONPATH in the config to the project root:
 ```
       "env": {
-            "PYTHONPATH": "${workspaceFolder}/src:${workspaceFolder}:${workspaceFolder}/ext_repos/Cello-v2-1-Core:${workspaceFolder}/ext_repos/GPro:${workspaceFolder}/ext_repos/deepseed/Optimizer:${workspaceFolder}/ext_repos/Deep_promoter:${workspaceFolder}/ext_repos/ProD"
+            "PYTHONPATH": "${workspaceFolder}"
       },
 ```
-18. Test the setup by running `python3 src/examples/agent/design_simple_circuit.py`
+19. Test the setup by running `python src/examples/agent/design_simple_circuit.py` from `geneforge` directory.
 
 
 ## References/Links
