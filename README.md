@@ -118,6 +118,12 @@ CELLO_ROOT=ext_repos/Cello-v2-1-Core
 18. Test the setup by running `python3 src/examples/agent/design_simple_circuit.py`
 
 
-## References:
+## References/Links
 
-CodeV: Empowering LLMs for Verilog Generation through Multi-Level Summarization[https://arxiv.org/html/2407.10424v4]
+- Cello [Github](https://github.com/CIDARLAB/Cello-v2-1-Core.git)
+- Cello Libs [Github](https://github.com/CIDARLAB/Cello-UCF.git)
+- Promoter Calculator [Github](https://github.com/barricklab/promoter-calculator.git)
+
+### Verilog Generation
+- CodeV: Empowering LLMs for Verilog Generation through Multi-Level Summarization [Paper](https://arxiv.org/html/2407.10424v4)
+- RTLCoder: Fully Open-Source and Efficient LLM-Assisted RTL Code Generation Technique [Paper](https://arxiv.org/pdf/2312.08617) [Model](https://huggingface.co/ishorn5/RTLCoder-Deepseek-v1.1)
