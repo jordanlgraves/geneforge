@@ -72,21 +72,11 @@ class GeneCircuitEnv(gym.Env):
             self.tool_integration.call_tool_function("describe_available_libraries", {})
 
         elif action == ACT_SELECT_LIB:
-            # Prefer an E. coli library because most example prompts (including
-            # the default one used for smoke-tests) target that organism and
-            # the Eco UCFs are the most thoroughly validated with Cello.  This
-            # greatly reduces the chance of MiniEugene/Cello failures due to
-            # mismatched parts.  If no Eco library is found we gracefully fall
-            # back to the first available entry.
-
             libs = self.session_state.get_library_manager().get_available_libraries()
             if libs:
-                eco_libs = [lib_id for lib_id in libs.keys() if lib_id.startswith("Eco")]
-                chosen_lib = eco_libs[0] if eco_libs else list(libs.keys())[0]
-
-                self.tool_integration.call_tool_function(
-                    "select_library", {"library_id": chosen_lib}
-                )
+                # select first library that starts with "Eco"
+                first_lib_id = next((lib_id for lib_id in libs if lib_id.startswith("Eco")), list(libs.keys())[0])
+                self.tool_integration.call_tool_function("select_library", {"library_id": first_lib_id})
             else:
                 info["error"] = "No libraries available"
 
