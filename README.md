@@ -108,10 +108,15 @@ CELLO_ROOT=ext_repos/Cello-v2-1-Core
 
 ## References/Links
 
+Tools/Core
 - Cello [Github](https://github.com/CIDARLAB/Cello-v2-1-Core.git)
 - Cello Libs [Github](https://github.com/CIDARLAB/Cello-UCF.git)
 - Promoter Calculator [Github](https://github.com/barricklab/promoter-calculator.git)
 
-### Verilog Generation
+Verilog Generation
 - CodeV: Empowering LLMs for Verilog Generation through Multi-Level Summarization [Paper](https://arxiv.org/html/2407.10424v4)
 - RTLCoder: Fully Open-Source and Efficient LLM-Assisted RTL Code Generation Technique [Paper](https://arxiv.org/pdf/2312.08617) [Model](https://huggingface.co/ishorn5/RTLCoder-Deepseek-v1.1)
+
+Other 
+- Anatomical Compiler [Paper](https://pmc.ncbi.nlm.nih.gov/articles/PMC10527237/)
+- CLASSIC: Ultra-high throughput mapping of genetic design space [Paper](https://pubmed.ncbi.nlm.nih.gov/36993481/)
