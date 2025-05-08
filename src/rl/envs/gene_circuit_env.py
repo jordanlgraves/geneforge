@@ -45,7 +45,6 @@ class GeneCircuitEnv(gym.Env):
         self.steps_taken: int = 0
         self._obs = np.zeros((3,), dtype=np.float32)
 
-    # ------------------------------------------------------------------
     def _build_obs(self) -> np.ndarray:
         lib_sel = 1.0 if self.session_state.get_current_library_id() else 0.0
         has_verilog = 1.0 if getattr(self.session_state, "verilog_code", None) else 0.0
@@ -53,7 +52,6 @@ class GeneCircuitEnv(gym.Env):
         self._obs[:] = (lib_sel, has_verilog, has_results)
         return self._obs.copy()
 
-    # ------------------------------------------------------------------
     def reset(self, *, seed: int | None = None, options=None):  # noqa: D401
         super().reset(seed=seed)
         self.steps_taken = 0
@@ -63,7 +61,6 @@ class GeneCircuitEnv(gym.Env):
         self.tool_integration = ToolIntegration(self.session_state)
         return self._build_obs(), {}
 
-    # ------------------------------------------------------------------
     def step(self, action: int) -> Tuple[np.ndarray, float, bool, bool, Dict[str, Any]]:  # noqa: D401
         assert self.session_state is not None and self.tool_integration is not None, "env.reset() must be called first"
         terminated = False
@@ -75,15 +72,26 @@ class GeneCircuitEnv(gym.Env):
             self.tool_integration.call_tool_function("describe_available_libraries", {})
 
         elif action == ACT_SELECT_LIB:
+            # Prefer an E. coli library because most example prompts (including
+            # the default one used for smoke-tests) target that organism and
+            # the Eco UCFs are the most thoroughly validated with Cello.  This
+            # greatly reduces the chance of MiniEugene/Cello failures due to
+            # mismatched parts.  If no Eco library is found we gracefully fall
+            # back to the first available entry.
+
             libs = self.session_state.get_library_manager().get_available_libraries()
             if libs:
-                first_lib_id = list(libs.keys())[0]
-                self.tool_integration.call_tool_function("select_library", {"library_id": first_lib_id})
+                eco_libs = [lib_id for lib_id in libs.keys() if lib_id.startswith("Eco")]
+                chosen_lib = eco_libs[0] if eco_libs else list(libs.keys())[0]
+
+                self.tool_integration.call_tool_function(
+                    "select_library", {"library_id": chosen_lib}
+                )
             else:
                 info["error"] = "No libraries available"
 
         elif action == ACT_GENERATE_VERILOG:
-            self.tool_integration.call_tool_function("generate_verilog", {})
+            self.tool_integration.call_tool_function("generate_verilog", {"spec": self.prompt})
 
         elif action == ACT_RUN_CELLO:
             verilog = self.session_state.verilog_code

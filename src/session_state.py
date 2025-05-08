@@ -27,6 +27,19 @@ class SessionState:
         # Add other state variables as needed, e.g.:
         # self.design_requirements: Dict[str, Any] = {}
 
+    def to_dict(self) -> Dict[str, Any]:
+        """Convert the session state to a dictionary."""
+        return {
+            "library_manager": self.library_manager.to_dict(),
+            "current_ucf_data": self.current_ucf_data,
+            "custom_ucf_path": self.custom_ucf_path,
+            "verilog_code": self.verilog_code,
+            "design_spec": self.design_spec,
+            "chat_rounds": self.chat_rounds,
+            "cello_results": self.cello_results,
+            "custom_input_path": self.custom_input_path,
+        }
+
     def select_library(self, library_id: str) -> bool:
         """Selects a library and updates the session state."""
         logger.info(f"Session selecting library: {library_id}")
