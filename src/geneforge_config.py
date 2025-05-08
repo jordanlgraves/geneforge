@@ -24,14 +24,4 @@ class Config:
         # LLM Settings
         self.default_model = os.getenv("DEFAULT_MODEL", "gpt-4o-mini")
         self.client_mode = os.getenv("CLIENT_MODE", "OPENAI")
-        
-        # Validate required paths
-        self._validate_paths()
     
-    def _validate_paths(self):
-        """Ensure required directories exist."""
-        os.makedirs(self.data_dir, exist_ok=True)
-        os.makedirs(self.libs_dir / "parsed", exist_ok=True)
-        
-        if not self.library_json_path.exists():
-            raise FileNotFoundError(f"Library file not found: {self.library_json_path}") 
