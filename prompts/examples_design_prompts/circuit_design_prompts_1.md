@@ -152,18 +152,4 @@ Demonstrate a scenario where the circuit produces two outputs with different log
 - **iBioSim**: Verify the combined truth table across all input combinations.
 - **RL Optimization**: Possibly optimize to minimize crosstalk or avoid fluorescent bleed-through.
 
-This final scenario ensures the pipeline can handle multiple outputs simultaneously, which is common in more elaborate genetic programs.
-
-## Summary of the Example Circuits
-
-| Circuit | Complexity | Key Testing Aspect |
-|---------|------------|---------------------|
-| 1. Single-Input Pass Gate | Very Low | Basic pipeline validation (LLM → Cello → iBioSim). |
-| 2. Two-Input AND Gate | Low-Med | Classic combinational logic, tests multi-input design. |
-| 3. NOT Gate + Quantitative Leakage Spec | Med | Introduces performance constraints (OFF < 10% of ON). |
-| 4. Two-Layer Cascade | Med-High | Layered logic, tests multi-step regulation. |
-| 5. Time-Delay Circuit | High (temporal) | Demonstrates dynamic (time-series) specs. |
-| 6. Toggle Switch (Bistability) | High (nonlinear) | Tests memory behavior & stability analysis. |
-| 7. Multi-Output Logic (Optional Stretch) | High (multi-output) | Tests parallel logic for two different outputs. |
-
-Circuits 1–2 are the minimal baseline: they confirm that the LLM can parse straightforward specs, that Cello can produce working designs, and that iBioSim can simulate simple truth tables. Circuits 3–4 add slightly more complexity: leakage constraints (quantitative specs) and multi-layer gating. Circuits 5–6 bring in dynamic or nonlinear behavior: time delays and toggle switches. This ensures the pipeline can handle advanced design tasks. Circuit 7 is a multi-output scenario—useful for a more complex test if time allows.
+This scenario ensures the pipeline can handle multiple outputs simultaneously, which is common in more elaborate genetic programs.
