@@ -108,6 +108,7 @@ CELLO_ROOT=ext_repos/Cello-v2-1-Core
 
 ## References/Links
 
+Tools/Core
 - Cello [Github](https://github.com/CIDARLAB/Cello-v2-1-Core.git)
 - Cello Libs [Github](https://github.com/CIDARLAB/Cello-UCF.git)
 - Promoter Calculator [Github](https://github.com/barricklab/promoter-calculator.git)
