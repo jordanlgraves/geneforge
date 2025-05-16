@@ -17,14 +17,21 @@ ACT_RUN_CELLO   = 3
 ACT_STOP        = 4
 
 
-class GeneCircuitEnv(gym.Env):
+class GeneCircuitMacroEnv(gym.Env):
     """Gymnasium environment where the agent chooses tool calls step-by-step."""
 
     metadata = {"render_modes": []}
 
     def __init__(self, prompt: str,
                  max_steps: int = 10,
-                 reward_evaluator: RewardEvaluator | None = None):
+                 reward_evaluator: RewardEvaluator | None = None,
+                 # Reward-shaping parameters
+                 shaping: bool = True,
+                 lib_bonus: float = 0.2,
+                 verilog_bonus: float = 0.3,
+                 cello_bonus: float = 0.7,
+                 repeat_penalty: float = 0.0,
+                 describe_bonus: float = 0.05):
         super().__init__()
         self.prompt = prompt
         self.max_steps = max_steps
@@ -44,6 +51,14 @@ class GeneCircuitEnv(gym.Env):
         self.session_state: SessionState | None = None
         self.steps_taken: int = 0
         self._obs = np.zeros((3,), dtype=np.float32)
+
+        # ---------------- Reward shaping config ----------------
+        self.shaping_enabled = shaping
+        self.lib_bonus = lib_bonus
+        self.verilog_bonus = verilog_bonus
+        self.cello_bonus = cello_bonus
+        self.repeat_penalty = repeat_penalty
+        self.describe_bonus = describe_bonus
 
     def _build_obs(self) -> np.ndarray:
         lib_sel = 1.0 if self.session_state.get_current_library_id() else 0.0
@@ -67,6 +82,10 @@ class GeneCircuitEnv(gym.Env):
         truncated = False
         info: Dict[str, Any] = {}
 
+        # Store previous observation for shaping
+        prev_obs = self._obs.copy()
+        prev_session_state = self.session_state.to_dict()
+
         # ---------------- Dispatch tool -------------------
         if action == ACT_DESCRIBE_LIBS:
             self.tool_integration.call_tool_function("describe_available_libraries", {})
@@ -84,15 +103,19 @@ class GeneCircuitEnv(gym.Env):
             self.tool_integration.call_tool_function("generate_verilog", {"spec": self.prompt})
 
         elif action == ACT_RUN_CELLO:
-            verilog = self.session_state.verilog_code
+            verilog = self.session_state.get_verilog_code()
             if verilog:
-                self.tool_integration.call_tool_function(
-                    "design_with_cello",
-                    {
+                try:
+                    cello_results = self.tool_integration.call_tool_function(
+                        "design_with_cello",
+                        {
                         "run_name": "rl_run",
                         "verilog_code": verilog,
                     },
-                )
+                    )
+                    print(f"Cello run results: {cello_results}")
+                except Exception as e:
+                    info["error"] = f"Cello run failed: {str(e)}"
             else:
                 info["error"] = "No verilog available"
 
@@ -105,19 +128,52 @@ class GeneCircuitEnv(gym.Env):
 
         # Reward evaluation after every step
         reward_dict = self.reward_evaluator.evaluate(self.session_state)
-        reward = float(reward_dict["total"] - self.step_penalty)
-        info["raw_reward"] = reward_dict
 
-        # Terminate if Cello results obtained or max steps
-        if obs[2] == 1.0:
-            terminated = True
+        # Base reward (end-state + step penalty)
+        reward = float(reward_dict["total"] - self.step_penalty)
+
+        # --------------------------------------------------
+        # Reward shaping – milestone bonuses
+        # --------------------------------------------------
+        shaping_bonus = 0.0
+        if self.shaping_enabled:
+            # Small bonus for describing libraries
+            if action == ACT_DESCRIBE_LIBS and prev_session_state.get('library_manager', dict()).get('current_library_id') is None:
+                shaping_bonus += self.describe_bonus
+            
+            # Library selected first time
+            if action == ACT_SELECT_LIB and prev_obs[0] == 0 and obs[0] == 1:
+                shaping_bonus += self.lib_bonus
+            elif self.repeat_penalty > 0 and action == ACT_SELECT_LIB and prev_obs[0] == 1 and obs[0] == 1:
+                shaping_bonus -= self.repeat_penalty
+
+            # Verilog generated first time
+            if action == ACT_GENERATE_VERILOG and prev_obs[1] == 0 and obs[1] == 1:
+                shaping_bonus += self.verilog_bonus
+            elif self.repeat_penalty > 0 and action == ACT_GENERATE_VERILOG and prev_obs[1] == 1 and obs[1] == 1:
+                shaping_bonus -= self.repeat_penalty
+
+            # Cello results obtained first time
+            if action == ACT_RUN_CELLO and prev_obs[2] == 0 and obs[2] == 1:
+                shaping_bonus += self.cello_bonus
+            elif self.repeat_penalty > 0 and action == ACT_RUN_CELLO and prev_obs[2] == 1 and obs[2] == 1:
+                shaping_bonus -= self.repeat_penalty
+
+        reward += shaping_bonus
+
+        # Expose details for debugging/tracking
+        info["raw_reward"] = reward_dict
+        if self.shaping_enabled:
+            info["shaping_bonus"] = shaping_bonus
+
+        # Terminate if max steps reached
         if self.steps_taken >= self.max_steps:
             truncated = True
 
         return obs, reward, terminated, truncated, info
 
 if __name__ == "__main__":
-    env = GeneCircuitEnv(
+    env = GeneCircuitMacroEnv(
         prompt="""Design and simulate in Cello a NOT gate circuit for E. coli that uses only a single input sensor.
 Start by selecting a library. List the available input sensors in the library's default input sensors file.
 Choose one input sensor (like the arabinose sensor) and create a custom minimal input sensors file containing just that sensor.

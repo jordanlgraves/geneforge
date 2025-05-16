@@ -20,17 +20,24 @@ class SessionState:
         self.custom_ucf_path: Optional[str] = None
         self.custom_input_path: Optional[str] = None
         self.cello_results: Optional[Dict[str, Any]] = None
-        # New attributes to support RL and Verilog generation workflows
         self.design_spec: Optional[str] = None  # Natural-language high-level specification
         self.verilog_code: Optional[str] = None  # Latest generated/updated Verilog source
         self.chat_rounds: int = 0  # Number of LLM-tool interaction rounds in current session
-        # Add other state variables as needed, e.g.:
-        # self.design_requirements: Dict[str, Any] = {}
+        
+        
+
+    def from_dict(self, **kwargs):
+        """Initialize the session state from a dictionary."""
+        for key, value in kwargs.items():
+            setattr(self, key, value)
+        if "library_manager" in kwargs:
+            self.library_manager = LibraryManager()
+            self.library_manager.select_library(kwargs["library_manager"]["current_library_id"])
 
     def to_dict(self) -> Dict[str, Any]:
         """Convert the session state to a dictionary."""
         return {
-            "library_manager": self.library_manager.to_dict(),
+            "library_manager": {"current_library_id": self.library_manager.current_library_id},
             "current_ucf_data": self.current_ucf_data,
             "custom_ucf_path": self.custom_ucf_path,
             "verilog_code": self.verilog_code,

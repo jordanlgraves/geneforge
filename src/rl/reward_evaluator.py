@@ -13,8 +13,11 @@ class RewardEvaluator:
     organism matches, etc.).
     """
 
-    def __init__(self, max_circuit_score: float = 400.0, success_bonus: float = 1.0,
-                 scenario: str | None = None, step_penalty: float = 0.0):
+    def __init__(self, max_circuit_score: float = 400.0, 
+                 success_bonus: float = 1.0,
+                 library_bonus: float = 0.0,
+                 scenario: str | None = None, 
+                 step_penalty: float = 0.0):
         """
         Parameters
         ----------
@@ -23,11 +26,18 @@ class RewardEvaluator:
             Adjust once we have empirical score distribution.
         success_bonus : float, default 1.0
             Additive bonus if all mandatory success criteria are met.
+        library_bonus : float, default 0.0
+            Additive bonus if a library is selected.
+        scenario : str | None, default None
+            Name of the scenario to evaluate the reward for.
+        step_penalty : float, default 0.0
+            Penalty for each step taken to minimize the number of steps.
         """
         self.max_circuit_score = max_circuit_score
         self.success_bonus = success_bonus
         self.scenario = scenario
         self.step_penalty = step_penalty
+        self.library_bonus = library_bonus
 
     def evaluate(self, session_state: SessionState) -> Dict[str, Any]:
         """Return a dictionary with individual reward components and total.
@@ -60,6 +70,8 @@ class RewardEvaluator:
         # Basic success criteria: Cello ran and produced a score
         success_flag = 1.0 if circuit_score is not None else 0.0
 
+        has_library = session_state.get_current_library_id() is not None
+
         # Examples of scenario-specific reward calculation
         if self.scenario == "single_sensor":
             # session_state.custom_input_path or session_state.get_cello_results()["key to constraints/input_sensors.json"]
@@ -78,6 +90,8 @@ class RewardEvaluator:
             raise NotImplementedError("Specific sensor scenario not implemented")
         else:
             total_reward = success_flag * self.success_bonus + (circuit_score_norm or 0.0) - step_cost
+
+        total_reward += has_library * self.library_bonus
 
         return {
             "success": success_flag,

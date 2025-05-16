@@ -371,36 +371,3 @@ class PromoterOptimizer:
         
         logger.info(f"Generated {len(results)} promoters after {attempts} attempts")
         return results
-
-class RepressorOptimizer:
-    """
-    Class for optimizing repressor-based genetic parts.
-    This is a placeholder that would need implementation based on available tools.
-    """
-    def __init__(self):
-        pass
-    
-    def optimize_binding_site(self, 
-                             repressor_id: str, 
-                             starting_site: str,
-                             target_repression: float) -> Dict:
-        """
-        Optimize a repressor binding site for target repression level.
-        
-        Args:
-            repressor_id: ID of the repressor protein
-            starting_site: Starting binding site sequence
-            target_repression: Desired repression level (0-1)
-            
-        Returns:
-            Dict with optimized binding site and predicted repression
-        """
-        # This would need to be implemented with proper models
-        # For now, return a placeholder
-        return {
-            "original_site": starting_site,
-            "optimized_site": starting_site,  # No actual optimization yet
-            "target_repression": target_repression,
-            "predicted_repression": 0.5,  # Placeholder
-            "message": "Repressor optimization not yet implemented"
-        } 

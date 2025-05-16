@@ -23,13 +23,9 @@ from promoter_calculator import Promoter_Calculator, PromoCalcResults
 
 
 class PromoterCalculatorIntegration:
-    def __init__(self):
-        self.organism = "Escherichia coli str. K-12 substr. MG1655"
-        self.calculator = Promoter_Calculator(organism=self.organism)
-
     def predict_promoter_strength(self, 
                                   sequence: str, 
-                                  organism: str = None) -> float:
+                                  organism: str = "Escherichia coli str. K-12 substr. MG1655") -> float:
         """
         Run the promoter calculator on a sequence.
         
@@ -42,10 +38,7 @@ class PromoterCalculatorIntegration:
         # Format the sequence for the model
         formatted_seq = sequence.upper()
         
-        if organism:
-            calculator = Promoter_Calculator(organism=organism)
-        else:
-            calculator = self.calculator
+        calculator = Promoter_Calculator(organism=organism)
             
         calculator.run(formatted_seq)
         result = calculator.output()
@@ -56,7 +49,8 @@ class PromoterCalculatorIntegration:
                           target_strength: float = None, 
                           iterations: int = 50,
                           preserve_operators: bool = True,
-                          operator_regions: List[Tuple[int, int]] = None) -> Dict[str, Any]:
+                          operator_regions: List[Tuple[int, int]] = None,
+                          organism: str = "Escherichia coli str. K-12 substr. MG1655") -> Dict[str, Any]:
         """
         Optimize a promoter sequence to achieve a target strength or maximize strength.
         
@@ -84,8 +78,9 @@ class PromoterCalculatorIntegration:
         sequence = sequence.upper()
         best_sequence = sequence
         
-        # Get initial strength
-        initial_strength = self.predict_promoter_strength(sequence)
+        # Get initial strength (numeric Tx_rate)
+        initial_out = self.predict_promoter_strength(sequence, organism=organism)
+        initial_strength = self._best_tx_rate(initial_out)
         best_strength = initial_strength
         
         if target_strength is None:
@@ -141,8 +136,9 @@ class PromoterCalculatorIntegration:
             
             mutated_sequence = ''.join(mutated_sequence)
             
-            # Evaluate the mutated sequence
-            mutated_strength = self.predict_promoter_strength(mutated_sequence)
+            # Evaluate the mutated sequence (numeric Tx_rate)
+            mutated_out = self.predict_promoter_strength(mutated_sequence, organism=organism)
+            mutated_strength = self._best_tx_rate(mutated_out)
             
             # Determine if this is better based on our goal
             if optimization_goal == "maximize":
@@ -191,7 +187,8 @@ class PromoterCalculatorIntegration:
                               sequence: str, 
                               target_strength: float = None, 
                               iterations: int = 50,
-                              preserve_operators: bool = True) -> Dict[str, Any]:
+                              preserve_operators: bool = True,
+                              organism: str = "Escherichia coli str. K-12 substr. MG1655") -> Dict[str, Any]:
         """
         Optimize a promoter sequence by intelligently targeting RNAP binding regions.
         
@@ -211,7 +208,7 @@ class PromoterCalculatorIntegration:
         logger.info(f"Starting promoter region-specific optimization with {iterations} iterations")
         
         # First, analyze the promoter to identify its regions
-        initial_analysis = self.predict_promoter_strength(sequence)
+        initial_analysis = self.predict_promoter_strength(sequence, organism=organism)
         
         # Get the strongest promoter prediction (highest Tx_rate)
         best_prediction = None
@@ -231,7 +228,7 @@ class PromoterCalculatorIntegration:
         
         if not best_prediction:
             logger.warning("No promoter regions identified in the sequence. Using standard optimization.")
-            return self.optimize_promoter(sequence, target_strength, iterations)
+            return self.optimize_promoter(sequence, target_strength, iterations, organism=organism)
         
         # Extract regions from the prediction
         promoter_regions = {
@@ -283,8 +280,9 @@ class PromoterCalculatorIntegration:
         # Reuse most of the logic from the original optimize_promoter method
         best_sequence = sequence
         
-        # Get initial strength
-        initial_strength = best_tx_rate  # Use the Tx_rate from our analysis
+        # Get initial strength (numeric Tx_rate)
+        initial_out = self.predict_promoter_strength(sequence, organism=organism)
+        initial_strength = self._best_tx_rate(initial_out)
         best_strength = initial_strength
         
         if target_strength is None:
@@ -322,18 +320,9 @@ class PromoterCalculatorIntegration:
             
             mutated_sequence = ''.join(mutated_sequence)
             
-            # Evaluate the mutated sequence
-            mutation_analysis = self.predict_promoter_strength(mutated_sequence)
-            
-            # Find the best promoter prediction in the mutated sequence
-            mutated_strength = 0
-            for tss, prediction in mutation_analysis['Forward_Predictions_per_TSS'].items():
-                if prediction['Tx_rate'] > mutated_strength:
-                    mutated_strength = prediction['Tx_rate']
-            
-            for tss, prediction in mutation_analysis['Reverse_Predictions_per_TSS'].items():
-                if prediction['Tx_rate'] > mutated_strength:
-                    mutated_strength = prediction['Tx_rate']
+            # Evaluate the mutated sequence (numeric Tx_rate)
+            mutated_out = self.predict_promoter_strength(mutated_sequence, organism=organism)
+            mutated_strength = self._best_tx_rate(mutated_out)
             
             # Determine if this is better based on our goal
             if optimization_goal == "maximize":
@@ -402,6 +391,37 @@ class PromoterCalculatorIntegration:
         rpu = (calculator_value / reference_value) * reference_rpu
         return rpu
     
+    # ------------------------------------------------------------
+    # Internal helpers
+    # ------------------------------------------------------------
+
+    def _best_tx_rate(self, calc_out: dict, *, include_reverse: bool = False) -> float:
+        """Return the highest Tx_rate from a Promoter-Calculator output dict.
+
+        Parameters
+        ----------
+        calc_out : dict
+            The raw dict returned by `predict_promoter_strength`.
+        include_reverse : bool, default=False
+            Whether to also scan `Reverse_Predictions_per_TSS`.
+            In most synthetic-biology tasks we care only about promoters that
+            drive transcription in the **forward** direction, hence the
+            default is *False*.
+        """
+        if not isinstance(calc_out, dict):
+            return float(calc_out) if isinstance(calc_out, (int, float)) else 0.0
+
+        best = 0.0
+        # Always consider forward predictions
+        for pred in calc_out.get("Forward_Predictions_per_TSS", {}).values():
+            best = max(best, pred.get("Tx_rate", 0.0))
+
+        if include_reverse:
+            for pred in calc_out.get("Reverse_Predictions_per_TSS", {}).values():
+                best = max(best, pred.get("Tx_rate", 0.0))
+
+        return best
+
 import json
 import re
 from pathlib import Path
@@ -497,7 +517,7 @@ def filter_forward_promoters(
 
     if require_sigma70 and sigma70_frac < sigma_min:
         raise ValueError(
-            f"Run appears not to be σ70 (sigma70 = {sigma70_frac:.2f} < {sigma_min})."
+            f"Run appears not to be σ70 (sigma70 = {sigma70_frac:.2f} < {sigma_min})."
         )
 
     forward = pc_out["Forward_Predictions_per_TSS"]
@@ -567,7 +587,7 @@ def get_new_promoter_sequences(parent_seq: str,
         if not best:
             continue
         rate = best[0].Tx_rate
-        if rate > parent_rate * 1.05:           # require ≥5 % improvement
+        if rate > parent_rate * 1.05:           # require ≥5 % improvement
             better.append((seq, rate))
 
     # 5. Sort and return top n_best
@@ -584,14 +604,14 @@ if __name__ == "__main__":
     
     candidates = filter_forward_promoters(ref_output)
     if not candidates:
-        raise RuntimeError("No forward‑strand promoters passed the filters!")
+        raise RuntimeError("No forward strand promoters passed the filters!")
     best = candidates[0]      # highest Tx_rate that looks biologically sound
     
-    current_promoter = seq # 'ACCAGGAATCTGAACGATTCGTTACCAATTGACATATTTAAAATTCTTGTTTAAAatgctagc'
-    current_promoter = 'CGCTCATTCACTAGGTCTGATTCGTTACCAATTGACAACTGGTGGTCGAATCAAGATAATAGACCAGTCACTATATTT'
-    current_strength = calculator.predict_promoter_strength(current_promoter)
+    # current_promoter = seq # 'ACCAGGAATCTGAACGATTCGTTACCAATTGACATATTTAAAATTCTTGTTTAAAatgctagc'
+    # current_promoter = 'CGCTCATTCACTAGGTCTGATTCGTTACCAATTGACAACTGGTGGTCGAATCAAGATAATAGACCAGTCACTATATTT'
+    # current_strength = calculator.predict_promoter_strength(current_promoter)
     
-    new_promoters = get_new_promoter_sequences(current_promoter, calculator)
+    new_promoters = get_new_promoter_sequences(seq, calculator)
     print(new_promoters)
 
 
