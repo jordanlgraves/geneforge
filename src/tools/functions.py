@@ -1,25 +1,12 @@
 # tools/functions.py
 
-import json
 import os
-import glob
-import re
-from typing import Dict, List, Any, Optional, Type, ClassVar
+from typing import Dict, List, Any, Type, ClassVar
 import src.library.part_library_customizer as part_library_customizer
-from src.library.library_manager import LibraryManager
 import logging
 from src.session_state import SessionState
 import traceback
 import logging
-
-try:
-    from src.tools.deepseed_integration import DeepSeedIntegration
-except ImportError:
-    logging.warning("Failed to import DeepSeedIntegration. DeepSeed integration will not work.")
-try:
-    from src.tools.gpro_integration import PromoterOptimizer, RepressorOptimizer
-except ImportError:
-    logging.warning("Failed to import GProIntegration. GPro integration will not work.")
 
 
 
@@ -613,159 +600,6 @@ class CreateCustomInputSensorsFileTool(Tool):
              logger.error(f"Error creating custom input sensors file: {e}", exc_info=True)
              return {"error": f"Error creating custom input sensors file: {str(e)}"}
 
-class PredictPromoterStrengthTool(Tool):
-    name = "predict_promoter_strength"
-    description = "Predict the strength of a promoter sequence."
-    parameters = {
-        "type": "object",
-        "properties": {
-            "sequence": {
-                "type": "string",
-                "description": "DNA sequence of the promoter"
-            }
-        },
-        "required": ["sequence"]
-    }
-    
-    def execute(self, sequence: str) -> Dict[str, Any]:
-        """Predict the strength of a promoter sequence."""
-        try:
-            promoter_optimizer = PromoterOptimizer()
-            result = promoter_optimizer.predict_strength(sequence)
-            return {
-                "sequence": sequence,
-                "predicted_strength": result["strength"],
-                "confidence": result.get("confidence", None)
-            }
-        except Exception as e:
-            return {"error": f"Error predicting promoter strength: {str(e)}"}
-
-class OptimizePromoterTool(Tool):
-    name = "optimize_promoter"
-    description = "Optimize a promoter to reach a target strength."
-    parameters = {
-        "type": "object",
-        "properties": {
-            "seed_sequence": {
-                "type": "string",
-                "description": "Starting sequence for optimization"
-            },
-            "target_strength": {
-                "type": "number",
-                "description": "Desired promoter strength"
-            },
-            "iterations": {
-                "type": "integer",
-                "description": "Number of optimization iterations"
-            }
-        },
-        "required": ["seed_sequence", "target_strength"]
-    }
-    
-    def execute(self, seed_sequence: str, target_strength: float, iterations: int = 100) -> Dict[str, Any]:
-        """Optimize a promoter to reach a target strength."""
-        try:
-            promoter_optimizer = PromoterOptimizer()
-            result = promoter_optimizer.optimize_promoter(
-                seed_sequence=seed_sequence,
-                target_strength=target_strength,
-                iterations=iterations
-            )
-            return {
-                "original_sequence": seed_sequence,
-                "optimized_sequence": result["sequence"],
-                "original_strength": result["original_strength"],
-                "final_strength": result["final_strength"],
-                "iterations_performed": result["iterations"]
-            }
-        except Exception as e:
-            return {"error": f"Error optimizing promoter: {str(e)}"}
-
-class GeneratePromotersTool(Tool):
-    name = "generate_promoters"
-    description = "Generate novel promoter sequences with optional strength filtering."
-    parameters = {
-        "type": "object",
-        "properties": {
-            "count": {
-                "type": "integer",
-                "description": "Number of promoters to generate"
-            },
-            "min_strength": {
-                "type": "number",
-                "description": "Minimum acceptable strength (optional)"
-            },
-            "max_strength": {
-                "type": "number",
-                "description": "Maximum acceptable strength (optional)"
-            }
-        },
-        "required": ["count"]
-    }
-    
-    def execute(self, count: int, min_strength: float = None, max_strength: float = None) -> Dict[str, Any]:
-        """Generate novel promoter sequences with optional strength filtering."""
-        try:
-            deepseed = DeepSeedIntegration()
-            promoters = deepseed.generate_promoters(
-                count=count,
-                min_strength=min_strength,
-                max_strength=max_strength
-            )
-            return {
-                "promoters": [
-                    {
-                        "sequence": p["sequence"],
-                        "predicted_strength": p["strength"]
-                    }
-                    for p in promoters
-                ],
-                "count": len(promoters)
-            }
-        except Exception as e:
-            return {"error": f"Error generating promoters: {str(e)}"}
-
-class OptimizeBindingSiteTool(Tool):
-    name = "optimize_binding_site"
-    description = "Optimize a repressor binding site for target repression level."
-    parameters = {
-        "type": "object",
-        "properties": {
-            "repressor_id": {
-                "type": "string",
-                "description": "ID of the repressor protein"
-            },
-            "starting_site": {
-                "type": "string",
-                "description": "Starting binding site sequence"
-            },
-            "target_repression": {
-                "type": "number",
-                "description": "Desired repression level (0-1)"
-            }
-        },
-        "required": ["repressor_id", "starting_site", "target_repression"]
-    }
-    
-    def execute(self, repressor_id: str, starting_site: str, target_repression: float) -> Dict[str, Any]:
-        """Optimize a repressor binding site for target repression level."""
-        try:
-            repressor_optimizer = RepressorOptimizer()
-            result = repressor_optimizer.optimize_binding_site(
-                repressor_id=repressor_id,
-                starting_site=starting_site,
-                target_repression=target_repression
-            )
-            return {
-                "original_site": starting_site,
-                "optimized_site": result["sequence"],
-                "repressor_id": repressor_id,
-                "original_repression": result["original_repression"],
-                "final_repression": result["final_repression"]
-            }
-        except Exception as e:
-            return {"error": f"Error optimizing binding site: {str(e)}"}
-
 class EvaluateCircuitPerformanceTool(Tool):
     name = "evaluate_circuit_performance"
     description = "Evaluate the performance of a designed genetic circuit by analyzing Cello output files"
@@ -877,10 +711,6 @@ TOOL_REGISTRY: Dict[str, Type[Tool]] = {
     DesignWithCelloTool.name: DesignWithCelloTool,
     CreateCustomUcfTool.name: CreateCustomUcfTool,
     CreateCustomInputSensorsFileTool.name: CreateCustomInputSensorsFileTool,
-    PredictPromoterStrengthTool.name: PredictPromoterStrengthTool,
-    OptimizePromoterTool.name: OptimizePromoterTool,
-    GeneratePromotersTool.name: GeneratePromotersTool,
-    OptimizeBindingSiteTool.name: OptimizeBindingSiteTool,
     EvaluateCircuitPerformanceTool.name: EvaluateCircuitPerformanceTool,
     GenerateVerilogToolLLM.name: GenerateVerilogToolLLM,
 }
