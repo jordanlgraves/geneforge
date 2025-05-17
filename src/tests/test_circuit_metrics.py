@@ -1,4 +1,5 @@
 import os
+import shutil
 import sys
 import unittest
 import logging
@@ -9,22 +10,44 @@ from src.tools.cello_integration import CelloIntegration
 class TestCircuitMetricsExtraction(unittest.TestCase):
     """Tests for extracting and evaluating circuit performance metrics from Cello output"""
 
-    def setUp(self):
+    @classmethod
+    def setUpClass(cls):
         """Set up the test environment"""
-        self.logger = logging.getLogger("TestMetrics")
-        self.logger.setLevel(logging.INFO)
-        self.cello = CelloIntegration()
-        
-        # Path to the test output directory
-        self.test_output_path = os.path.join(
-            os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))),
-            "outputs", "cello_test_outputs", "test_NOT_gate.v"
+        cls.logger = logging.getLogger("TestMetrics")
+        cls.logger.setLevel(logging.INFO)
+        cls.cello = CelloIntegration()
+
+        cls.test_verilog_code = """module Main(in1, out1);
+  output out1;
+  input in1;  
+  
+  assign g1 = ~in1;
+  
+  assign out1 = g1;
+  
+  endmodule"""
+
+        cls.run_name = "unittest_NOT_gate_circuit_metrics"
+        cls.test_run_directory = os.path.join(
+            "outputs", "cello_run", cls.run_name
         )
+        cls.test_output_path = os.path.join(
+            cls.test_run_directory, 'output', 'main.v'
+        )
+
+        # run cello to generate the test output unless it already exists
+        if not os.path.exists(cls.test_output_path):
+            # get first library starting with 'Eco'
+            libs = cls.cello.get_available_libraries()
+            default_lib = next((lib for lib in libs if lib.startswith('Eco')), None)
+            cls.cello.select_library(default_lib)
+            results = cls.cello.run_cello(run_name=cls.run_name, verilog_code=cls.test_verilog_code)
+            print(results)
         
-        # Verify the test output directory exists
-        if not os.path.exists(self.test_output_path):
-            self.logger.error(f"Test output path does not exist: {self.test_output_path}")
-            self.skipTest("Test output directory not found")
+    @classmethod
+    def tearDownClass(cls):
+        if os.path.exists(cls.test_run_directory):
+            shutil.rmtree(cls.test_run_directory)
 
     def test_circuit_score_extraction(self):
         """Test extraction of circuit score from circuit_score.csv"""
@@ -124,6 +147,7 @@ class TestCircuitMetricsExtraction(unittest.TestCase):
                 self.logger.info(f"{key}: {type(value)} with {len(value)} items")
             else:
                 self.logger.info(f"{key}: {value}")
+
 
 
 if __name__ == "__main__":

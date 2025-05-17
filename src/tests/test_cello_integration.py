@@ -19,7 +19,6 @@ from src.library.library_manager import LibraryManager
 
 from core_algorithm.celloAlgo import CELLO3
 
-# Remove the skipUnless decorator to always run the tests
 class TestCelloIntegration(unittest.TestCase):
     """
     Tests for the CelloIntegration class.
