@@ -405,6 +405,26 @@ class CelloIntegration:
             - Dynamic range
             - Derived KPIs
         """
+        # Cello outputs the following format:
+        # 
+        # run_name/
+        #   output/main.v/
+        #     main.v_ucf.json
+        #     main.v_input_sensors.json
+        #     main.v_output_devices.json
+        #     main.v_circuit-score.csv
+        #     main.v_activity-table.csv
+        #     main.v_dpl-part-information.csv
+        #     main.v_dna-sequences.csv
+        #     main.v_eugene.eug
+        #     main.v_pySBOL3.nt
+        #     ...etc
+        #   contraints/
+        #   verilogs/
+        #     main.v
+        #
+        # output_path is the path to the 'run_name/output/main.v' folder
+
         metrics = {
             'overall_score': None,
             'input_output_states': [],

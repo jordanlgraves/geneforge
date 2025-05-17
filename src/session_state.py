@@ -20,11 +20,12 @@ class SessionState:
         self.custom_ucf_path: Optional[str] = None
         self.custom_input_path: Optional[str] = None
         self.cello_results: Optional[Dict[str, Any]] = None
+        
         self.design_spec: Optional[str] = None  # Natural-language high-level specification
         self.verilog_code: Optional[str] = None  # Latest generated/updated Verilog source
         self.chat_rounds: int = 0  # Number of LLM-tool interaction rounds in current session
-        
-        
+        # Add other state variables as needed, e.g.:
+        # self.design_requirements: Dict[str, Any] = {}
 
     def from_dict(self, **kwargs):
         """Initialize the session state from a dictionary."""
@@ -98,6 +99,72 @@ class SessionState:
 
     def get_chat_rounds(self) -> int:
         return self.chat_rounds
+
+    # ------------------------------------------------------------------
+    #  Automatic ProD calibration when a library is selected
+    # ------------------------------------------------------------------
+
+    def auto_calibrate_prod(self, min_refs: int = 3, max_refs: int = 10):
+        """Calibrate ProD class→RPU mapping using promoters in the selected library.
+
+        The routine looks for promoter parts in the UCF that have a numeric
+        `ymax` parameter, extracts their spacers, evaluates them with ProD
+        and fits a log-linear mapping (slope & intercept).  The calibration
+        is stored inside the session-specific `ProDIntegration` instance so
+        all subsequent ProD calls use the updated mapping automatically.
+
+        Args:
+            min_refs: minimum number of reference promoters required to fit
+                      a line. If fewer are found, calibration is skipped.
+            max_refs: maximum number of promoters to sample (for speed).
+
+        Returns:
+            Dict summarising the calibration (or reason for skipping).
+        """
+        from src.tools.pro_d_integration import ProDIntegration
+        import random, math
+
+        ucf_data = self.get_current_ucf_data()
+        if not ucf_data:
+            return {"success": False, "error": "No UCF loaded"}
+
+        # Collect promoters with ymax parameter
+        refs = []
+        for item in ucf_data:
+            if item.get("collection") != "parts" or item.get("type") != "promoter":
+                continue
+            # parameters is list of dicts; find ymax
+            for p in item.get("parameters", []):
+                if p.get("parameter", "").lower() in ("ymax", "y_max"):
+                    try:
+                        ymax_val = float(p.get("value"))
+                    except (TypeError, ValueError):
+                        continue
+                    seq = item.get("dnasequence") or item.get("sequence")
+                    if seq and ymax_val > 0:
+                        refs.append({"sequence": seq, "ymax": ymax_val})
+                    break  # stop after first parameter match
+
+        if len(refs) < min_refs:
+            return {
+                "success": False,
+                "error": f"Only found {len(refs)} promoters with ymax; need {min_refs} to calibrate.",
+            }
+
+        random.shuffle(refs)
+        refs = refs[:max_refs]
+
+        # Get (or create) ProDIntegration attached to this session
+        if not hasattr(self, "prod_integration"):
+            setattr(self, "prod_integration", ProDIntegration())
+        prod = getattr(self, "prod_integration")
+
+        try:
+            result = prod.calibrate_rpu_scale(refs)
+            return result
+        except Exception as e:
+            logger.warning("ProD calibration failed: %s", e)
+            return {"success": False, "error": str(e)}
 
     # Add methods to update and retrieve other state variables as needed
     # e.g., set_custom_ucf_path, get_cello_results, etc. 

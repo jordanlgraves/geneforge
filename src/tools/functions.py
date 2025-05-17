@@ -1,12 +1,25 @@
 # tools/functions.py
 
+import json
 import os
-from typing import Dict, List, Any, Type, ClassVar
+import glob
+import re
+from typing import Dict, List, Any, Optional, Type, ClassVar
 import src.library.part_library_customizer as part_library_customizer
+from src.library.library_manager import LibraryManager
 import logging
 from src.session_state import SessionState
 import traceback
 import logging
+
+try:
+    from src.tools.deepseed_integration import DeepSeedIntegration
+except ImportError:
+    logging.warning("Failed to import DeepSeedIntegration. DeepSeed integration will not work.")
+try:
+    from src.tools.gpro_integration import PromoterOptimizer, RepressorOptimizer
+except ImportError:
+    logging.warning("Failed to import GProIntegration. GPro integration will not work.")
 
 
 
@@ -176,10 +189,20 @@ class SelectLibraryTool(Tool):
         """Select a library using a library ID within the current session."""
         success = self.session_state.select_library(library_id)
         if success:
-            return {
+            calib_result = self.session_state.auto_calibrate_prod()
+            response = {
                 "success": True,
-                "message": f"Session selected library {library_id}"
+                "message": f"Session selected library {library_id}",
             }
+            if calib_result.get("success"):
+                response["prod_calibration"] = {
+                    "n_points": calib_result.get("n_points"),
+                    "slope": calib_result.get("slope"),
+                    "intercept": calib_result.get("intercept"),
+                }
+            else:
+                response["prod_calibration_warning"] = calib_result.get("error")
+            return response
         else:
             available = list(self.session_state.get_library_manager().get_available_libraries().keys())
             return {
@@ -600,6 +623,7 @@ class CreateCustomInputSensorsFileTool(Tool):
              logger.error(f"Error creating custom input sensors file: {e}", exc_info=True)
              return {"error": f"Error creating custom input sensors file: {str(e)}"}
 
+
 class EvaluateCircuitPerformanceTool(Tool):
     name = "evaluate_circuit_performance"
     description = "Evaluate the performance of a designed genetic circuit by analyzing Cello output files"
@@ -699,21 +723,284 @@ class GenerateVerilogToolLLM(Tool):
         except Exception as e:
             return {"error": f"Error generating Verilog: {str(e)}"}
 
-# Update the TOOL_REGISTRY to include all the new tools
-TOOL_REGISTRY: Dict[str, Type[Tool]] = {
-    ListPromotersTool.name: ListPromotersTool,
-    DescribeAvailableLibrariesTool.name: DescribeAvailableLibrariesTool,
-    SelectLibraryTool.name: SelectLibraryTool,
-    ListRepressorsTool.name: ListRepressorsTool,
-    ListInputSensorsTool.name: ListInputSensorsTool,
-    GetDnaPartByNameTool.name: GetDnaPartByNameTool,
-    ListTerminatorsTool.name: ListTerminatorsTool,
-    DesignWithCelloTool.name: DesignWithCelloTool,
-    CreateCustomUcfTool.name: CreateCustomUcfTool,
-    CreateCustomInputSensorsFileTool.name: CreateCustomInputSensorsFileTool,
-    EvaluateCircuitPerformanceTool.name: EvaluateCircuitPerformanceTool,
-    GenerateVerilogToolLLM.name: GenerateVerilogToolLLM,
-}
+# ---------------------------------------------------------------------------
+#  ProD helper base (lazy session-level ProDIntegration)
+# ---------------------------------------------------------------------------
+
+from src.tools.pro_d_integration import ProDIntegration, class_to_rpu, extract_id_ecoli_spacer, compose_full_promoter
+
+
+class _ProDToolBase(Tool):
+    """Mixin that provides a per-session ProDIntegration instance."""
+
+    def _get_prod(self) -> ProDIntegration:
+        if not hasattr(self.session_state, "prod_integration"):
+            setattr(self.session_state, "prod_integration", ProDIntegration())
+        return getattr(self.session_state, "prod_integration")
+
+
+# ---------------------------------------------------------------------------
+#  EstimatePromoterStrengthWithProD
+# ---------------------------------------------------------------------------
+
+
+class EstimatePromoterStrengthWithProDTool(_ProDToolBase):
+    name = "estimate_promoter_strength_with_pro_d"
+    description = "Return ProD class and calibrated ymax for a promoter ID or DNA sequence. If an ID is given the currently selected library is searched."
+    parameters = {
+        "type": "object",
+        "properties": {
+            "promoter": {"type": "string", "description": "Promoter ID (e.g. 'pTet') or full DNA sequence or 17-bp spacer."},
+            "file_type": {"type": "string", "enum": ["ucf", "input", "output"], "description": "Which library JSON to search when an ID is supplied", "default": "ucf"}
+        },
+        "required": ["promoter"]
+    }
+
+    def execute(self, promoter: str, file_type: str = "ucf") -> Dict[str, Any]:
+        prod = self._get_prod()
+
+        # Determine if string looks like DNA
+        dna_chars = set("ATGCRYSWKMBDHVNatgcryswkmbdhvn")
+        is_dna = set(promoter).issubset(dna_chars) and len(promoter) >= 17
+
+        sequence = None
+        library_manager = self.session_state.get_library_manager()
+
+        if is_dna:
+            sequence = promoter.upper()
+        else:
+            # treat as part ID
+            if not library_manager.current_library_id:
+                return {"error": "No library selected. Use select_library first."}
+
+            if file_type == "ucf":
+                lib_data = library_manager.get_ucf_data()
+            elif file_type == "input":
+                lib_data = library_manager.get_input_sensor_data()
+            else:
+                lib_data = library_manager.get_output_device_data()
+
+            import src.library.part_library_customizer as plc
+            part = plc.get_part_by_name(lib_data, promoter)
+            if not part:
+                return {"error": f"Promoter ID '{promoter}' not found in {file_type} file."}
+            sequence = part.get("dnasequence") or part.get("sequence")
+            if not sequence:
+                return {"error": f"Promoter part '{promoter}' lacks dna sequence field."}
+
+        # Evaluate via ProD
+        result = prod.evaluate_spacers([sequence])
+        if not result:
+            return {"error": "ProD evaluation returned no result."}
+
+        spacer = extract_id_ecoli_spacer(sequence) or sequence[:17]
+        cls_val = int(result[spacer])
+        ymax = result.get(spacer + "_ymax", class_to_rpu(cls_val))
+
+        return {
+            "promoter_sequence": sequence,
+            "spacer": spacer,
+            "class": cls_val,
+            "ymax": ymax,
+        }
+
+
+# ---------------------------------------------------------------------------
+#  GeneratePromoterLibraryWithProD
+# ---------------------------------------------------------------------------
+
+
+class GeneratePromoterLibraryWithProDTool(_ProDToolBase):
+    name = "generate_promoter_library_with_pro_d"
+    description = "Use ProD to generate spacer variants at desired strength classes and, if a parent promoter is supplied, return full promoter sequences too."
+    parameters = {
+        "type": "object",
+        "properties": {
+            "blueprint": {"type": "string", "description": "Degenerate 17-bp spacer blueprint or full promoter blueprint."},
+            "desired_strengths": {
+                "type": "array", "items": {"type": "integer"},
+                "description": "List of desired strength classes (0-10)"
+            },
+            "sequences_per_class": {"type": "integer", "default": 5},
+            "parent_promoter": {"type": "string", "description": "Optional promoter ID or full promoter to supply flanking regions."},
+            "file_type": {"type": "string", "enum": ["ucf", "input", "output"], "default": "ucf"}
+        },
+        "required": ["blueprint"]
+    }
+
+    def execute(self, blueprint: str, desired_strengths: List[int] = None, sequences_per_class: int = 5,
+                parent_promoter: str = None, file_type: str = "ucf") -> Dict[str, Any]:
+        prod = self._get_prod()
+
+        upstream = downstream = None
+        if parent_promoter:
+            library_manager = self.session_state.get_library_manager()
+            dna_chars = set("ATGCRYSWKMBDHVNatgcryswkmbdhvn")
+            is_dna = set(parent_promoter).issubset(dna_chars) and len(parent_promoter) >= 17
+            parent_seq = None
+            if is_dna:
+                parent_seq = parent_promoter.upper()
+            else:
+                if not library_manager.current_library_id:
+                    return {"error": "No library selected. Use select_library first."}
+                if file_type == "ucf":
+                    lib_data = library_manager.get_ucf_data()
+                elif file_type == "input":
+                    lib_data = library_manager.get_input_sensor_data()
+                else:
+                    lib_data = library_manager.get_output_device_data()
+                import src.library.part_library_customizer as plc
+                part = plc.get_part_by_name(lib_data, parent_promoter)
+                if not part:
+                    return {"error": f"Parent promoter '{parent_promoter}' not found."}
+                parent_seq = part.get("dnasequence") or part.get("sequence")
+
+            spacer_parent = extract_id_ecoli_spacer(parent_seq)
+            if spacer_parent and spacer_parent in parent_seq:
+                idx = parent_seq.find(spacer_parent)
+                upstream = parent_seq[:idx]
+                downstream = parent_seq[idx+17:]
+
+        # Call ProD
+        lib_dict = prod.generate_library(
+            blueprint,
+            desired_strengths=desired_strengths,
+            library_size=sequences_per_class,
+        )
+
+        # Enrich with full promoter sequences if we know flanks
+        if upstream is not None and downstream is not None:
+            for entry in lib_dict.values():
+                entry["promoter_sequence"] = compose_full_promoter(entry["spacer"], upstream, downstream)
+
+        return {
+            "blueprint": blueprint,
+            "variants": [
+                {
+                    "spacer": k,
+                    **v
+                } for k, v in lib_dict.items()
+            ]
+        }
+
+
+# ---------------------------------------------------------------------------
+#  PatchUcfWithPromotersTool – wraps LibraryManager.create_custom_ucf
+# ---------------------------------------------------------------------------
+
+class PatchUcfWithPromotersTool(Tool):
+    name = "patch_ucf_with_promoters"
+    description = "Duplicate or replace a promoter part in the currently selected library UCF with supplied spacer variants and their calibrated ymax values. Returns path to the new custom UCF file."
+    parameters = {
+        "type": "object",
+        "properties": {
+            "parent_promoter_id": {"type": "string", "description": "ID of the promoter part to duplicate / replace."},
+            "variants": {
+                "type": "array",
+                "items": {
+                    "type": "object",
+                    "properties": {
+                        "spacer": {"type": "string"},
+                        "ymax": {"type": "number"}
+                    },
+                    "required": ["spacer", "ymax"]
+                },
+                "description": "List of new spacer variants with calibrated ymax values."
+            },
+            "replace_parent": {"type": "boolean", "default": False, "description": "If true, parent promoter is replaced; otherwise duplicated with _varN suffix."}
+        },
+        "required": ["parent_promoter_id", "variants"]
+    }
+
+    def execute(self, parent_promoter_id: str, variants: List[Dict[str, Any]], replace_parent: bool = False):
+        import copy
+        from src.tools.pro_d_integration import extract_id_ecoli_spacer, compose_full_promoter
+
+        lm = self.session_state.get_library_manager()
+        if not lm.current_library_id:
+            return {"error": "No library selected. Use select_library first."}
+
+        base_ucf = lm.get_ucf_data()
+        import src.library.part_library_customizer as plc
+        parent_part = plc.get_part_by_name(base_ucf, parent_promoter_id)
+        if not parent_part:
+            return {"error": f"Parent promoter {parent_promoter_id} not found in UCF."}
+
+        parent_seq = parent_part.get("dnasequence") or parent_part.get("sequence")
+        spacer_parent = extract_id_ecoli_spacer(parent_seq)
+        if not spacer_parent:
+            return {"error": "Could not extract spacer from parent promoter sequence."}
+
+        idx = parent_seq.find(spacer_parent)
+        upstream = parent_seq[:idx]
+        downstream = parent_seq[idx+17:]
+
+        modified_parts = {}
+
+        for i, var in enumerate(variants):
+            spacer = var.get("spacer")
+            ymax = var.get("ymax")
+            if not spacer or len(spacer) != 17:
+                continue
+            new_seq = compose_full_promoter(spacer, upstream, downstream)
+            new_part = copy.deepcopy(parent_part)
+            new_id = parent_promoter_id if (replace_parent and i == 0) else f"{parent_promoter_id}_var{i+1}"
+            new_part["name"] = new_id
+            if "dnasequence" in new_part:
+                new_part["dnasequence"] = new_seq
+            else:
+                new_part["sequence"] = new_seq
+
+            # Update ymax parameter
+            updated = False
+            for p in new_part.get("parameters", []):
+                if p.get("parameter", "").lower() in ("ymax", "y_max"):
+                    p["value"] = ymax
+                    updated = True
+                    break
+            if not updated:
+                new_part.setdefault("parameters", []).append({
+                    "parameter": "ymax",
+                    "value": ymax
+                })
+            modified_parts[new_id] = new_part
+
+        # Call LibraryManager to write custom UCF
+        try:
+            path = lm.create_custom_ucf(
+                selected_gates=None,
+                selected_parts=list(modified_parts.keys()),
+                modified_parts=modified_parts,
+                ucf_name=f"custom_{lm.current_library_id}_{parent_promoter_id}_variants.UCF.json",
+            )
+            self.session_state.custom_ucf_path = path
+            return {"success": True, "custom_ucf_path": path, "n_variants": len(modified_parts)}
+        except Exception as e:
+            return {"error": f"Failed to patch UCF: {e}"}
+
+
+# ---------------------------------------------------------------------------
+#  Register in existing TOOL_REGISTRY and expose schemas
+# ---------------------------------------------------------------------------
+
+TOOL_REGISTRY = {}
+
+TOOL_REGISTRY[ListPromotersTool.name] = ListPromotersTool
+TOOL_REGISTRY[DescribeAvailableLibrariesTool.name] = DescribeAvailableLibrariesTool
+TOOL_REGISTRY[SelectLibraryTool.name] = SelectLibraryTool
+TOOL_REGISTRY[ListRepressorsTool.name] = ListRepressorsTool
+TOOL_REGISTRY[ListInputSensorsTool.name] = ListInputSensorsTool
+TOOL_REGISTRY[GetDnaPartByNameTool.name] = GetDnaPartByNameTool
+TOOL_REGISTRY[ListTerminatorsTool.name] = ListTerminatorsTool
+TOOL_REGISTRY[DesignWithCelloTool.name] = DesignWithCelloTool
+TOOL_REGISTRY[CreateCustomUcfTool.name] = CreateCustomUcfTool
+TOOL_REGISTRY[CreateCustomInputSensorsFileTool.name] = CreateCustomInputSensorsFileTool
+TOOL_REGISTRY[EvaluateCircuitPerformanceTool.name] = EvaluateCircuitPerformanceTool
+TOOL_REGISTRY[GenerateVerilogToolLLM.name] = GenerateVerilogToolLLM
+TOOL_REGISTRY[EstimatePromoterStrengthWithProDTool.name] = EstimatePromoterStrengthWithProDTool
+TOOL_REGISTRY[GeneratePromoterLibraryWithProDTool.name] = GeneratePromoterLibraryWithProDTool
+TOOL_REGISTRY[PatchUcfWithPromotersTool.name] = PatchUcfWithPromotersTool
+
 
 # Generate OpenAI function schemas from tools
 tool_functions = [
