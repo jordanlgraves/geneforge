@@ -91,7 +91,7 @@ class TestLibraryManager(unittest.TestCase):
 
     def test_cello_integration_library_selection(self):
         """Test that the Cello integration can select libraries"""
-        # Skip if no libraries available
+        
         
         # Create a Cello integration with a specific library
         library_id = list(self.library_manager.get_available_libraries().keys())[0]

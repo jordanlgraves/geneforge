@@ -346,18 +346,6 @@ def generate_promoter_library(blueprint: str,
         logger.error(f"Error generating promoter library: {str(e)}")
         return pd.DataFrame()
 
-def compose_full_promoter(spacer: str, upstream_region: str, downstream_region: str) -> str:
-    """Return *upstream_region + spacer + downstream_region*.
-
-    All three arguments are required—no hard-coded context remains.
-    Caller is responsible for providing the exact flanking sequences taken
-    from the reference promoter part (e.g. from the UCF).
-    """
-    spacer = spacer.upper()
-    if len(spacer) != 17:
-        logger.warning("Spacer length is %d, expected 17 bp", len(spacer))
-    return f"{upstream_region.upper()}{spacer}{downstream_region.upper()}"
-
 def get_strength_band(strength: int) -> str:
     """
     Convert a numeric strength to a descriptive band.

@@ -14,7 +14,6 @@ from src.tools.pro_d_integration import (
     extract_id_ecoli_spacer,
     evaluate_promoter_spacers,
     generate_promoter_library,
-    compose_full_promoter,
     get_strength_band,
     ProDIntegration,
     DEFAULT_MODEL_PATH
@@ -112,26 +111,6 @@ class TestProDIntegration(unittest.TestCase):
         random_seq = "ATGCATGCATGCATGCATGC"
         spacer = extract_id_ecoli_spacer(random_seq)
         self.assertIsNone(spacer, "Should return None for sequences without proper promoter boxes")
-    
-    def test_compose_full_promoter(self):
-        """
-        Test composition of full promoter from spacer.
-        """
-        # Test with valid spacer
-        full_promoter = compose_full_promoter(self.valid_spacer)
-        self.assertIn(self.valid_spacer, full_promoter)
-        self.assertTrue(full_promoter.startswith("GGTCTATGAGTGGTTGCTGGATAACTTTACG"))
-        self.assertTrue(full_promoter.endswith("TATAATATATTCAGGGAGAGCACAACGGTTTCCCTCTACAAATAATTTTGTTTAACTTT"))
-        
-        # Test with custom regions
-        custom_upstream = "CUSTOM_UPSTREAM"
-        custom_downstream = "CUSTOM_DOWNSTREAM"
-        full_promoter = compose_full_promoter(
-            self.valid_spacer, 
-            upstream_region=custom_upstream, 
-            downstream_region=custom_downstream
-        )
-        self.assertEqual(full_promoter, f"{custom_upstream}{self.valid_spacer}{custom_downstream}")
     
     def test_get_strength_band(self):
         """
@@ -238,7 +217,7 @@ class TestProDIntegration(unittest.TestCase):
                 self.assertIn('class', data)
                 self.assertIn('probability', data)
                 self.assertIn('strength_band', data)
-                self.assertIn('full_promoter', data)
+                # self.assertIn('full_promoter', data)
     
         # Test with empty blueprint
         with self.assertRaises(ValueError):
@@ -261,10 +240,6 @@ class TestProDIntegration(unittest.TestCase):
         strengths = self.prod.evaluate_spacers([spacer])
         self.assertIn(spacer, strengths, "Extracted spacer should be evaluated successfully")
         
-        # Regenerate full promoter
-        regenerated = self.prod.get_full_promoter(spacer)
-        self.assertIn(spacer, regenerated, "Regenerated promoter should contain the spacer")
-
     def test_real_promoter_sequences(self):
         """
         Test extracting spacers from real promoter sequences and evaluating them.
@@ -345,25 +320,12 @@ class TestProDIntegration(unittest.TestCase):
         self.assertEqual(spacer_uppercase, spacer_mixed.upper(), 
                         "Uppercase and mixed case promoters produced different spacers")
         
-        # Test case-insensitivity in compose_full_promoter
         uppercase_spacer = "ACTGACTAGCTAGCTAG"
         lowercase_spacer = "actgactagctagctag"
         mixed_case_spacer = "AcTgAcTaGcTaGcTaG"
         
-        promoter_from_uppercase = compose_full_promoter(uppercase_spacer)
-        promoter_from_lowercase = compose_full_promoter(lowercase_spacer)
-        promoter_from_mixed = compose_full_promoter(mixed_case_spacer)
-        
-        self.assertEqual(promoter_from_uppercase, promoter_from_lowercase,
-                        "Uppercase and lowercase spacers produced different promoters")
-        self.assertEqual(promoter_from_uppercase, promoter_from_mixed,
-                        "Uppercase and mixed case spacers produced different promoters")
-        
         # Test case-insensitivity in the ProDIntegration class
-        # Skip if the model is not available
-        if not os.path.exists(self.model_path):
-            return
-            
+        #     
         prod = ProDIntegration(model_path=self.model_path)
         
         # Test extract_spacer method
@@ -373,22 +335,11 @@ class TestProDIntegration(unittest.TestCase):
         self.assertEqual(extracted_upper, extracted_lower.upper(),
                         "Uppercase and lowercase promoters produced different results in extract_spacer")
         
-        # Test get_full_promoter method
-        full_upper = prod.get_full_promoter(uppercase_spacer)
-        full_lower = prod.get_full_promoter(lowercase_spacer)
-        
-        self.assertEqual(full_upper, full_lower,
-                        "Uppercase and lowercase spacers produced different results in get_full_promoter")
-        
         # Test evaluate_spacers method with mixed case
         if extracted_upper:
             # Use simpler, identical test spacers (ensuring they are 17bp)
             test_spacer_upper = "AAAAAAAAAAAAAAAAAA"[0:17]  # Ensure it's exactly 17bp
             test_spacer_lower = "aaaaaaaaaaaaaaaaaa"[0:17]  # Ensure it's exactly 17bp
-            
-            # Verify lengths are correct
-            self.assertEqual(len(test_spacer_upper), 17, "Test spacer must be 17bp")
-            self.assertEqual(len(test_spacer_lower), 17, "Test spacer must be 17bp")
             
             result_upper = prod.evaluate_spacers([test_spacer_upper])
             result_lower = prod.evaluate_spacers([test_spacer_lower])

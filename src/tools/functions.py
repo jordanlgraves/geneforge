@@ -727,7 +727,7 @@ class GenerateVerilogToolLLM(Tool):
 #  ProD helper base (lazy session-level ProDIntegration)
 # ---------------------------------------------------------------------------
 
-from src.tools.pro_d_integration import ProDIntegration, class_to_rpu, extract_id_ecoli_spacer, compose_full_promoter
+from src.tools.pro_d_integration import ProDIntegration, class_to_rpu, extract_id_ecoli_spacer
 
 
 class _ProDToolBase(Tool):
@@ -871,7 +871,7 @@ class GeneratePromoterLibraryWithProDTool(_ProDToolBase):
         # Enrich with full promoter sequences if we know flanks
         if upstream is not None and downstream is not None:
             for entry in lib_dict.values():
-                entry["promoter_sequence"] = compose_full_promoter(entry["spacer"], upstream, downstream)
+                entry["promoter_sequence"] = f"{upstream.upper()}{entry['spacer']}{downstream.upper()}" 
 
         return {
             "blueprint": blueprint,
@@ -914,7 +914,7 @@ class PatchUcfWithPromotersTool(Tool):
 
     def execute(self, parent_promoter_id: str, variants: List[Dict[str, Any]], replace_parent: bool = False):
         import copy
-        from src.tools.pro_d_integration import extract_id_ecoli_spacer, compose_full_promoter
+        from src.tools.pro_d_integration import extract_id_ecoli_spacer
 
         lm = self.session_state.get_library_manager()
         if not lm.current_library_id:
@@ -942,7 +942,7 @@ class PatchUcfWithPromotersTool(Tool):
             ymax = var.get("ymax")
             if not spacer or len(spacer) != 17:
                 continue
-            new_seq = compose_full_promoter(spacer, upstream, downstream)
+            new_seq = f'{upstream.upper()}{spacer}{downstream.upper()}'
             new_part = copy.deepcopy(parent_part)
             new_id = parent_promoter_id if (replace_parent and i == 0) else f"{parent_promoter_id}_var{i+1}"
             new_part["name"] = new_id

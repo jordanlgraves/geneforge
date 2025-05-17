@@ -14,9 +14,9 @@ dotenv.load_dotenv()
 from src.tools.deepseed_integration import DeepSeedIntegration
 
 # Remove the skipUnless decorator to always run the tests
-class TestCelloIntegration(unittest.TestCase):
+class TestDeepSeedIntegration(unittest.TestCase):
     """
-    Tests for the CelloIntegration class.
+    Tests for the DeepSeedIntegration class.
     """
     
     @classmethod
