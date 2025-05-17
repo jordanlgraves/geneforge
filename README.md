@@ -1,4 +1,4 @@
-# GeneForge: Automated Genetic Circuit Design and Optimization
+# Gene Forge: Automated Genetic Circuit Design and Optimization
 
 This repository contains an the foundation work for developing an automated AI-driven system to design and optimize genetic circuits.
 
@@ -40,7 +40,7 @@ While not yet fully implemented, RAG will be used to provide the agent with acce
 
 ## Reinforcement learning
 Reinforcement learning with verifiable rewards (RLVF): <https://arxiv.org/html/2503.23829v1>  
-GeneForge is designed to be trainable because every design run produces artefacts (Cello output files, custom UCFs, etc.) that can be validated **programmatically**.  
+Gene Forge is designed to be trainable because every design run produces artefacts (Cello output files, custom UCFs, etc.) that can be validated **programmatically**.  
 Our proof-of-concept pipeline is split into two complementary stages:
 
 ### 1  Outer-loop policy learning (SB3)
