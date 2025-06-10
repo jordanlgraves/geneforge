@@ -11,6 +11,11 @@ import traceback
 
 # Configure logging
 logger = logging.getLogger(__name__)
+import dotenv
+dotenv.load_dotenv()
+PRO_D_ROOT = os.getenv("PRO_D_ROOT")
+# add to PYTHONPATH
+sys.path.append(PRO_D_ROOT)
 
 # Default path to the ProD model
 DEFAULT_MODEL_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), '../../ext_repos/ProD/models/model_RPOD.pt'))
@@ -306,7 +311,10 @@ def generate_promoter_library(blueprint: str,
             )
     
     # check that it is a valid blueprint
-    from ProD import SEQ_DICT
+    SEQ_DICT = {'A': [0], 'T': [1], 'C': [2], 'G': [3], 'R': [0,3],
+            'Y': [1,2], 'S': [2,3], 'W': [0,1], 'K': [1,3],
+            'M': [0,2], 'B': [1,2,3], 'D': [0,1,3], 
+            'H': [0,1,2], 'V': [0,2,3], 'N':[0,1,2,3]}
 
     valid_chars = set(SEQ_DICT.keys())
     if not set(blueprint).issubset(valid_chars):
@@ -494,7 +502,7 @@ class ProDIntegration:
         )
         
         if results.empty:
-            return {}
+            return {"error": "Tool returned empty results"}
             
         # Convert results to dictionary with detailed information
         # Harmonise column names: ProD (run_tool) gives [ID, spacer, strength, promoter]

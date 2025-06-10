@@ -886,11 +886,14 @@ class GeneratePromoterLibraryWithProDTool(_ProDToolBase):
                 downstream = parent_seq[idx+17:]
 
         # Call ProD
-        lib_dict = prod.generate_library(
-            blueprint,
-            desired_strengths=desired_strengths,
-            library_size=sequences_per_class,
-        )
+        try:
+            lib_dict = prod.generate_library(
+                blueprint,
+                    desired_strengths=desired_strengths,
+                    library_size=sequences_per_class,
+                )
+        except Exception as e:
+            return {"error": f"Error generating promoter library: {str(e)}"}
 
         # Enrich with full promoter sequences if we know flanks
         if upstream is not None and downstream is not None:

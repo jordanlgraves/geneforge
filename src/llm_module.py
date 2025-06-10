@@ -77,10 +77,8 @@ def _check_for_repeated_errors(messages):
     last_error = None
     last_function = None
     
-    for j in range(len(messages) - 1, 0, -2):  # Check every other message (function responses)
-        if j < 3:  # Make sure we don't go out of bounds
-            break
-            
+    # Iterate backwards, focusing on function-call result messages and their preceding assistant wrapper.
+    for j in range(len(messages) - 1, 0, -1):
         if messages[j].get("role") == "function" and messages[j-1].get("role") == "assistant":
             try:
                 content = json.loads(messages[j].get("content", "{}"))
@@ -125,33 +123,34 @@ def _handle_tool_call(
     fn_name = fn_call.name
     fn_args_json = fn_call.arguments or "{}"
 
+    # Helper to append wrapper + result with correct roles depending on model
+    def _append_wrapper_and_result(result_role: str, tool_result: Dict[str, Any]):
+        """Append the assistant wrapper message and the result message to messages list.
+        For OpenAI (functions API) we return a message with role "function" and must include the function name.
+        For DeepSeek (and tools API) we use role "tool" and must include tool_call_id."""
+
+        # Wrapper indicating the function call attempt
+        messages.append({
+            "role": "assistant",
+            "function_call": {"name": fn_name, "arguments": fn_args_json},
+            "content": None,
+        })
+
+        # Actual result message in the required format
+        messages.append({
+            "role": "function",
+            "name": fn_name,
+            "content": json.dumps(tool_result),
+        })
+
     try:
         fn_args = json.loads(fn_args_json)
     except json.JSONDecodeError as e:
         logger.error(f"Failed to decode function arguments for {fn_name}: {fn_args_json}. Error: {e}")
         error_result = {"error": f"Invalid JSON arguments provided: {e}"}
         
-        # Append error message back to the conversation for the LLM
-        messages.append({
-            "role": "assistant", 
-            "function_call": {"name": fn_name, "arguments": fn_args_json},
-            "content": None
-        })
-        
-        # Use the correct format based on the model type
-        if "deepseek" in model.lower():
-            # DeepSeek format
-            messages.append({
-                "role": "tool",
-                "tool_call_id": fn_call.id if hasattr(fn_call, 'id') else "call_id",
-                "content": json.dumps(error_result)
-            })
-        else:
-            # OpenAI format (newer API)
-            messages.append({
-                "role": "assistant",
-                "content": json.dumps(error_result)
-            })
+        # Append wrapper + error result
+        _append_wrapper_and_result("function", error_result)
         
         return messages, True  # Function was attempted but failed
 
@@ -171,27 +170,8 @@ def _handle_tool_call(
         else:
              logger.info(log_msg) # Log success as info
 
-        # Append the function call attempt and its result
-        messages.append({
-            "role": "assistant",
-            "function_call": {"name": fn_name, "arguments": fn_args_json},
-            "content": None # Important: Content is null for function calls
-        })
-        
-        # Use the correct format based on the model type
-        if "deepseek" in model.lower():
-            # DeepSeek format
-            messages.append({
-                "role": "tool",
-                "tool_call_id": fn_call.id if hasattr(fn_call, 'id') else "call_id",
-                "content": json.dumps(tool_result)
-            })
-        else:
-            # OpenAI format (newer API)
-            messages.append({
-                "role": "assistant",
-                "content": json.dumps(tool_result)
-            })
+        # Append wrapper + result
+        _append_wrapper_and_result("function", tool_result)
 
         return messages, True  # Function was called successfully
 
@@ -199,27 +179,8 @@ def _handle_tool_call(
         logger.error(f"Unexpected error calling function {fn_name} via ToolIntegration: {e}", exc_info=True)
         error_result = {"error": f"Internal error executing function {fn_name}: {str(e)}"}
 
-        # Append the failed attempt and the error result
-        messages.append({
-            "role": "assistant",
-            "function_call": {"name": fn_name, "arguments": fn_args_json},
-            "content": None
-        })
-        
-        # Use the correct format based on the model type
-        if "deepseek" in model.lower():
-            # DeepSeek format
-            messages.append({
-                "role": "tool",
-                "tool_call_id": fn_call.id if hasattr(fn_call, 'id') else "call_id",
-                "content": json.dumps(error_result)
-            })
-        else:
-            # OpenAI format (newer API)
-            messages.append({
-                "role": "assistant",
-                "content": json.dumps(error_result)
-            })
+        # Append wrapper + error result
+        _append_wrapper_and_result("function", error_result)
 
         if DEBUG_MODEL:
             raise e # Reraise in debug mode for easier debugging
