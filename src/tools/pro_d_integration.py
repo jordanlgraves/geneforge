@@ -8,9 +8,6 @@ from typing import List, Dict, Optional, Tuple, Union, Any
 from pathlib import Path
 import sys
 import traceback
-# Add ProD to the path
-sys.path.append(os.path.join(os.path.dirname(__file__), '../../ext_repos/ProD'))
-from ProD import run_tool
 
 # Configure logging
 logger = logging.getLogger(__name__)
@@ -185,6 +182,7 @@ def extract_id_ecoli_spacer(sequence: str) -> Optional[str]:
 
     # Otherwise fall back to best_config (length 15-19) and adjust to 17 bp
     if best_config:
+        from ProD import run_tool
         spacer = best_config['spacer']
         if len(spacer) == 16:
             # Pad with 1 nt downstream of spacer if available
@@ -222,6 +220,7 @@ def evaluate_promoter_spacers(spacer_sequences: List[str],
     Returns:
         DataFrame with prediction results
     """
+    from ProD import run_tool
     if not spacer_sequences:
         raise ValueError("No spacer sequences provided")
     
@@ -324,9 +323,10 @@ def generate_promoter_library(blueprint: str,
     
     # Run ProD tool
     try:
+        from ProD import run_tool
         logger.info(f"Generating promoter library from blueprint {blueprint}")
         result = run_tool(
-            [blueprint],
+            [blueprint] if isinstance(blueprint, str) else blueprint,
             output_path=output_path,
             lib=True,
             lib_size=library_size,

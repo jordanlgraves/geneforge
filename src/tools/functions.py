@@ -1,26 +1,12 @@
 # tools/functions.py
 
-import json
 import os
-import glob
-import re
-from typing import Dict, List, Any, Optional, Type, ClassVar
+from typing import Dict, List, Any, ClassVar, Optional
 import src.library.part_library_customizer as part_library_customizer
-from src.library.library_manager import LibraryManager
 import logging
 from src.session_state import SessionState
 import traceback
 import logging
-
-try:
-    from src.tools.deepseed_integration import DeepSeedIntegration
-except ImportError:
-    logging.warning("Failed to import DeepSeedIntegration. DeepSeed integration will not work.")
-try:
-    from src.tools.gpro_integration import PromoterOptimizer, RepressorOptimizer
-except ImportError:
-    logging.warning("Failed to import GProIntegration. GPro integration will not work.")
-
 
 
 from langchain_community.tools import ReadFileTool
@@ -156,7 +142,7 @@ class ListInputSensorsTool(Tool):
 
 class DescribeAvailableLibrariesTool(Tool):
     name = "describe_available_libraries"
-    description = "Return a description of the available libraries."
+    description = "Return a description of the available libraries which includes the header which contains the organism name among other details, the UCF path, the input sensor file path and the output file path."
     parameters = {
         "type": "object",
         "properties": {},
@@ -189,25 +175,49 @@ class SelectLibraryTool(Tool):
         """Select a library using a library ID within the current session."""
         success = self.session_state.select_library(library_id)
         if success:
-            calib_result = self.session_state.auto_calibrate_prod()
-            response = {
+            return {
                 "success": True,
                 "message": f"Session selected library {library_id}",
             }
-            if calib_result.get("success"):
-                response["prod_calibration"] = {
-                    "n_points": calib_result.get("n_points"),
-                    "slope": calib_result.get("slope"),
-                    "intercept": calib_result.get("intercept"),
-                }
-            else:
-                response["prod_calibration_warning"] = calib_result.get("error")
-            return response
         else:
             available = list(self.session_state.get_library_manager().get_available_libraries().keys())
             return {
                 "success": False,
                 "error": f"Failed to select library {library_id}. Available libraries: {available}",
+                "available_libraries": available
+            }
+
+
+
+class QueryLibrariesByOrganismTool(Tool):
+    name = "query_libraries_by_organism"
+    description = "Query the available libraries by organism. The organism field in the library metadata must match the organism name exactly (case-insensitive)."
+    parameters = {
+        "type": "object",
+        "properties": {
+            "organism": {
+                "type": "string",
+                "description": "The exact 'organism' field in the library metadata to filter libraries by."
+            }
+        },
+        "required": ["organism"]
+    }
+    
+    def execute(self, organism: str) -> Dict[str, Any]:
+        """Query the available libraries by organism."""
+        success = self.session_state.query_libraries_by_organism(organism)
+        if success:
+            response = {
+                "success": True,
+                "message": f"Session queried libraries by organism {organism}",
+                "matched_libraries": self.session_state.get_library_manager().get_available_libraries().keys()
+            }
+            return response
+        else:
+            available = list(self.session_state.get_library_manager().get_available_libraries().keys())
+            return {
+                "success": False,
+                    "error": f"Failed to query libraries by organism {organism}. Available libraries: {available}",
                 "available_libraries": available
             }
 
@@ -284,7 +294,7 @@ class ListRepressorsTool(Tool):
 
 class GetDnaPartByNameTool(Tool):
     name = "get_dna_part_by_name"
-    description = "Get a specific DNA part by name (like 'pTet') from the selected library in the user contrainsts file. IMPORTANT: You must first select a library using select_library before using this function."
+    description = "Get a specific DNA part by name (like 'pTet') from the selected library in the user constraints file. IMPORTANT: You must first select a library using select_library before using this function."
     parameters = {
         "type": "object",
         "properties": {
@@ -545,10 +555,11 @@ class CreateCustomUcfTool(Tool):
             )
 
             if custom_ucf_path:
+                library_manager.load_custom_ucf(custom_ucf_path)
                 self.session_state.custom_ucf_path = custom_ucf_path
                 return {
                     "success": True,
-                    "library_id_base": library_manager.current_library_id,
+                    "library_id": library_manager.current_library_id,
                     "custom_ucf_path": custom_ucf_path
                 }
             else:
@@ -802,6 +813,7 @@ class EstimatePromoterStrengthWithProDTool(_ProDToolBase):
             "spacer": spacer,
             "class": cls_val,
             "ymax": ymax,
+            "success": True
         }
 
 
@@ -822,7 +834,7 @@ class GeneratePromoterLibraryWithProDTool(_ProDToolBase):
                 "description": "List of desired strength classes (0-10)"
             },
             "sequences_per_class": {"type": "integer", "default": 5},
-            "parent_promoter": {"type": "string", "description": "Optional promoter ID or full promoter to supply flanking regions."},
+            "parent_promoter": {"type": "string", "description": "Optional promoter ID or full promoter sequence to supply flanking regions."},
             "file_type": {"type": "string", "enum": ["ucf", "input", "output"], "default": "ucf"}
         },
         "required": ["blueprint"]
@@ -832,7 +844,19 @@ class GeneratePromoterLibraryWithProDTool(_ProDToolBase):
                 parent_promoter: str = None, file_type: str = "ucf") -> Dict[str, Any]:
         prod = self._get_prod()
 
-        upstream = downstream = None
+        if len(blueprint) != 17:
+            # assume the blueprint is a full promoter
+            spacer = prod.extract_spacer(blueprint)
+            if not spacer:
+                return {"error": "Could not extract spacer from full promoter sequence."}
+            parent_seq = blueprint
+            blueprint = spacer
+            idx = parent_seq.find(spacer)
+            upstream = parent_seq[:idx]
+            downstream = parent_seq[idx+17:]
+        else:
+            upstream = downstream = None
+
         if parent_promoter:
             library_manager = self.session_state.get_library_manager()
             dna_chars = set("ATGCRYSWKMBDHVNatgcryswkmbdhvn")
@@ -870,8 +894,8 @@ class GeneratePromoterLibraryWithProDTool(_ProDToolBase):
 
         # Enrich with full promoter sequences if we know flanks
         if upstream is not None and downstream is not None:
-            for entry in lib_dict.values():
-                entry["promoter_sequence"] = f"{upstream.upper()}{entry['spacer']}{downstream.upper()}" 
+            for spacer_seq, properties in lib_dict.items():
+                properties["promoter_sequence"] = f"{upstream.upper()}{spacer_seq}{downstream.upper()}" 
 
         return {
             "blueprint": blueprint,
@@ -880,7 +904,8 @@ class GeneratePromoterLibraryWithProDTool(_ProDToolBase):
                     "spacer": k,
                     **v
                 } for k, v in lib_dict.items()
-            ]
+            ],
+            "success": True
         }
 
 
@@ -915,13 +940,16 @@ class PatchUcfWithPromotersTool(Tool):
     def execute(self, parent_promoter_id: str, variants: List[Dict[str, Any]], replace_parent: bool = False):
         import copy
         from src.tools.pro_d_integration import extract_id_ecoli_spacer
+        import src.library.part_library_customizer as plc
 
         lm = self.session_state.get_library_manager()
         if not lm.current_library_id:
             return {"error": "No library selected. Use select_library first."}
 
         base_ucf = lm.get_ucf_data()
-        import src.library.part_library_customizer as plc
+        if not base_ucf:
+            return {"error": "Failed to retrieve current UCF data."}
+        
         parent_part = plc.get_part_by_name(base_ucf, parent_promoter_id)
         if not parent_part:
             return {"error": f"Parent promoter {parent_promoter_id} not found in UCF."}
@@ -970,37 +998,298 @@ class PatchUcfWithPromotersTool(Tool):
             path = lm.create_custom_ucf(
                 selected_gates=None,
                 selected_parts=list(modified_parts.keys()),
-                modified_parts=modified_parts,
+                modified_parts=list(modified_parts.values()),
                 ucf_name=f"custom_{lm.current_library_id}_{parent_promoter_id}_variants.UCF.json",
             )
             self.session_state.custom_ucf_path = path
             return {"success": True, "custom_ucf_path": path, "n_variants": len(modified_parts)}
         except Exception as e:
-            return {"error": f"Failed to patch UCF: {e}"}
+            if DEBUG_MODE:
+                traceback.print_exc()
+                raise e
+            else:
+                return {"error": f"Failed to patch UCF: {e}"}
 
 
+
+# RBS Calculator Tools
+
+
+class PredictInitiationRateWithRbsCalculatorTool(Tool):
+    name = "predict_initiation_rate_with_rbs_calculator"
+    description = (
+        "Predict translation initiation metrics (ΔG_total, expression level) for an "
+        "mRNA sequence using the Salis-lab RBS Calculator."
+    )
+    parameters = {
+        "type": "object",
+        "properties": {
+            "mrna_sequence": {
+                "type": "string",
+                "description": "Full mRNA (or DNA) sequence containing at least one start codon.",
+            },
+            "start_range": {
+                "type": "array",
+                "items": {"type": "integer"},
+                "description": "Optional [start, end] indices delimiting the scan window for start codons (0-based).",
+            },
+            "name": {"type": "string", "description": "Optional identifier for the sequence."},
+            "verbose": {"type": "boolean", "description": "Set to true to print the legacy calculator output."},
+        },
+        "required": ["mrna_sequence"],
+    }
+
+    def execute(
+        self,
+        mrna_sequence: str,
+        start_range: Optional[list] = None,
+        name: Optional[str] = None,
+        verbose: bool = False,
+    ) -> Dict[str, Any]:
+        # RBS Calculator integration
+        from src.tools.rbs_calculator_integration import RBSCalculatorIntegration
+
+        # Convert start_range to tuple[int, int] if provided.
+        sr_tuple = tuple(start_range) if start_range else None  # type: ignore[arg-type]
+        return RBSCalculatorIntegration.predict_initiation_rate(
+            mrna_sequence=mrna_sequence,
+            start_range=sr_tuple,  # type: ignore[arg-type]
+            name=name,
+            verbose=verbose,
+        )
+
+
+class DesignRbsWithRbsCalculatorTool(Tool):
+    name = "design_rbs_with_rbs_calculator"
+    description = (
+        "Design a synthetic ribosome-binding site achieving a desired translation initiation rate "
+        "or ΔG_total using the Salis-lab Monte Carlo optimiser."
+    )
+    parameters = {
+        "type": "object",
+        "properties": {
+            "pre_sequence": {"type": "string", "description": "Sequence upstream of the RBS (5′ UTR)."},
+            "post_sequence": {"type": "string", "description": "Sequence starting with the start codon and into the CDS."},
+            "target_tir": {"type": "number", "description": "Desired translation initiation rate (arbitrary units)."},
+            "target_delta_g": {"type": "number", "description": "Desired ΔG_total (kcal/mol)."},
+            "max_iterations": {"type": "integer", "description": "Maximum optimisation iterations.", "default": 10000},
+            "verbose": {"type": "boolean", "description": "Return verbose legacy output."},
+        },
+        "required": ["pre_sequence", "post_sequence"],
+    }
+
+    def execute(
+        self,
+        pre_sequence: str,
+        post_sequence: str,
+        target_tir: Optional[float] = None,
+        target_delta_g: Optional[float] = None,
+        max_iterations: int = 10000,
+        verbose: bool = False,
+    ) -> Dict[str, Any]:
+        # RBS Calculator integration
+        from src.tools.rbs_calculator_integration import RBSCalculatorIntegration
+
+        return RBSCalculatorIntegration.design_rbs(
+            pre_sequence=pre_sequence,
+            post_sequence=post_sequence,
+            target_tir=target_tir,
+            target_delta_g=target_delta_g,
+            max_iterations=max_iterations,
+            verbose=verbose,
+        )
+
+
+class AddPromoterVariantTool(Tool):
+    name = "add_promoter_variant"
+    description = (
+        "Create a new promoter variant (new spacer and ymax) by duplicating the dependencies of an existing promoter "
+        "within the currently selected library and writing a custom UCF file."
+    )
+    parameters = {
+        "type": "object",
+        "properties": {
+            "parent_promoter_id": {"type": "string", "description": "ID of the reference promoter part."},
+            "spacer": {"type": "string", "description": "17-bp spacer sequence to use in replacement of the 17-bp spacer sequence of the parent promoter"},
+            "ymax": {"type": "number", "description": "Calibrated RPU (ymax) for the new promoter. Can be found in the output from the ProD tool."},
+            "new_promoter_id": {"type": "string", "description": "Optional name for the new promoter. Alphanumeric characters only, no spaces or special characters."},
+        },
+        "required": ["parent_promoter_id", "spacer", "ymax"],
+    }
+
+    def execute(
+        self,
+        parent_promoter_id: str,
+        spacer: str,
+        ymax: float,
+        new_promoter_id: Optional[str] = None,
+    ) -> Dict[str, Any]:
+        import copy
+        from src.tools.pro_d_integration import extract_id_ecoli_spacer
+        import src.library.part_library_customizer as plc
+
+        lm = self.session_state.get_library_manager()
+        if not lm.current_library_id:
+            return {"error": "No library selected. Use select_library first."}
+
+        ucf_data = lm.get_ucf_data()
+        if not ucf_data:
+            return {"error": "Could not load UCF data."}
+
+        parent_part = plc.get_part_by_name(ucf_data, parent_promoter_id)
+        if not parent_part:
+            return {"error": f"Parent promoter {parent_promoter_id} not found."}
+
+        parent_seq = parent_part.get("dnasequence") or parent_part.get("sequence")
+        spacer_parent = extract_id_ecoli_spacer(parent_seq)
+        if not spacer_parent:
+            return {"error": "Unable to extract spacer from parent promoter."}
+        if len(spacer) != 17:
+            return {"error": "Provided spacer must be 17 bp."}
+
+        # Build new promoter sequence
+        idx = parent_seq.find(spacer_parent)
+        new_sequence = f"{parent_seq[:idx].upper()}{spacer.upper()}{parent_seq[idx+17:].upper()}"
+
+        # Determine new promoter id
+        if not new_promoter_id:
+            base = parent_promoter_id.rstrip("\n")
+            new_promoter_id = f"{base}var1"
+            i = 1
+            while plc.get_part_by_name(ucf_data, new_promoter_id):
+                i += 1
+                new_promoter_id = f"{base}var{i}"
+
+        # Duplicate dependencies
+        new_items, gate_map = plc.duplicate_promoter_dependencies(
+            ucf_data, parent_promoter_id, new_promoter_id, new_sequence, ymax
+        )
+
+        # Update ymax inside associated models
+        for item in new_items:
+            if item.get("collection") == "models":
+                # update / insert parameter
+                updated = False
+                for p in item.get("parameters", []):
+                    if p.get("name").lower() in ("ymax", "y_max"):
+                        p["value"] = ymax
+                        updated = True
+                        break
+                if not updated:
+                    item.setdefault("parameters", []).append({"name": "ymax", "value": ymax})
+
+        # Assemble new custom UCF
+        try:
+            path = lm.create_custom_ucf(
+                selected_gates=None,
+                selected_parts=None,
+                modified_parts=None,
+                new_parts=new_items,
+                ucf_name=f"custom_{lm.current_library_id}_{new_promoter_id}.UCF.json",
+            )
+            lm.load_custom_ucf(path)
+            self.session_state.custom_ucf_path = path
+            return {
+                "success": True,
+                "custom_ucf_path": path,
+                "new_promoter_id": new_promoter_id,
+                "n_new_items": len(new_items),
+            }
+        except Exception as exc:
+            if DEBUG_MODE:
+                traceback.print_exc()
+            return {"error": str(exc)}
+
+
+class RemovePromoterTool(Tool):
+    name = "remove_promoter"
+    description = "Remove a promoter part and all dependent structures, gates and models from the current UCF and write a custom UCF file."
+    parameters = {
+        "type": "object",
+        "properties": {
+            "promoter_id": {"type": "string", "description": "ID of the promoter to remove."},
+        },
+        "required": ["promoter_id"],
+    }
+
+    def execute(self, promoter_id: str) -> Dict[str, Any]:
+        import src.library.part_library_customizer as plc
+        import json
+        import os
+        lm = self.session_state.get_library_manager()
+        if not lm.current_library_id:
+            return {"error": "No library selected. Use select_library first."}
+
+        ucf = lm.get_ucf_data()
+        if not ucf:
+            return {"error": "Could not load UCF data."}
+
+        if not plc.get_part_by_name(ucf, promoter_id):
+            return {"error": f"Promoter {promoter_id} not found."}
+
+        # Use the correct utility function to remove the part and its dependencies
+        new_ucf_data, summary = plc.remove_part_and_dependencies(ucf, promoter_id)
+
+        # Write the new custom UCF to a file
+        try:
+            output_dir = "outputs/custom_ucf"
+            os.makedirs(output_dir, exist_ok=True)
+            ucf_name = f"custom_{lm.current_library_id}_without_{promoter_id}.UCF.json"
+            path = os.path.join(output_dir, ucf_name)
+
+            with open(path, "w") as f:
+                json.dump(new_ucf_data, f, indent=2)
+
+            # Update the library manager's state
+            lm.load_custom_ucf(path)
+            self.session_state.custom_ucf_path = path
+
+            return {
+                "success": True,
+                "custom_ucf_path": path,
+                "removed_items_summary": summary,
+            }
+        except Exception as exc:
+            if DEBUG_MODE:
+                traceback.print_exc()
+            return {"error": str(exc)}
+
+        
 # ---------------------------------------------------------------------------
 #  Register in existing TOOL_REGISTRY and expose schemas
 # ---------------------------------------------------------------------------
 
 TOOL_REGISTRY = {}
 
-TOOL_REGISTRY[ListPromotersTool.name] = ListPromotersTool
 TOOL_REGISTRY[DescribeAvailableLibrariesTool.name] = DescribeAvailableLibrariesTool
 TOOL_REGISTRY[SelectLibraryTool.name] = SelectLibraryTool
+TOOL_REGISTRY[QueryLibrariesByOrganismTool.name] = QueryLibrariesByOrganismTool
+
+TOOL_REGISTRY[ListPromotersTool.name] = ListPromotersTool
 TOOL_REGISTRY[ListRepressorsTool.name] = ListRepressorsTool
 TOOL_REGISTRY[ListInputSensorsTool.name] = ListInputSensorsTool
 TOOL_REGISTRY[GetDnaPartByNameTool.name] = GetDnaPartByNameTool
 TOOL_REGISTRY[ListTerminatorsTool.name] = ListTerminatorsTool
+
+TOOL_REGISTRY[GenerateVerilogToolLLM.name] = GenerateVerilogToolLLM
 TOOL_REGISTRY[DesignWithCelloTool.name] = DesignWithCelloTool
+TOOL_REGISTRY[EvaluateCircuitPerformanceTool.name] = EvaluateCircuitPerformanceTool
+
 TOOL_REGISTRY[CreateCustomUcfTool.name] = CreateCustomUcfTool
 TOOL_REGISTRY[CreateCustomInputSensorsFileTool.name] = CreateCustomInputSensorsFileTool
-TOOL_REGISTRY[EvaluateCircuitPerformanceTool.name] = EvaluateCircuitPerformanceTool
-TOOL_REGISTRY[GenerateVerilogToolLLM.name] = GenerateVerilogToolLLM
+
 TOOL_REGISTRY[EstimatePromoterStrengthWithProDTool.name] = EstimatePromoterStrengthWithProDTool
 TOOL_REGISTRY[GeneratePromoterLibraryWithProDTool.name] = GeneratePromoterLibraryWithProDTool
-TOOL_REGISTRY[PatchUcfWithPromotersTool.name] = PatchUcfWithPromotersTool
+# Deprecated PatchUcfWithPromotersTool is no longer registered.
+# New promoter management tools will be registered below.
 
+# RBS Calculator tools
+TOOL_REGISTRY[PredictInitiationRateWithRbsCalculatorTool.name] = PredictInitiationRateWithRbsCalculatorTool
+TOOL_REGISTRY[DesignRbsWithRbsCalculatorTool.name] = DesignRbsWithRbsCalculatorTool
+
+# Promoter variant tools
+TOOL_REGISTRY[AddPromoterVariantTool.name] = AddPromoterVariantTool
+TOOL_REGISTRY[RemovePromoterTool.name] = RemovePromoterTool
 
 # Generate OpenAI function schemas from tools
 tool_functions = [

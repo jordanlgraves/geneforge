@@ -4,8 +4,10 @@ pandas==2.2.3
 scipy==1.15.2
 
 # File handling and data processing
+Cython<3
+celloapi2
 jsonschema==4.23.0
-pyyaml>=6.0
+pyyaml==5.4.1
 
 # Logging and utilities
 tqdm>=4.62.0

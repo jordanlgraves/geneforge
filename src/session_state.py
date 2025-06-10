@@ -2,6 +2,7 @@ import logging
 from typing import Optional, Dict, Any
 
 from src.library.library_manager import LibraryManager
+from src.library.part_library_customizer import get_promoter_dependencies
 
 logger = logging.getLogger(__name__)
 
@@ -56,8 +57,22 @@ class SessionState:
             # Update session state's copy of UCF data if needed
             self.current_ucf_data = self.library_manager.get_ucf_data()
             logger.info(f"Session state updated with UCF data for {library_id}")
+            
+            # Automatically calibrate ProD
+            calibration_result = self.auto_calibrate_prod()
+            if calibration_result.get("success"):
+                logger.info(f"ProD calibrated successfully: {calibration_result}")
+            else:
+                logger.warning(f"ProD calibration failed or was skipped: {calibration_result.get('error')}")
+
         else:
             logger.error(f"Failed to select library {library_id} in session.")
+        return success
+
+    def query_libraries_by_organism(self, organism: str) -> bool:
+        """Filter the available libraries by organism."""
+        logger.info(f"Session filtering libraries by organism: {organism}")
+        success = self.library_manager.filter_libraries_by_organism(organism)
         return success
 
     def get_library_manager(self) -> LibraryManager:
@@ -121,34 +136,50 @@ class SessionState:
         Returns:
             Dict summarising the calibration (or reason for skipping).
         """
-        from src.tools.pro_d_integration import ProDIntegration
+        try:
+            from src.tools.pro_d_integration import ProDIntegration
+        except ImportError:
+            logger.error("ProDIntegration not found. Please install ProD.")
+            return {"success": False, "error": "ProDIntegration not found. Please install ProD."}
+        
         import random, math
 
         ucf_data = self.get_current_ucf_data()
         if not ucf_data:
             return {"success": False, "error": "No UCF loaded"}
 
-        # Collect promoters with ymax parameter
+        # Collect promoters with ymax parameter from their models
         refs = []
-        for item in ucf_data:
-            if item.get("collection") != "parts" or item.get("type") != "promoter":
+        promoter_parts = [p for p in ucf_data if p.get("collection") == "parts" and p.get("type") == "promoter"]
+
+        for part in promoter_parts:
+            promoter_name = part.get("name")
+            if not promoter_name:
                 continue
-            # parameters is list of dicts; find ymax
-            for p in item.get("parameters", []):
-                if p.get("parameter", "").lower() in ("ymax", "y_max"):
+
+            dependencies = get_promoter_dependencies(ucf_data, promoter_name)
+            model = next(iter(dependencies.get("models", [])), None)
+
+            if not model:
+                continue
+
+            # Find ymax parameter in the model
+            for p in model.get("parameters", []):
+                if p.get("name", "").lower() in ("ymax", "y_max"):
                     try:
                         ymax_val = float(p.get("value"))
                     except (TypeError, ValueError):
                         continue
-                    seq = item.get("dnasequence") or item.get("sequence")
+                    
+                    seq = part.get("dnasequence") or part.get("sequence")
                     if seq and ymax_val > 0:
-                        refs.append({"sequence": seq, "ymax": ymax_val})
-                    break  # stop after first parameter match
+                        refs.append({"sequence": seq, "ymax": ymax_val, "promoter": promoter_name})
+                    break # stop after first ymax match in model
 
         if len(refs) < min_refs:
             return {
                 "success": False,
-                "error": f"Only found {len(refs)} promoters with ymax; need {min_refs} to calibrate.",
+                "error": f"Only found {len(refs)} promoters with valid ymax models; need {min_refs} to calibrate.",
             }
 
         random.shuffle(refs)
@@ -161,6 +192,9 @@ class SessionState:
 
         try:
             result = prod.calibrate_rpu_scale(refs)
+            # Add the promoter names to the result for better logging
+            if result.get("success"):
+                result["reference_promoters"] = [r["promoter"] for r in refs]
             return result
         except Exception as e:
             logger.warning("ProD calibration failed: %s", e)

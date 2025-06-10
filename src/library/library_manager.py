@@ -14,6 +14,14 @@ import src.library.part_library_customizer as part_library_customizer
 logger = logging.getLogger("library_manager")
 
 DEBUG_MODEL = True
+USE_LLM_FOR_LIBRARY_FILTERING = True
+
+def _read_cello_config_file(config_file_path: str) -> Dict[str, Any]:
+    """
+    Read the Cello config file and return the config as a dictionary.
+    """
+    with open(config_file_path, 'r') as f:
+        return json.load(f)
 
 class LibraryManager:
     """
@@ -128,6 +136,20 @@ class LibraryManager:
         """
         return self.available_libraries
     
+    def filter_libraries_by_organism(self, organism: str) -> Dict[str, Dict[str, str]]:
+        """
+        Filter the available libraries by organism.
+        """
+        matched_libraries = list()
+        for lib_id in self.available_libraries:
+            ucf_path = self.available_libraries[lib_id]["ucf"]
+            with open(ucf_path, 'r') as f:
+                header = [item for item in json.load(f) if item.get('collection','') == 'header'].pop()
+                organism_of_library = header.get('organism','')
+                if organism.lower() == organism_of_library.lower():
+                    matched_libraries.append(lib_id)
+        return matched_libraries
+    
     def describe_available_libraries(self) -> Dict[str, Dict[str, str]]:
         """
         Describe the available libraries.
@@ -185,24 +207,20 @@ class LibraryManager:
         
         # Load the UCF file - store raw UCF data
         try:
-            with open(self.current_ucf_path, 'r') as f:
-                self.current_ucf_data = json.load(f)
-            
+            self.current_ucf_data = _read_cello_config_file(self.current_ucf_path)
             logger.info(f"Loaded raw UCF data from {self.current_ucf_path}")
             
             # Load the input file - store raw input data
             input_path = library_info.get("input")
             if input_path and os.path.exists(input_path):
-                with open(input_path, 'r') as f:
-                    self.current_input_data = json.load(f)
-                    logger.info(f"Loaded raw input data from {input_path}")
+                self.current_input_data = _read_cello_config_file(input_path)
+                logger.info(f"Loaded raw input data from {input_path}")
 
             # Load the output file - store raw output data
             output_path = library_info.get("output")
             if output_path and os.path.exists(output_path):
-                with open(output_path, 'r') as f:
-                    self.current_output_data = json.load(f)
-                    logger.info(f"Loaded raw output data from {output_path}")
+                self.current_output_data = _read_cello_config_file(output_path)
+                logger.info(f"Loaded raw output data from {output_path}")
                     
 
         except Exception as e:
@@ -426,3 +444,27 @@ class LibraryManager:
             info["num_gates"] = gates_count
         
         return info 
+
+    def load_custom_ucf(self, ucf_path: str) -> bool:
+        """
+        Loads a custom UCF file into the manager's current state,
+        overwriting the previously selected library's UCF data.
+        """
+        if not os.path.exists(ucf_path):
+            logger.error(f"Cannot load custom UCF: file not found at {ucf_path}")
+            return False
+        
+        try:
+            self.current_ucf_path = ucf_path
+            self.current_ucf_data = _read_cello_config_file(ucf_path)
+            # Mark the library ID to show it's a custom version
+            if self.current_library_id and not self.current_library_id.startswith("custom_"):
+                self.current_library_id = f"custom_{self.current_library_id}"
+            elif not self.current_library_id:
+                self.current_library_id = f"custom_{Path(ucf_path).stem}"
+
+            logger.info(f"LibraryManager context updated to custom UCF: {ucf_path}")
+            return True
+        except Exception as e:
+            logger.error(f"Failed to load or parse custom UCF from {ucf_path}: {e}")
+            return False 

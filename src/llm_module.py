@@ -256,18 +256,21 @@ def chat_with_tool(
     if i >= 3: # Start checking after a few rounds
         if _check_for_repeated_errors(messages):
              logger.warning("Repeated error detected. System message added to guide the LLM.")
-             # The system message is now part of 'messages', proceed to the API call
 
     # Determine if we're using DeepSeek reasoning model and adjust parameters accordingly
-    is_reasoning_model = "deepseek-reasoner" in model
+    is_deepseek_model = "deepseek" in model.lower()
     
-    response = client.chat.completions.create(
-        model=model,
-        messages=messages,
-        functions=tool_functions,
-        function_call="auto",
-        reasoning_effort="low"
-    )
+    request_params = {
+        "model": model,
+        "messages": messages,
+        "functions": tool_functions,
+        "function_call": "auto",
+    }
+    
+    if is_deepseek_model:
+        request_params["reasoning_effort"] = "low"
+
+    response = client.chat.completions.create(**request_params)
 
     response_message = response.choices[0].message
     logger.info(f"\nResponse message: {response_message}")

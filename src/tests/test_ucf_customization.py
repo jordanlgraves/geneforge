@@ -1,12 +1,25 @@
+import sys
+import os
+# Ensure project root is on PYTHONPATH
+PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), os.pardir, os.pardir))
+if PROJECT_ROOT not in sys.path:
+    sys.path.append(PROJECT_ROOT)
+
 import random
 import unittest
-import os
 import json
 import tempfile
+from typing import List, Dict, Optional
 
 from jsonschema import ValidationError
 from src.library.part_library_customizer import *
 from src.library.library_manager import LibraryManager
+
+def get_by_name(data: List[Dict], name: str) -> Optional[Dict]:
+    for item in data:
+        if item.get("name") == name:
+            return item
+    return None
 
 class TestUCFCustomization(unittest.TestCase):
     @classmethod
@@ -237,6 +250,71 @@ class TestUCFCustomization(unittest.TestCase):
             create_custom_ucf(invalid_ucf,
                 new_parts=[{"type": "invalid_type"}]  # Missing required fields
             )
+
+    def test_duplicate_promoter_dependencies(self):
+        """Test that duplicate promoter dependencies are handled correctly"""
+        ucf_data = self.library_manager.get_ucf_data()
+        new_items, gate_map = duplicate_promoter_dependencies(ucf_data, 
+                                                            "pPhlF", 
+                                                            "pPhlFvar1", 
+                                                            "A" * 90, 
+                                                            1.0)
+        result = validate_ucf(new_items)
+        assert result['valid']
+
+    def test_remove_part_and_dependencies(self):
+        """Test that the remove_part_and_dependencies function works correctly"""
+        ucf_data = self.library_manager.get_ucf_data()
+        new_ucf, summary = remove_part_and_dependencies(ucf_data, "pPhlF")
+        print('summary:   ')
+        print(summary)
+        assert new_ucf is not None
+        assert(get_by_name(new_ucf, "pPhlF") is None)
+        assert(get_by_name(new_ucf, "P1_PhlF_model") is None)
+        assert(get_by_name(new_ucf, "P2_PhlF_model") is None)
+        assert(get_by_name(new_ucf, "P3_PhlF_model") is None)
+        assert(get_by_name(new_ucf, "P1_PhlF") is None)
+        assert(get_by_name(new_ucf, "P2_PhlF") is None)
+        assert(get_by_name(new_ucf, "P3_PhlF") is None)
+        assert(get_by_name(new_ucf, "P1_PhlF_structure") is None)
+        assert(get_by_name(new_ucf, "P2_PhlF_structure") is None)
+        assert(get_by_name(new_ucf, "P3_PhlF_structure") is None)
+
+    def test_add_promoter_variant_and_remove_original(self):
+        """Test that the adding a promoter, then removing the original functionality works correctly"""
+        ucf_data = self.library_manager.get_ucf_data()
+        # duplicate the promoter
+        new_items, summary = duplicate_promoter_dependencies(ucf_data, "pPhlF", "pPhlFvar1", "A" * 90, 1.0)
+        
+        # Add the new items to the original UCF
+        new_ucf = ucf_data + new_items
+    
+        # remove the original promoter
+        filtered_ucf, summary = remove_part_and_dependencies(new_ucf, "pPhlF")
+    
+        assert filtered_ucf is not None
+        assert(get_by_name(filtered_ucf, "pPhlF") is None)
+        assert(get_by_name(filtered_ucf, "P1_PhlF_model") is None)
+        assert(get_by_name(filtered_ucf, "P2_PhlF_model") is None)
+        assert(get_by_name(filtered_ucf, "P3_PhlF_model") is None)
+        assert(get_by_name(filtered_ucf, "P1_PhlF") is None)
+        assert(get_by_name(filtered_ucf, "P2_PhlF") is None)
+        assert(get_by_name(filtered_ucf, "P3_PhlF") is None)
+        assert(get_by_name(filtered_ucf, "P1_PhlF_structure") is None)
+        assert(get_by_name(filtered_ucf, "P2_PhlF_structure") is None)
+        assert(get_by_name(filtered_ucf, "P3_PhlF_structure") is None)
+    
+        assert(get_by_name(filtered_ucf, "pPhlFvar1") is not None)
+        assert(get_by_name(filtered_ucf, "P1_PhlFvar1_model") is not None)
+        assert(get_by_name(filtered_ucf, "P2_PhlFvar1_model") is not None)
+        assert(get_by_name(filtered_ucf, "P3_PhlFvar1_model") is not None)
+        assert(get_by_name(filtered_ucf, "P1_PhlFvar1") is not None)
+        assert(get_by_name(filtered_ucf, "P2_PhlFvar1") is not None)
+        assert(get_by_name(filtered_ucf, "P3_PhlFvar1") is not None)
+        assert(get_by_name(filtered_ucf, "P1_PhlFvar1_structure") is not None)
+        assert(get_by_name(filtered_ucf, "P2_PhlFvar1_structure") is not None)
+        assert(get_by_name(filtered_ucf, "P3_PhlFvar1_structure") is not None)
+
 
 if __name__ == '__main__':
     unittest.main(verbosity=2) 

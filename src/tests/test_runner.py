@@ -9,6 +9,8 @@ import shutil
 from pathlib import Path
 from openai import OpenAI
 
+from src.session_state import SessionState
+
 # Add the project root to the Python path
 project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), "../.."))
 sys.path.insert(0, project_root)
@@ -28,6 +30,11 @@ class TestLLMIntegration(unittest.TestCase):
         """Set up resources shared across test methods"""
         cls.client = cls._setup_client()
         cls.yosys_available = cls._check_yosys_dependency()
+    
+    def setUp(self):
+        """Set up resources shared across test methods"""
+        self.session_state = SessionState()
+        self.tool_integration = ToolIntegration(self.session_state)
     
     @staticmethod
     def _setup_client():
@@ -115,7 +122,7 @@ class TestLLMIntegration(unittest.TestCase):
             {"role": "user", "content": user_request}
         ]
         
-        response = chat_with_tool(self.client, messages)
+        response = chat_with_tool(self.client, messages, tool_integration=self.tool_integration)
         
         # Assertions
         self.assertIsNotNone(response)
@@ -138,7 +145,7 @@ class TestLLMIntegration(unittest.TestCase):
             {"role": "user", "content": user_request}
         ]
         
-        response = chat_with_tool(self.client, messages)
+        response = chat_with_tool(self.client, messages, tool_integration=self.tool_integration)
         
         # Assertions
         self.assertIsNotNone(response)
@@ -168,7 +175,7 @@ class TestLLMIntegration(unittest.TestCase):
             {"role": "user", "content": user_request}
         ]
         
-        response = chat_with_tool(self.client, messages)
+        response = chat_with_tool(self.client, messages, tool_integration=self.tool_integration)
         
         # Assertions
         self.assertIsNotNone(response)
@@ -197,7 +204,7 @@ class TestLLMIntegration(unittest.TestCase):
             {"role": "user", "content": user_prompt}
         ]
         
-        response = chat_with_tool(self.client, messages)
+        response = chat_with_tool(self.client, messages, tool_integration=self.tool_integration)
         
         # Basic response checks
         self.assertIsNotNone(response)
@@ -245,7 +252,7 @@ class TestLLMIntegration(unittest.TestCase):
         # 1. The list_promoters function works - we check for proper results
         # 2. The list_promoters function fails - we check for graceful error handling
         
-        response = chat_with_tool(self.client, messages)
+        response = chat_with_tool(self.client, messages, tool_integration=self.tool_integration)
         
         # Basic response checks
         self.assertIsNotNone(response)
@@ -286,7 +293,7 @@ class TestLLMIntegration(unittest.TestCase):
             {"role": "user", "content": user_request}
         ]
         
-        response = chat_with_tool(self.client, messages)
+        response = chat_with_tool(self.client, messages, tool_integration=self.tool_integration)
         
         # Assertions
         self.assertIsNotNone(response)
@@ -307,7 +314,7 @@ class TestLLMIntegration(unittest.TestCase):
             {"role": "user", "content": user_request}
         ]
         
-        response = chat_with_tool(self.client, messages)
+        response = chat_with_tool(self.client, messages, tool_integration=self.tool_integration)
         
         # Assertions
         self.assertIsNotNone(response)
@@ -328,7 +335,7 @@ class TestLLMIntegration(unittest.TestCase):
             {"role": "user", "content": user_request}
         ]
         
-        response = chat_with_tool(self.client, messages)
+        response = chat_with_tool(self.client, messages, tool_integration=self.tool_integration)
         
         # Assertions
         self.assertIsNotNone(response)

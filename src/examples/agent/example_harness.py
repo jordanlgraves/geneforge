@@ -15,7 +15,7 @@ class ExampleRunner:
     Encapsulates common functionality for setup, execution, and result handling.
     """
     
-    def __init__(self, example_name: str, prompt: str, max_rounds: int = 15, max_attempts: int = 4):
+    def __init__(self, example_name: str, prompt: str, max_rounds: int = 15, max_attempts: int = 4, system_prompt: str = None):
         """
         Initialize the example runner with the given parameters.
         
@@ -29,7 +29,7 @@ class ExampleRunner:
         self.prompt = prompt
         self.max_rounds = max_rounds
         self.max_attempts = max_attempts
-        
+        self.system_prompt = system_prompt
         # Configure logging
         logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
         self.logger = logging.getLogger(f"Example-{example_name}")
@@ -56,9 +56,10 @@ class ExampleRunner:
         self.logger.info(f"Using LLM Client: {type(self.client).__name__}, Model: {self.model}")
         
         # Prepare initial messages
-        system_prompt = get_system_prompt()
+        if self.system_prompt is None:
+            self.system_prompt = get_system_prompt()
         self.messages = [
-            {"role": "system", "content": system_prompt},
+            {"role": "system", "content": self.system_prompt},
             {"role": "user", "content": self.prompt}
         ]
         self.logger.info(f"Initial User Prompt: {self.prompt}")

@@ -4,7 +4,7 @@ import uuid
 import copy
 import logging
 import tempfile
-from typing import Dict, List, Optional, Union, Any
+from typing import Dict, List, Optional, Tuple, Union, Any, Set
 from pathlib import Path
 import dotenv
 
@@ -19,7 +19,7 @@ from jsonschema import ValidationError
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("part_library_customizer")
 
-VERBOSE = False
+VERBOSE = True
 
 # Initialize global schema variables
 UCF_SCHEMA_PATH = os.path.join(CELLO_UCF_ROOT, "schemas", "v2", "ucf.schema.json")
@@ -360,6 +360,397 @@ def filter_parts(data: List[Dict], selected_parts: List) -> List[Dict]:
     
     return filtered_data
 
+def remove_part_and_dependencies(ucf_data: List[Dict], part_name: str) -> Tuple[List[Dict], Dict[str, List[str]]]:
+    """Remove *part_name* and all dependent structures, gates and models.
+
+    Parameters
+    ----------
+    ucf_data : list
+        The full UCF list (will **not** be modified in-place).
+    part_name : str
+        Name of the part (e.g. promoter ID) to remove.
+
+    Returns
+    ------
+    new_ucf : list
+        A deep-copy list that excludes the removed items.
+    summary : dict
+        Keys ``parts``, ``structures``, ``gates``, ``models`` with lists of
+        names that were removed.
+    """
+    import copy
+
+    # ------------------------------------------------------------ build maps
+    part_to_structures: Dict[str, List[str]] = {}
+    structure_to_gates: Dict[str, List[str]] = {}
+    gate_to_models: Dict[str, List[str]] = {}
+    model_to_gate: Dict[str, str] = {}
+
+    gates = [item for item in ucf_data if item.get("collection") == "gates"]
+    models = [item for item in ucf_data if item.get("collection") == "models"]
+
+    for item in ucf_data:
+        if item.get("collection") == "structures":
+            for promoter_part in item.get("outputs", []):
+                if promoter_part not in part_to_structures:
+                    part_to_structures[promoter_part] = []
+                part_to_structures[promoter_part].append(item["name"])
+
+        elif item.get("collection") == "gates":
+            struct = item.get("structure")
+            if struct:
+                if struct not in structure_to_gates:
+                    structure_to_gates[struct] = []
+                structure_to_gates[struct].append(item["name"])
+
+            model = item.get("model")
+            if model:
+                if model not in gate_to_models:
+                    gate_to_models[model] = []
+                gate_to_models[model].append(item["name"])
+                model_to_gate[item["name"]] = model
+
+    # some models are not explicitly linked from gates...
+    for model in models:
+        if model["name"] in gate_to_models:
+            continue
+        # v2-style: gate is implicitly <model_name> without "_model"
+        if model["name"].endswith("_model"):
+            gate_name = model["name"][:-len("_model")]
+            if gate_name in [g["name"] for g in gates]:
+                 if model["name"] not in gate_to_models:
+                    gate_to_models[model["name"]] = []
+                 gate_to_models[model["name"]].append(gate_name)
+                 model_to_gate[gate_name] = model["name"]
+
+
+    # ------------------------------------------------------------ find items to remove
+    to_remove: Dict[str, Set[str]] = {
+        "parts": {part_name},
+        "structures": set(),
+        "gates": set(),
+        "models": set(),
+    }
+
+    # parts -> structures
+    for p in to_remove["parts"]:
+        if p in part_to_structures:
+            for s in part_to_structures[p]:
+                to_remove["structures"].add(s)
+
+    # structures -> gates
+    structures_to_process = list(to_remove["structures"])
+    processed_structures = set()
+    while structures_to_process:
+        s = structures_to_process.pop(0)
+        if s in processed_structures:
+            continue
+        processed_structures.add(s)
+        if s in structure_to_gates:
+            for g in structure_to_gates[s]:
+                to_remove["gates"].add(g)
+
+    # gates -> models
+    models_to_check = set()
+    for g in to_remove["gates"]:
+        if g in model_to_gate:
+            models_to_check.add(model_to_gate[g])
+
+    for m in models_to_check:
+        # A model should be removed only if all gates that use it are also being removed.
+        if m in gate_to_models:
+            all_gates_removed = all(g in to_remove["gates"] for g in gate_to_models[m])
+            if all_gates_removed:
+                to_remove["models"].add(m)
+        else:
+            # If model is not in gate_to_models map, it means no gate refers to it, so it's safe to remove.
+            to_remove["models"].add(m)
+
+    # ------------------------------------------------------------ find dangling rules
+    # In some libraries, "device_rules" and "circuit_rules" may reference gates.
+    # This is a shallow removal; it doesn't handle cascading rule dependencies.
+    dangling_rules = set()
+    for item in ucf_data:
+        coll = item.get("collection")
+        if coll not in ("device_rules", "circuit_rules"):
+            continue
+        for g in to_remove["gates"]:
+            if g in item.get("components", []):
+                dangling_rules.add(item["name"])
+                break  # next rule
+
+    # ------------------------------------------------------------ filter
+    new_ucf = []
+    for item in ucf_data:
+        coll = item.get("collection", "")
+        if coll.endswith("s"):
+            coll = coll[:-1] # "parts" -> "part"
+        
+        name = item.get("name")
+        if f"{coll}s" in to_remove and name in to_remove[f"{coll}s"]:
+            continue
+        if name in dangling_rules:
+            continue
+        
+        # Deep-copy to avoid modifying original ucf_data
+        item_copy = copy.deepcopy(item)
+        
+        # Also clean up component lists within rules
+        if item_copy.get("collection") in ("device_rules", "circuit_rules"):
+            if "components" in item_copy:
+                item_copy["components"] = [c for c in item_copy["components"] if c not in to_remove["gates"]]
+        
+        new_ucf.append(item_copy)
+
+    summary = {
+        "parts": sorted(list(to_remove["parts"])),
+        "structures": sorted(list(to_remove["structures"])),
+        "gates": sorted(list(to_remove["gates"])),
+        "models": sorted(list(to_remove["models"])),
+        "rules": sorted(list(dangling_rules)),
+    }
+
+    return new_ucf, summary
+
+# ---------------------------------------------------------------------------
+#  Helper utilities for promoter-variant duplication
+# ---------------------------------------------------------------------------
+
+def _deepcopy_jsonable(obj):
+    """json-safe deepcopy that never fails."""
+    try:
+        return copy.deepcopy(obj)
+    except Exception:  # pragma: no cover
+        import json
+        return json.loads(json.dumps(obj))
+
+
+def _replace_tokens(obj, mapping: Dict[str, str], replace: bool = True):
+    """
+    Recursively walk *obj* and either replace (replace=True) or
+    append (replace=False) any string that matches a key in *mapping*.
+
+    If replace is False the original string is kept and the new one is
+    appended (lists) or ignored (scalar str).
+    """
+    if isinstance(obj, str):
+        for _old, _new in mapping.items():
+            if obj == _old:
+                return _new if replace else obj
+        return obj
+
+    if isinstance(obj, list):
+        out = [_replace_tokens(i, mapping, replace) for i in obj]
+        if not replace:
+            for _old, _new in mapping.items():
+                if _old in out and _new not in out:
+                    out.append(_new)
+        return out
+
+    if isinstance(obj, dict):
+        return {k: _replace_tokens(v, mapping, replace) for k, v in obj.items()}
+
+    return obj
+
+
+def get_promoter_dependencies(ucf_data: List[Dict], promoter_name: str) -> Dict[str, Dict]:
+    """
+    Find all items (part, structures, gates, models) that are linked
+    to a specific promoter part.
+    """
+    dependencies = {
+        "part": None,
+        "structures": [],
+        "gates": [],
+        "models": [],
+    }
+
+    part = get_part_by_name(ucf_data, promoter_name)
+    if not part:
+        return dependencies
+    dependencies["part"] = part
+
+    # Find structures that use the promoter
+    for item in ucf_data:
+        if item.get("collection") == "structures":
+            if promoter_name in item.get("outputs", []):
+                dependencies["structures"].append(item)
+
+    # Find gates that use those structures
+    structure_names = {s["name"] for s in dependencies["structures"]}
+    for item in ucf_data:
+        if item.get("collection") == "gates":
+            if item.get("structure") in structure_names:
+                dependencies["gates"].append(item)
+
+    # Find models linked to those gates
+    gate_names = {g["name"] for g in dependencies["gates"]}
+    for item in ucf_data:
+        if item.get("collection") == "models":
+            # Check for direct link by 'gate' field
+            if item.get("gate") in gate_names:
+                dependencies["models"].append(item)
+            # Check for implicit link by name (e.g., "pPhlF_model" for "pPhlF" gate)
+            elif item.get("name").startswith(tuple(gate_names)):
+                dependencies["models"].append(item)
+
+    return dependencies
+
+
+def duplicate_promoter_dependencies(
+    ucf_data: List[Dict],
+    parent_promoter: str,
+    new_promoter_name: str,
+    new_sequence: str,
+    y_max: float,
+) -> Tuple[List[Dict], Dict[str, str]]:
+    """
+    Duplicate *parent_promoter* together with all dependent structures,
+    gates and models under the new names.
+
+    Returns
+    -------
+    new_items   : list   – new part / structure / gate / model objects
+    gate_map    : dict   – {old_gate_name: new_gate_name}
+    """
+    new_items: List[Dict] = []
+
+    parent_part = get_part_by_name(ucf_data, parent_promoter)
+    if not parent_part:
+        raise ValueError(f"Promoter '{parent_promoter}' not found in UCF")
+
+    parent_regulator = parent_promoter[1:] if parent_promoter.startswith("p") else parent_promoter
+    new_regulator = new_promoter_name[1:] if new_promoter_name.startswith("p") else new_promoter_name
+    
+    # ------------------------------------------------------------------ parts
+    new_part = _deepcopy_jsonable(parent_part)
+    new_part["name"] = new_promoter_name
+    if "dnasequence" in new_part:
+        new_part["dnasequence"] = new_sequence
+    else:
+        new_part["sequence"] = new_sequence
+
+    # update / insert ymax
+    found = False
+    for p in new_part.get("parameters", []):
+        if p.get("parameter", "").lower() in ("ymax", "y_max"):
+            p["value"] = y_max
+            found = True
+            break
+    if not found:
+        new_part.setdefault("parameters", []).append(
+            {"parameter": "ymax", "value": y_max}
+        )
+
+    new_items.append(new_part)
+
+    # ---------- locate structures that reference the original promoter
+    structure_map: Dict[str, str] = {}
+    for item in ucf_data:
+        if item.get("collection") != "structures":
+            continue
+        uses_prom = (
+            parent_promoter in item.get("outputs", [])
+            or any(
+                parent_promoter in dev.get("components", [])
+                for dev in item.get("devices", [])
+            )
+        )
+        if uses_prom:
+            # remove the 'p' from the structure name
+            new_struct_name = item["name"].replace(parent_regulator, new_regulator)
+            structure_map[item["name"]] = new_struct_name
+            struct_copy = _deepcopy_jsonable(item)
+            struct_copy["name"] = new_struct_name
+
+            # Build a map of all names being changed within this structure
+            rename_map = {parent_promoter: new_promoter_name}
+            # Iterate original item's devices to get old names and map them to new names
+            for dev in item.get("devices", []):
+                old_name = dev['name']
+                new_name = old_name.replace(parent_regulator, new_regulator)
+                rename_map[old_name] = new_name
+
+            # Apply renames to outputs and components using the map
+            struct_copy["outputs"] = [
+                rename_map.get(x, x) for x in struct_copy.get("outputs", [])
+            ]
+            for dev in struct_copy.get("devices", []):
+                dev["name"] = rename_map.get(dev["name"], dev["name"])
+                dev["components"] = [
+                    rename_map.get(comp, comp) if not comp.startswith("#") else comp
+                    for comp in dev.get("components", [])
+                ]
+
+            new_items.append(struct_copy)
+
+    # ---------- duplicate gates that point at those structures
+    gate_map: Dict[str, str] = {}
+    for item in ucf_data:
+        if item.get("collection") != "gates":
+            continue
+        old_structure = item.get("structure")
+        if old_structure not in structure_map:
+            continue
+        new_gate_name = item["name"].replace(parent_regulator, new_regulator)
+        gate_map[item["name"]] = new_gate_name
+        gate_copy = _deepcopy_jsonable(item)
+        gate_copy["name"] = new_gate_name
+        gate_copy["structure"] = structure_map[old_structure]
+        if "model" in gate_copy and isinstance(gate_copy["model"], str):
+            gate_copy["model"] = gate_copy["model"].replace(parent_regulator, new_regulator)
+        new_items.append(gate_copy)
+
+    # ---------- duplicate models that reference the old gates
+    for item in ucf_data:
+        if item.get("collection") != "models":
+            continue
+
+        # Two formats observed:
+        #  (a) explicit "gate" key  – v1 libraries
+        #  (b) name pattern "<gate>_model" with NO gate key  – v2 libraries
+
+        old_gate = item.get("gate")
+        by_name_match = False
+
+        if not old_gate:
+            # infer from name suffix
+            name_val = item.get("name", "")
+            if name_val.endswith("_model"):
+                inferred_gate = name_val[:-6]  # strip suffix
+                if inferred_gate in gate_map:
+                    old_gate = inferred_gate
+                    by_name_match = True
+
+        if not old_gate or old_gate not in gate_map:
+            continue
+
+        model_copy = _deepcopy_jsonable(item)
+
+        # update name – replace parent promoter substring with new promoter name
+        model_copy["name"] = model_copy["name"].replace(parent_regulator, new_regulator)
+
+        # update explicit gate field when present
+        if "gate" in model_copy:
+            model_copy["gate"] = gate_map[old_gate]
+        elif by_name_match:
+            # nothing else needed – downstream components reference by name
+            pass
+
+        new_items.append(model_copy)
+
+    return new_items, gate_map
+
+
+def patch_rules(
+    ucf_data: List[Dict], gate_map: Dict[str, str], remove_old: bool = False
+) -> None:
+    """Patch device_rules / circuit_rules in-place."""
+    for item in ucf_data:
+        if item.get("collection") in ("device_rules", "circuit_rules"):
+            item["rules"] = _replace_tokens(item["rules"], gate_map, replace=remove_old)
+
+            
 def _add_default_parameters(part):
     """
     Add default parameters to a part if needed.
@@ -470,14 +861,9 @@ def create_custom_ucf(
     # Handle new parts
     if new_parts:
         for new_part in new_parts:
-            # Add default parameters if needed
-            _add_default_parameters(new_part)
-            
-            # Ensure it has a collection field
-            if "collection" not in new_part:
-                new_part["collection"] = "parts"
-            
-            # Add it to the UCF
+            # Add default parameters to a part if needed.
+            if new_part.get("collection") == "parts":
+                _add_default_parameters(new_part)
             custom_ucf.append(new_part)
     
     # Validate the custom UCF
