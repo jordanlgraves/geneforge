@@ -305,6 +305,23 @@ def generate_promoter_library(blueprint: str,
                 len(blueprint),
             )
     
+    # check that it is a valid blueprint
+    from ProD import SEQ_DICT
+
+    valid_chars = set(SEQ_DICT.keys())
+    if not set(blueprint).issubset(valid_chars):
+        invalid_char = next(c for c in blueprint if c not in valid_chars)
+        raise ValueError(
+            f"Blueprint contains invalid character '{invalid_char}'. "
+            f"Valid characters are: {', '.join(sorted(list(valid_chars)))}"
+        )
+
+    if all(c in "ATCG" for c in blueprint):
+        raise ValueError(
+            f"The provided blueprint sequence '{blueprint}' is not degenerate. "
+            "A blueprint must contain at least one IUPAC ambiguity code (e.g., N, R, Y, etc.)."
+        )
+    
     # Set default strengths if not provided
     if desired_strengths is None or len(desired_strengths) == 0:
         desired_strengths = list(range(11))  # 0-10

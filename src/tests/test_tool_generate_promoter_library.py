@@ -95,7 +95,7 @@ class TestGeneratePromoterLibraryTool(unittest.TestCase):
         full_promoter_blueprint = "CTTGTCCAACCAAATGATTCGTTACCAATTGACAGTTTCTATCGATCTATAGATAATGCTAGC"
         
         # A plausible 17-bp spacer from the blueprint to make the test valid
-        spacer_blueprint = "GTTTCTATCGATCTATA"
+        spacer_blueprint = "GTTTNNNNNNNTCTATA"
 
         result = tool.execute(
             blueprint=spacer_blueprint,
