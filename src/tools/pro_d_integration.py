@@ -502,7 +502,7 @@ class ProDIntegration:
         )
         
         if results.empty:
-            return {"error": "Tool returned empty results"}
+            return {"error": "Tool returned empty results. It is likely that no variants could be found for the given blueprint and desired strengths."}
             
         # Convert results to dictionary with detailed information
         # Harmonise column names: ProD (run_tool) gives [ID, spacer, strength, promoter]

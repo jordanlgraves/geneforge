@@ -19,6 +19,26 @@ Cello:
 - Includes tools to search through and select a specific library (UCF, input and output files). This enables the agent to select appropriate parts for the design.
 - Includes a tool to run the cello program and capture the output.
 - Includes a tool to parse the results of the cello program, returning various metrics and data (e.g. truth tables, circuit scores).
+- Allows the agent to select appropriate files based on the user's request (e.g. "I want a **NOT gate** for **E. coli** with input using **specific sensor X**, **specific sensor Y**. The output shoud be **YFP**")
+
+### SynBioHub Integration
+SynBioHub is a public, SBOL-native repository that hosts millions of standardized genetic parts, designs, and collections. The agent can:
+- **Search** the registry (`synbiohub_search`) using the same key–value parameters accepted by the `/search/` web API.
+- **Download** any object or collection by URI in common formats such as SBOL, FASTA, GenBank, or GFF (`synbiohub_download_part`).
+- **Run sequence similarity searches** against the global database (`synbiohub_sequence_search`).
+- **Inspect related content** for provenance or design exploration (`synbiohub_get_related`).
+- **Submit** new parts/collections when credentials are supplied (`synbiohub_submit`).
+
+These helpers return the *raw* server response (JSON, XML, or text) so that downstream code or the LLM can interpret it flexibly.
+
+#### Quick examples
+
+```json
+{"name": "synbiohub_search", "arguments": {"query": "objectType=ComponentDefinition&dcterms:title=pLac", "limit": 10}}
+{"name": "synbiohub_download_part", "arguments": {"uri": "https://synbiohub.org/public/igem/BBa_R0010/1", "format": "gb"}}
+{"name": "synbiohub_sequence_search", "arguments": {"search_params": "globalsequence=ATGCGTACGTAGCTAG&id=0.9&maxaccepts=50"}}
+{"name": "synbiohub_get_related", "arguments": {"uri": "https://synbiohub.org/public/igem/BBa_R0010/1", "relation": "twins"}}
+```
 
 Part Optimization:
 

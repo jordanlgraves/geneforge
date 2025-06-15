@@ -7,6 +7,7 @@ import logging
 from src.session_state import SessionState
 import traceback
 import logging
+import inspect
 
 
 from langchain_community.tools import ReadFileTool
@@ -290,8 +291,6 @@ class ListRepressorsTool(Tool):
              return None, {"error": f"Could not load structured data for library {library_manager.current_library_id}."}
         return library_data, None
 
-
-
 class GetDnaPartByNameTool(Tool):
     name = "get_dna_part_by_name"
     description = "Get a specific DNA part by name (like 'pTet') from the selected library in the user constraints file. IMPORTANT: You must first select a library using select_library before using this function."
@@ -470,9 +469,14 @@ class DesignWithCelloTool(Tool):
         if not library_manager.current_library_id:
             return {"error": "No library selected. Please use 'select_library' first."}
 
-        ucf_path = library_manager.current_ucf_path
-        input_path = library_manager.current_input_path
-        output_path = library_manager.current_output_path
+        # Use active context paths (handles base, custom, or draft automatically)
+        ucf_path = library_manager.get_active_ucf_path()
+        input_path = library_manager.get_active_input_path()
+        output_path = library_manager.get_active_output_path()
+        
+        # Get context info for logging
+        context_info = library_manager.get_active_context_info()
+        logger.info(f"Using library context: {context_info}")
 
         if not ucf_path or not input_path:
              return {"error": f"Missing UCF ({ucf_path}) or Input ({input_path}) file path for library {library_manager.current_library_id}."}
@@ -499,6 +503,8 @@ class DesignWithCelloTool(Tool):
         return {
             "success": True,
             "library_id": library_manager.current_library_id,
+            "context_type": context_info["context_type"],
+            "active_ucf": ucf_path,
             "output_directory": results.get('output_dir'),
             "dna_design": results.get('results', {}).get('dna_design'),
             "log": results.get('log')
@@ -750,6 +756,50 @@ class _ProDToolBase(Tool):
         return getattr(self.session_state, "prod_integration")
 
 
+
+# ---------------------------------------------------------------------------
+#  NEW Promoter library generation tools (split from deprecated GeneratePromoterLibraryWithProDTool)
+# ---------------------------------------------------------------------------
+
+class _ProDPromoterToolBase(_ProDToolBase):
+    """Helper mix-in providing common promoter-centric utilities."""
+
+    _dna_chars: ClassVar[set[str]] = set("ATGCRYSWKMBDHVNatgcryswkmbdhvn")
+
+    def _resolve_promoter_sequence(self, promoter: str, file_type: str = "ucf") -> Optional[str]:
+        """Return full promoter DNA sequence from ID or sequence.
+
+        If *promoter* already looks like DNA (≥17 bp consisting only of IUPAC
+        characters) it is returned (upper-cased). Otherwise it is treated as a
+        part ID and resolved via `LibraryManager` using *file_type* to select
+        the JSON (ucf / input / output).
+        """
+        if set(promoter).issubset(self._dna_chars) and len(promoter) >= 17:
+            return promoter.upper()
+
+        lm = self.session_state.get_library_manager()
+        if not lm.current_library_id:
+            return None
+        if file_type == "ucf":
+            lib_data = lm.get_ucf_data()
+        elif file_type == "input":
+            lib_data = lm.get_input_sensor_data()
+        else:
+            lib_data = lm.get_output_device_data()
+        import src.library.part_library_customizer as plc
+        part = plc.get_part_by_name(lib_data, promoter)
+        if not part:
+            return None
+        return part.get("dnasequence") or part.get("sequence")
+
+    @staticmethod
+    def _split_flanks(promoter_seq: str, spacer: str) -> tuple[str, str]:
+        """Return (upstream, downstream) regions flanking *spacer* inside *promoter_seq*."""
+        idx = promoter_seq.find(spacer)
+        if idx == -1:
+            return "", ""
+        return promoter_seq[:idx], promoter_seq[idx + 17:]
+
 # ---------------------------------------------------------------------------
 #  EstimatePromoterStrengthWithProD
 # ---------------------------------------------------------------------------
@@ -761,7 +811,7 @@ class EstimatePromoterStrengthWithProDTool(_ProDToolBase):
     parameters = {
         "type": "object",
         "properties": {
-            "promoter": {"type": "string", "description": "Promoter ID (e.g. 'pTet') or full DNA sequence or 17-bp spacer."},
+            "promoter": {"type": "string", "description": "Promoter name/id from the selected library or full DNA sequence or 17-bp spacer."},
             "file_type": {"type": "string", "enum": ["ucf", "input", "output"], "description": "Which library JSON to search when an ID is supplied", "default": "ucf"}
         },
         "required": ["promoter"]
@@ -804,9 +854,9 @@ class EstimatePromoterStrengthWithProDTool(_ProDToolBase):
         if not result:
             return {"error": "ProD evaluation returned no result."}
 
-        spacer = extract_id_ecoli_spacer(sequence) or sequence[:17]
-        cls_val = int(result[spacer])
-        ymax = result.get(spacer + "_ymax", class_to_rpu(cls_val))
+        cls_val = int(result[sequence])
+        ymax = result.get(sequence + "_ymax", class_to_rpu(cls_val))
+        spacer = extract_id_ecoli_spacer(sequence)
 
         return {
             "promoter_sequence": sequence,
@@ -817,100 +867,227 @@ class EstimatePromoterStrengthWithProDTool(_ProDToolBase):
         }
 
 
-# ---------------------------------------------------------------------------
-#  GeneratePromoterLibraryWithProD
-# ---------------------------------------------------------------------------
+class GetSpacerFromPromoterTool(_ProDPromoterToolBase):
+    name = "get_spacer_from_promoter"
+    description = "Extract the 17-bp spacer from a full promoter sequence or part id/name from the selected library."
+    parameters = {
+        "type": "object",
+        "properties": {"promoter": {"type": "string", "description": "Full promoter sequence or part id/name from the selected library."},
+                       "file_type": {"type": "string", "enum": ["ucf", "input", "output"], "default": "ucf"}},
+        "required": ["promoter"]
+    }
+    
+    def execute(self, promoter: str, file_type: str = "ucf") -> Dict[str, Any]:
+        prod = self._get_prod()
+
+        # if promoter is a part id/name, resolve the sequence
+        sequence = self._resolve_promoter_sequence(promoter, file_type)
+        if not sequence:
+            return {"error": f"Error in promoter id/name or sequence: '{promoter}'."}
+        
+        spacer = prod.extract_spacer(sequence)
+        if spacer:
+            return {"spacer": spacer, "success": True}
+
+        else:
+            return {"error": "Could not extract spacer from the provided promoter sequence."}
 
 
-class GeneratePromoterLibraryWithProDTool(_ProDToolBase):
-    name = "generate_promoter_library_with_pro_d"
-    description = "Use ProD to generate spacer variants at desired strength classes and, if a parent promoter is supplied, return full promoter sequences too."
+
+class GeneratePromoterLibraryFromSpacerTool(_ProDPromoterToolBase):
+    name = "generate_library_from_spacer"
+    description = (
+        "Use ProD to generate promoter spacer variants from a **17-nt degenerate spacer blueprint**. "
+        "The `blueprint` string *must be exactly 17 nucleotides long* **and must contain at least one degenerate IUPAC code** (e.g. N, R, Y, S, K, M, W, B, D, H or V); supplying a fully specified 17-mer will raise an error. "
+        "If `parent_promoter` is supplied, the tool stitches every newly generated spacer between the upstream and downstream flanks of that promoter and returns complete promoter sequences together with calibrated `ymax` values."
+    )
     parameters = {
         "type": "object",
         "properties": {
-            "blueprint": {"type": "string", "description": "Degenerate 17-bp spacer blueprint or full promoter blueprint."},
-            "desired_strengths": {
-                "type": "array", "items": {"type": "integer"},
-                "description": "List of desired strength classes (0-10)"
-            },
+            "blueprint": {"type": "string", "description": "Degenerate 17-bp spacer (must contain ≥1 IUPAC ambiguity code)."},
+            "desired_strengths": {"type": "array", "items": {"type": "integer"}, "description": "Strength classes ranging from 0 to 10."},
             "sequences_per_class": {"type": "integer", "default": 5},
-            "parent_promoter": {"type": "string", "description": "Optional promoter ID or full promoter sequence to supply flanking regions."},
-            "file_type": {"type": "string", "enum": ["ucf", "input", "output"], "default": "ucf"}
+            "parent_promoter": {"type": "string", "description": "Optional promoter ID or sequence providing flanks."},
+            "file_type": {"type": "string", "enum": ["ucf", "input", "output"], "default": "ucf"},
+            "save_to_library": {"type": "string", "enum": ["ucf", "input", "output"], "description": "Automatically write the generated variants to a custom library file (valid only for 'ucf' for now)."}
         },
-        "required": ["blueprint"]
+        "required": ["blueprint"],
     }
 
-    def execute(self, blueprint: str, desired_strengths: List[int] = None, sequences_per_class: int = 5,
-                parent_promoter: str = None, file_type: str = "ucf") -> Dict[str, Any]:
+    def execute(
+        self,
+        blueprint: str,
+        desired_strengths: List[int] | None = None,
+        sequences_per_class: int = 5,
+        parent_promoter: str | None = None,
+        file_type: str = "ucf",
+        save_to_library: str | None = None,
+    ) -> Dict[str, Any]:
         prod = self._get_prod()
-
         if len(blueprint) != 17:
-            # assume the blueprint is a full promoter
-            spacer = prod.extract_spacer(blueprint)
-            if not spacer:
-                return {"error": "Could not extract spacer from full promoter sequence."}
-            parent_seq = blueprint
-            blueprint = spacer
-            idx = parent_seq.find(spacer)
-            upstream = parent_seq[:idx]
-            downstream = parent_seq[idx+17:]
-        else:
-            upstream = downstream = None
+            return {"error": "Blueprint must be exactly 17 bp."}
 
+        upstream = downstream = None
         if parent_promoter:
-            library_manager = self.session_state.get_library_manager()
-            dna_chars = set("ATGCRYSWKMBDHVNatgcryswkmbdhvn")
-            is_dna = set(parent_promoter).issubset(dna_chars) and len(parent_promoter) >= 17
-            parent_seq = None
-            if is_dna:
-                parent_seq = parent_promoter.upper()
-            else:
-                if not library_manager.current_library_id:
-                    return {"error": "No library selected. Use select_library first."}
-                if file_type == "ucf":
-                    lib_data = library_manager.get_ucf_data()
-                elif file_type == "input":
-                    lib_data = library_manager.get_input_sensor_data()
-                else:
-                    lib_data = library_manager.get_output_device_data()
-                import src.library.part_library_customizer as plc
-                part = plc.get_part_by_name(lib_data, parent_promoter)
-                if not part:
-                    return {"error": f"Parent promoter '{parent_promoter}' not found."}
-                parent_seq = part.get("dnasequence") or part.get("sequence")
-
+            parent_seq = self._resolve_promoter_sequence(parent_promoter, file_type)
+            if not parent_seq:
+                return {"error": f"Could not resolve parent promoter '{parent_promoter}'."}
+            from src.tools.pro_d_integration import extract_id_ecoli_spacer
             spacer_parent = extract_id_ecoli_spacer(parent_seq)
             if spacer_parent and spacer_parent in parent_seq:
-                idx = parent_seq.find(spacer_parent)
-                upstream = parent_seq[:idx]
-                downstream = parent_seq[idx+17:]
+                upstream, downstream = self._split_flanks(parent_seq, spacer_parent)
 
-        # Call ProD
         try:
-            lib_dict = prod.generate_library(
+            variants_dict = prod.generate_library(
                 blueprint,
-                    desired_strengths=desired_strengths,
-                    library_size=sequences_per_class,
-                )
-        except Exception as e:
-            return {"error": f"Error generating promoter library: {str(e)}"}
+                desired_strengths=desired_strengths,
+                library_size=sequences_per_class,
+            )
+        except Exception as exc:
+            return {"error": f"Error generating promoter library: {exc}"}
 
-        # Enrich with full promoter sequences if we know flanks
         if upstream is not None and downstream is not None:
-            for spacer_seq, properties in lib_dict.items():
-                properties["promoter_sequence"] = f"{upstream.upper()}{spacer_seq}{downstream.upper()}" 
+            for spacer_seq, props in variants_dict.items():
+                props["promoter_sequence"] = f"{upstream.upper()}{spacer_seq}{downstream.upper()}"
 
         return {
             "blueprint": blueprint,
-            "variants": [
-                {
-                    "spacer": k,
-                    **v
-                } for k, v in lib_dict.items()
-            ],
-            "success": True
+            "variants": [{"spacer": s, **p} for s, p in variants_dict.items()],
+            **(self._auto_save_variants(parent_promoter, upstream, downstream, variants_dict, save_to_library) if save_to_library else {}),
+            "success": True,
         }
 
+    # ------------------------------------------------------------------
+    #  Helper to auto-save variants into a custom UCF
+    # ------------------------------------------------------------------
+
+    def _auto_save_variants(
+        self,
+        parent_promoter: str | None,
+        upstream: str,
+        downstream: str,
+        variants_dict: dict,
+        save_to_library: str | None,
+    ) -> dict:
+        """Write the generated variants to a new custom UCF when requested.
+
+        Currently only the *ucf* target is implemented.  Returns a dict that
+        will be merged into the tool's success payload.
+        """
+
+        if not save_to_library:
+            return {}
+
+        if save_to_library != "ucf":
+            return {"warning": f"Automatic save for '{save_to_library}' not yet supported."}
+
+        if not parent_promoter:
+            return {"error": "Parameter 'parent_promoter' is required when save_to_library is set."}
+
+        lm = self.session_state.get_library_manager()
+        if not lm.current_library_id:
+            return {"error": "No library selected. Use select_library first."}
+
+        # Build list of variant dicts with spacer & ymax
+        variants_list = []
+        for spacer_seq, props in variants_dict.items():
+            variants_list.append({
+                "spacer": spacer_seq,
+                "ymax": props.get("ymax") or props.get("strength") or 1.0,
+            })
+
+        try:
+            n_items = lm.add_promoter_variants(parent_promoter, variants_list)
+            return {"draft_ucf_pending": True, "n_variants_saved": n_items}
+        except Exception as exc:
+            return {"error": str(exc)}
+
+
+class GeneratePromoterLibraryFromPromoterTool(_ProDPromoterToolBase):
+    name = "generate_library_from_promoter"
+    description = (
+        "Use ProD to create spacer variants by mutating an existing promoter. "
+        "`mutable_positions` must be a dictionary whose *keys are spacer indices 0–16* (0 is the first base) and whose *values are IUPAC ambiguity codes* such as N, R, Y, S, K, M, W, B, D, H or V. "
+        "If `promoter` is supplied as a part name/id from the selected library, `mutable_positions` is *required* so that at least one degenerate base is introduced; without it the blueprint would be non-degenerate and ProD will abort. "
+        "If `promoter` is supplied as a full DNA sequence and its spacer already contains ≥ 1 ambiguity code, `mutable_positions` may be omitted. "
+        "The tool returns a list of variants with their spacer sequence, predicted class/strength, calibrated `ymax`, and full promoter sequence (flanks from the parent promoter)."
+    )
+    parameters = {
+        "type": "object",
+        "properties": {
+            "promoter": {"type": "string", "description": "Promoter ID/name from the selected library or a full promoter sequence."},
+            "mutable_positions": {"type": "object", "description": "Dict spacer_index to IUPAC ambiguity code (0-16)."},
+            "desired_strengths": {"type": "array", "items": {"type": "integer"}, "description": "Strength classes (0-10)."},
+            "sequences_per_class": {"type": "integer", "default": 5},
+            "file_type": {"type": "string", "enum": ["ucf", "input", "output"], "default": "ucf"},
+            "save_to_library": {"type": "string", "enum": ["ucf", "input", "output"], "description": "Automatically write the generated variants to a custom library file (valid only for 'ucf' for now)."},
+        },
+        "required": ["promoter"],
+    }
+
+    def execute(
+        self,
+        promoter: str,
+        mutable_positions: Dict[str, str] | None = None,
+        desired_strengths: List[int] | None = None,
+        sequences_per_class: int = 5,
+        file_type: str = "ucf",
+        save_to_library: str | None = None,
+    ) -> Dict[str, Any]:
+        from src.tools.pro_d_integration import extract_id_ecoli_spacer
+        prod = self._get_prod()
+
+        parent_seq = self._resolve_promoter_sequence(promoter, file_type)
+        if not parent_seq:
+            return {"error": f"Could not resolve promoter '{promoter}' as a DNA sequence or a name/id."}
+
+        spacer_parent = extract_id_ecoli_spacer(parent_seq)
+        if not spacer_parent:
+            return {"error": f"Failed to extract 17-bp spacer from promoter sequence: {parent_seq}."}
+
+        spacer_chars = list(spacer_parent.upper())
+
+        # If mutable_positions is provided, mutate the spacer
+        if mutable_positions:       
+            for pos_str, iupac in mutable_positions.items():
+                try:
+                    idx = int(pos_str)
+                except ValueError:
+                    return {"error": f"Index '{pos_str}' is not an integer."}
+                if idx < 0 or idx > 16:
+                    return {"error": "Mutable indices must be between 0 and 16."}
+                spacer_chars[idx] = iupac.upper()
+        else:
+            # If mutable_positions is not provided, check that the spacer contains at least one IUPAC ambiguity code
+            if not any(c in "N" for c in spacer_chars):
+                return {"error": """The algorithm requires that the spacer sequence contain at least one IUPAC ambiguity code in order to \
+                        determine the blueprint sequence. Please provide `mutable_positions` to mutate the spacer or provide `promoter` \
+                        as DNA sequence containing at least one IUPAC ambiguity code within a spacer region."""}
+
+        blueprint = "".join(spacer_chars)
+
+        try:
+            variants_dict = prod.generate_library(
+                blueprint,
+                desired_strengths=desired_strengths,
+                library_size=sequences_per_class,
+            )
+            if "error" in variants_dict:
+                return {"error": variants_dict["error"]}
+        except Exception as exc:
+            return {"error": f"Error generating promoter library: {exc}"}
+
+        upstream, downstream = self._split_flanks(parent_seq, spacer_parent)
+        for spacer_seq, props in variants_dict.items():
+            props["promoter_sequence"] = f"{upstream.upper()}{spacer_seq}{downstream.upper()}"
+
+        return {
+            "blueprint": blueprint,
+            "parent_promoter": promoter,
+            "variants": [{"spacer": s, **p} for s, p in variants_dict.items()],
+            **(self._auto_save_variants(promoter, upstream, downstream, variants_dict, save_to_library) if save_to_library else {}),
+            "success": True,
+        }
 
 # ---------------------------------------------------------------------------
 #  PatchUcfWithPromotersTool – wraps LibraryManager.create_custom_ucf
@@ -918,7 +1095,10 @@ class GeneratePromoterLibraryWithProDTool(_ProDToolBase):
 
 class PatchUcfWithPromotersTool(Tool):
     name = "patch_ucf_with_promoters"
-    description = "Duplicate or replace a promoter part in the currently selected library UCF with supplied spacer variants and their calibrated ymax values. Returns path to the new custom UCF file."
+    description = (
+        "Duplicate or replace a promoter part in the current library UCF with supplied spacer variants (each spacer must be 17 nt) and their calibrated `ymax` values. "
+        "Returns the file path of the newly written custom UCF."
+    )
     parameters = {
         "type": "object",
         "properties": {
@@ -1106,30 +1286,31 @@ class DesignRbsWithRbsCalculatorTool(Tool):
 class AddPromoterVariantTool(Tool):
     name = "add_promoter_variant"
     description = (
-        "Create a new promoter variant (new spacer and ymax) by duplicating the dependencies of an existing promoter "
-        "within the currently selected library and writing a custom UCF file."
+        "Create a new promoter variant by copying an existing promoter (and all dependent structures/gates/models) and replacing its 17-bp spacer with a new 17-bp spacer sequence. "
+        "`ymax` (calibrated RPU) is mandatory so that associated models remain consistent."
     )
     parameters = {
         "type": "object",
         "properties": {
-            "parent_promoter_id": {"type": "string", "description": "ID of the reference promoter part."},
-            "spacer": {"type": "string", "description": "17-bp spacer sequence to use in replacement of the 17-bp spacer sequence of the parent promoter"},
+            "parent_promoter_id": {"type": "string", "description": "ID of the reference promoter part from the selected library."},
+            "spacer_sequence": {"type": "string", "description": "17-bp spacer sequence to use in replacement of the 17-bp spacer sequence of the parent promoter"},
             "ymax": {"type": "number", "description": "Calibrated RPU (ymax) for the new promoter. Can be found in the output from the ProD tool."},
             "new_promoter_id": {"type": "string", "description": "Optional name for the new promoter. Alphanumeric characters only, no spaces or special characters."},
         },
-        "required": ["parent_promoter_id", "spacer", "ymax"],
+        "required": ["parent_promoter_id", "spacer_sequence", "ymax"],
     }
 
     def execute(
         self,
         parent_promoter_id: str,
-        spacer: str,
+        spacer_sequence: str,
         ymax: float,
         new_promoter_id: Optional[str] = None,
     ) -> Dict[str, Any]:
         import copy
         from src.tools.pro_d_integration import extract_id_ecoli_spacer
         import src.library.part_library_customizer as plc
+        
 
         lm = self.session_state.get_library_manager()
         if not lm.current_library_id:
@@ -1147,12 +1328,12 @@ class AddPromoterVariantTool(Tool):
         spacer_parent = extract_id_ecoli_spacer(parent_seq)
         if not spacer_parent:
             return {"error": "Unable to extract spacer from parent promoter."}
-        if len(spacer) != 17:
+        if len(spacer_sequence) != 17:
             return {"error": "Provided spacer must be 17 bp."}
 
         # Build new promoter sequence
         idx = parent_seq.find(spacer_parent)
-        new_sequence = f"{parent_seq[:idx].upper()}{spacer.upper()}{parent_seq[idx+17:].upper()}"
+        new_sequence = f"{parent_seq[:idx].upper()}{spacer_sequence.upper()}{parent_seq[idx+17:].upper()}"
 
         # Determine new promoter id
         if not new_promoter_id:
@@ -1162,7 +1343,10 @@ class AddPromoterVariantTool(Tool):
             while plc.get_part_by_name(ucf_data, new_promoter_id):
                 i += 1
                 new_promoter_id = f"{base}var{i}"
-
+        else: # Check that new_promoter_id is alphanumeric only
+            if not new_promoter_id.isalnum():
+                return {"error": "New promoter ID must be alphanumeric only."}
+        
         # Duplicate dependencies
         new_items, gate_map = plc.duplicate_promoter_dependencies(
             ucf_data, parent_promoter_id, new_promoter_id, new_sequence, ymax
@@ -1257,6 +1441,153 @@ class RemovePromoterTool(Tool):
                 traceback.print_exc()
             return {"error": str(exc)}
 
+# ---------------------------------------------------------------------------
+#  SynBioHub tools
+# ---------------------------------------------------------------------------
+
+class SynBioHubSearchTool(Tool):
+    name = "synbiohub_search"
+    description = (
+        "Search the SynBioHub public repository (https://synbiohub.org) for SBOL objects such as parts, collections, or entire designs. "
+        "Provide exactly the key–value query string that would follow the '/search/' endpoint (e.g. 'objectType=ComponentDefinition&name=pLac'). "
+        "This helper is read-only and returns the raw JSON/XML text emitted by the server so that downstream code—or the LLM—can parse it."
+        " Example: query='objectType=ComponentDefinition&dcterms:title=pTet&offset=0&limit=25'."
+    )
+    parameters = {
+        "type": "object",
+        "properties": {
+            "query": {"type": "string", "description": "Search query path, e.g. 'objectType=ComponentDefinition&pLac'."},
+            "offset": {"type": "integer", "description": "Result offset", "default": 0},
+            "limit": {"type": "integer", "description": "Maximum results", "default": 20},
+        },
+        "required": ["query"],
+    }
+
+    def execute(self, query: str, offset: int = 0, limit: int = 20):
+        sbh = self.session_state.get_synbiohub_client()
+        try:
+            text = sbh.search(query, offset=offset, limit=limit)
+            return {"success": True, "raw": text}
+        except Exception as exc:
+            return {"error": str(exc)}
+
+
+class SynBioHubDownloadPartTool(Tool):
+    name = "synbiohub_download_part"
+    description = (
+        "Download a single SynBioHub object identified by its URI and return it in the requested format "
+        "('sbol', 'fasta', 'gb', 'gff', 'metadata', or 'sbolnr'). The binary response is UTF-8-decoded and truncated to the first 5 kB so the assistant can preview it."
+        " Example: uri='https://synbiohub.org/public/igem/BBa_R0010/1', format='gb'."
+    )
+    parameters = {
+        "type": "object",
+        "properties": {
+            "uri": {"type": "string", "description": "Full URI of the SBH object."},
+            "format": {"type": "string", "enum": ["sbol", "fasta", "gb", "gff", "metadata", "sbolnr"], "default": "sbol"},
+        },
+        "required": ["uri"],
+    }
+
+    def execute(self, uri: str, format: str = "sbol"):
+        sbh = self.session_state.get_synbiohub_client()
+        try:
+            content = sbh.download_part(uri, fmt=format)
+            return {
+                "success": True,
+                "format": format,
+                "bytes": len(content),
+                "content_base64": content.decode("utf-8", errors="ignore")[:5000],  # truncate
+            }
+        except Exception as exc:
+            return {"error": str(exc)}
+
+
+class SynBioHubSubmitTool(Tool):
+    name = "synbiohub_submit"
+    description = (
+        "Upload an SBOL/GenBank/FASTA file—or a zip archive of multiple files—to SynBioHub as a new collection. "
+        "Requires valid SynBioHub user credentials configured in the SessionState client. "
+        "Use 'overwrite_merge' = 0 (keep), 1 (overwrite), 2 or 3 (merge) to control how existing records are handled. Returns the raw server response text."
+        " Example: file_path='my_part.xml', submission_id='MyPart', version='1', name='My Test', description='Demo submission', overwrite_merge=0."
+    )
+    parameters = {
+        "type": "object",
+        "properties": {
+            "file_path": {"type": "string", "description": "Path to file to upload."},
+            "submission_id": {"type": "string", "description": "ID for the submission (alphanumeric & underscore)."},
+            "version": {"type": "string", "description": "Version string (e.g. '1')."},
+            "name": {"type": "string", "description": "Human-readable name."},
+            "description": {"type": "string", "description": "Description of the submission."},
+            "citations": {"type": "string", "description": "Comma-separated PubMed IDs", "default": ""},
+            "overwrite_merge": {"type": "integer", "description": "0 keep, 1 overwrite, 2/3 merge", "default": 0},
+        },
+        "required": ["file_path", "submission_id", "version", "name", "description"],
+    }
+
+    def execute(self, file_path: str, submission_id: str, version: str, name: str, description: str, citations: str = "", overwrite_merge: int = 0):
+        sbh = self.session_state.get_synbiohub_client()
+        try:
+            resp_text = sbh.submit(
+                file_path=file_path,
+                submission_id=submission_id,
+                version=version,
+                name=name,
+                description=description,
+                citations=citations,
+                overwrite_merge=overwrite_merge,
+            )
+            return {"success": True, "response": resp_text}
+        except Exception as exc:
+            return {"error": str(exc)}
+
+class SynBioHubSequenceSearchTool(Tool):
+    name = "synbiohub_sequence_search"
+    description = (
+        "Run a sequence-similarity search against SynBioHub by supplying the full parameter string starting with 'sequence=' or 'globalsequence=' (e.g. 'globalsequence=ATGC...&similarity=0.9'). "
+        "Maps directly to the '/search/' API and returns the raw tab-delimited text/JSON provided by the server. Example: search_params='globalsequence=ATGCGTACGTAGCTAG&id=0.9&maxaccepts=50'."
+    )
+    parameters = {
+        "type": "object",
+        "properties": {
+            "search_params": {"type": "string", "description": "Key/value search parameters beginning with sequence= or globalsequence= ..."},
+        },
+        "required": ["search_params"],
+    }
+
+    def execute(self, search_params: str):
+        sbh = self.session_state.get_synbiohub_client()
+        try:
+            out = sbh.sequence_search(search_params)
+            return {"success": True, "raw": out}
+        except Exception as exc:
+            return {"error": str(exc)}
+
+
+class SynBioHubGetRelatedTool(Tool):
+    name = "synbiohub_get_related"
+    description = (
+        "Retrieve objects related to a given SynBioHub URI using the '/related/<relation>/' endpoint. "
+        "Supported relations: 'uses' (components referenced by the design), 'twins' (alternate versions), and 'similar' (homologous parts). "
+        "Returns the raw JSON payload from the server. Example: uri='https://synbiohub.org/public/igem/BBa_R0010/1', relation='twins'."
+    )
+    parameters = {
+        "type": "object",
+        "properties": {
+            "uri": {"type": "string", "description": "Full URI of the SBH object."},
+            "relation": {"type": "string", "enum": ["uses", "twins", "similar"], "description": "Type of relation to fetch."},
+        },
+        "required": ["uri", "relation"],
+    }
+
+    def execute(self, uri: str, relation: str):
+        sbh = self.session_state.get_synbiohub_client()
+        try:
+            text = sbh.get_related(uri, relation)
+            return {"success": True, "relation": relation, "raw": text}
+        except Exception as exc:
+            return {"error": str(exc)}
+
+
         
 # ---------------------------------------------------------------------------
 #  Register in existing TOOL_REGISTRY and expose schemas
@@ -1282,9 +1613,7 @@ TOOL_REGISTRY[CreateCustomUcfTool.name] = CreateCustomUcfTool
 TOOL_REGISTRY[CreateCustomInputSensorsFileTool.name] = CreateCustomInputSensorsFileTool
 
 TOOL_REGISTRY[EstimatePromoterStrengthWithProDTool.name] = EstimatePromoterStrengthWithProDTool
-TOOL_REGISTRY[GeneratePromoterLibraryWithProDTool.name] = GeneratePromoterLibraryWithProDTool
-# Deprecated PatchUcfWithPromotersTool is no longer registered.
-# New promoter management tools will be registered below.
+TOOL_REGISTRY[GetSpacerFromPromoterTool.name] = GetSpacerFromPromoterTool
 
 # RBS Calculator tools
 TOOL_REGISTRY[PredictInitiationRateWithRbsCalculatorTool.name] = PredictInitiationRateWithRbsCalculatorTool
@@ -1294,11 +1623,223 @@ TOOL_REGISTRY[DesignRbsWithRbsCalculatorTool.name] = DesignRbsWithRbsCalculatorT
 TOOL_REGISTRY[AddPromoterVariantTool.name] = AddPromoterVariantTool
 TOOL_REGISTRY[RemovePromoterTool.name] = RemovePromoterTool
 
+# New promoter library generation tools
+TOOL_REGISTRY[GeneratePromoterLibraryFromSpacerTool.name] = GeneratePromoterLibraryFromSpacerTool
+TOOL_REGISTRY[GeneratePromoterLibraryFromPromoterTool.name] = GeneratePromoterLibraryFromPromoterTool
+
+# Register SynBioHub tools
+TOOL_REGISTRY[SynBioHubSearchTool.name] = SynBioHubSearchTool
+TOOL_REGISTRY[SynBioHubDownloadPartTool.name] = SynBioHubDownloadPartTool
+TOOL_REGISTRY[SynBioHubSubmitTool.name] = SynBioHubSubmitTool
+TOOL_REGISTRY[SynBioHubSequenceSearchTool.name] = SynBioHubSequenceSearchTool
+TOOL_REGISTRY[SynBioHubGetRelatedTool.name] = SynBioHubGetRelatedTool
+
+# ---------------------------------------------------------------------------
+#  Scientific search & utility tools
+# ---------------------------------------------------------------------------
+
+class ScientificSearchTool(Tool):
+    name = "scientific_search"
+    description = "Search scientific literature (Semantic Scholar) and return up-to-date paper metadata."
+    parameters = {
+        "type": "object",
+        "properties": {
+            "query": {"type": "string", "description": "Free-text search string."},
+            "max_results": {"type": "integer", "description": "Maximum number of results", "default": 5},
+        },
+        "required": ["query"],
+    }
+
+    def execute(self, query: str, max_results: int = 5):
+        from src.tools.scientific_search_integration import scientific_search
+        try:
+            papers = scientific_search(query, max_results=max_results)
+            return {"success": True, "papers": papers}
+        except Exception as exc:
+            return {"error": str(exc)}
+
+
+class ToolDocsQueryTool(Tool):
+    name = "query_tool_docs"
+    description = "Ask a question about a tool (e.g., 'cello', 'prod') and get an answer extracted from local documentation PDFs/texts."
+    parameters = {
+        "type": "object",
+        "properties": {
+            "tool_name": {"type": "string", "description": "Tool identifier (cello, prod, rbs_calculator, etc.) to provide context for the query."},
+            "query": {"type": "string", "description": "Natural language question to ask."},
+        },
+        "required": ["tool_name", "query"],
+    }
+
+    def _get_all_doc_paths(self) -> List[str]:
+        """Finds all available tool documentation files in the 'docs/tools' directory."""
+        doc_dir = "docs/tools"
+        supported_ext = (".pdf", ".md", ".txt")
+        paths = []
+        if not os.path.isdir(doc_dir):
+            return []
+        for filename in os.listdir(doc_dir):
+            if filename.endswith(supported_ext):
+                paths.append(os.path.join(doc_dir, filename))
+        return paths
+
+    def execute(self, tool_name: str, query: str):
+        """Delegates Q&A to a single, dynamically-created OpenAI Assistant with all docs."""
+        import os
+        from openai import OpenAI
+
+        client = OpenAI()
+
+        # Use session_state to cache a single assistant for all tool docs
+        cache_key = "tooldoc_assistant"
+        if hasattr(self.session_state, cache_key):
+            assistant_id = getattr(self.session_state, cache_key)
+        else:
+            doc_paths = self._get_all_doc_paths()
+            if not doc_paths:
+                return {"error": "No documentation files found in docs/tools/."}
+
+            try:
+                # 1. Create a single vector store for all tool docs
+                vector_store = client.vector_stores.create(name="Tool Documentation Store")
+
+                # 2. Upload all files and add them to the vector store
+                file_streams = [open(path, "rb") for path in doc_paths]
+                try:
+                    file_batch = client.vector_stores.file_batches.upload_and_poll(
+                        vector_store_id=vector_store.id, files=file_streams
+                    )
+                finally:
+                    for f in file_streams:
+                        f.close()
+                
+                if file_batch.status != 'completed':
+                    return {"error": f"File upload failed with status: {file_batch.status}"}
+
+                # 3. Create a single assistant for all docs
+                assistant = client.beta.assistants.create(
+                    name="Tool Documentation Assistant",
+                    instructions="You are an expert Q&A bot. You answer questions about various software tools by consulting the documentation files provided to you. When answering, cite the relevant file.",
+                    model="gpt-4o-mini",
+                    tools=[{"type": "file_search"}],
+                    tool_resources={"file_search": {"vector_store_ids": [vector_store.id]}},
+                )
+                assistant_id = assistant.id
+                
+                # Cache the single assistant for subsequent calls
+                setattr(self.session_state, cache_key, assistant_id)
+
+            except Exception as e:
+                if DEBUG_MODE:
+                    traceback.print_exc()
+                return {"error": f"Failed to create OpenAI Assistant: {e}"}
+
+        try:
+            # Create a thread with the user's message
+            thread = client.beta.threads.create(
+                messages=[
+                    {
+                        "role": "user",
+                        "content": f"Using the provided documents, please answer the following question about the '{tool_name}' tool: {query}",
+                    }
+                ]
+            )
+
+            # Run the assistant and poll for completion
+            run = client.beta.threads.runs.create_and_poll(
+                thread_id=thread.id,
+                assistant_id=assistant_id,
+            )
+
+            if run.status == "completed":
+                messages = client.beta.threads.messages.list(thread_id=thread.id)
+                if messages.data and messages.data[0].role == 'assistant':
+                    msg_content = messages.data[0].content[0]
+                    if hasattr(msg_content, 'text'):
+                        answer = msg_content.text.value
+                        citations = []
+                        if hasattr(msg_content.text, 'annotations'):
+                            for ann in msg_content.text.annotations:
+                                if getattr(ann, 'type', '') == 'file_citation':
+                                    citations.append(getattr(ann.file_citation, 'file_id', ''))
+                        return {"success": True, "answer": answer, "citations": citations}
+                return {"error": "Assistant finished but returned no message."}
+            else:
+                return {"error": f"Assistant run failed with status: {run.status}, reason: {getattr(run.last_error, 'message', 'Unknown')}"}
+
+        except Exception as e:
+            if DEBUG_MODE:
+                traceback.print_exc()
+            return {"error": f"An error occurred during assistant execution: {e}"}
+
+
+# ------------------- Small utility tools -----------------------------
+
+class TranslateDnaTool(Tool):
+    name = "translate_dna"
+    description = "Translate a DNA sequence to protein using standard genetic code (frame 1 unless specified)."
+    parameters = {
+        "type": "object",
+        "properties": {
+            "seq_dna": {"type": "string", "description": "DNA sequence (A/T/C/G)."},
+            "frame": {"type": "integer", "description": "Reading frame offset 0-2", "default": 0},
+        },
+        "required": ["seq_dna"],
+    }
+
+    def execute(self, seq_dna: str, frame: int = 0):
+        try:
+            from Bio.Seq import Seq  # type: ignore
+            from Bio.SeqUtils import seq3
+        except ImportError:
+            return {"error": "Biopython not installed. Please add biopython to requirements."}
+
+        seq = Seq(seq_dna.upper().replace("\n", "").replace(" ", ""))
+        if frame not in (0, 1, 2):
+            return {"error": "Frame must be 0, 1 or 2."}
+
+        trimmed_len = (len(seq) - frame) // 3 * 3
+        sub_seq = seq[frame : frame + trimmed_len]
+        protein = sub_seq.translate(to_stop=False)
+        return {"success": True, "protein": str(protein)}
+
+
+class GcContentTool(Tool):
+    name = "gc_content"
+    description = "Calculate GC percentage of a sequence (optionally sliding window)."
+    parameters = {
+        "type": "object",
+        "properties": {
+            "seq": {"type": "string", "description": "DNA sequence."},
+            "window": {"type": "integer", "description": "Window size for sliding calculation"},
+        },
+        "required": ["seq"],
+    }
+
+    def execute(self, seq: str, window: int | None = None):
+        seq = seq.upper().replace("\n", "").replace(" ", "")
+        if not seq:
+            return {"error": "Sequence empty"}
+        def gc(s):
+            return round((s.count("G") + s.count("C")) / len(s) * 100, 2)
+        if window and window > 0 and window < len(seq):
+            values = [gc(seq[i:i+window]) for i in range(0, len(seq)-window+1)]
+            return {"success": True, "window": window, "gc_values": values}
+        else:
+            return {"success": True, "gc_percent": gc(seq)}
+
+# Register new tools
+TOOL_REGISTRY[ScientificSearchTool.name] = ScientificSearchTool
+TOOL_REGISTRY[ToolDocsQueryTool.name] = ToolDocsQueryTool
+TOOL_REGISTRY[TranslateDnaTool.name] = TranslateDnaTool
+TOOL_REGISTRY[GcContentTool.name] = GcContentTool
+
 # Generate OpenAI function schemas from tools
-tool_functions = [
+_tool_schemas = [
     convert_to_openai_function(ReadFileTool()),
     *[tool_class.get_openai_schema() for tool_class in TOOL_REGISTRY.values()]
 ]
+tool_functions = [{"type": "function", "function": schema} for schema in _tool_schemas]
 
 class ToolIntegration:
     def __init__(self, session_state: SessionState):
@@ -1321,12 +1862,106 @@ class ToolIntegration:
         """
         # Handle ReadFileTool separately as it's from langchain
         if function_name == "read_file":
-            return ReadFileTool().run(function_args["file_path"])
+            return ReadFileTool().run(function_args.get("file_path", function_args))
         
         # Use the tool from the registry if available
         if function_name in self.tools:
-            return self.tools[function_name].execute(**function_args)
+            tool_instance = self.tools[function_name]
+            try:
+                return tool_instance.execute(**function_args)
+            except TypeError as e:
+                if "missing" in str(e) and "required positional argument" in str(e):
+                    sig = inspect.signature(tool_instance.execute)
+                    required = [
+                        p.name for p in sig.parameters.values()
+                        if p.default is inspect.Parameter.empty and p.name != 'self'
+                    ]
+                    missing = [p for p in required if p not in function_args]
+                    return {
+                        "error": (
+                            f"Invalid arguments for tool '{function_name}'. "
+                            f"Missing required arguments: {missing}. "
+                            f"Please provide all required arguments: {required}."
+                        )
+                    }
+                else:
+                    # Re-raise other TypeErrors or unexpected errors
+                    raise e
         
         # If no tool found, return error
         return {"error": f"No such function: {function_name}"}
         
+# ---------------------------------------------------------------------------
+#  CommitCustomLibraryTool – finalises draft UCF
+# ---------------------------------------------------------------------------
+
+
+class CommitCustomLibraryTool(Tool):
+    name = "commit_custom_library"
+    description = "Write the current draft UCF (if any) to disk, load it, and set it as the active library. Optionally specify the filename."
+    parameters = {
+        "type": "object",
+        "properties": {
+            "ucf_name": {"type": "string", "description": "Filename for the custom UCF (must end with .UCF.json)", "default": None},
+        },
+        "required": [],
+    }
+
+    def execute(self, ucf_name: str | None = None):
+        lm = self.session_state.get_library_manager()
+        try:
+            path = lm.commit_draft_ucf(ucf_name)
+            self.session_state.custom_ucf_path = path
+            
+            # Get updated context info
+            context_info = lm.get_active_context_info()
+            
+            return {
+                "success": True, 
+                "custom_ucf_path": path,
+                "active_context": context_info,
+                "message": f"Custom library committed and activated. Context: {context_info['context_type']}"
+            }
+        except Exception as exc:
+            return {"error": str(exc)}
+
+
+class GetLibraryStatusTool(Tool):
+    name = "get_library_status"
+    description = "Get the current library status including active context, base library, and any pending drafts."
+    parameters = {
+        "type": "object",
+        "properties": {},
+        "required": [],
+    }
+
+    def execute(self):
+        lm = self.session_state.get_library_manager()
+        
+        if not lm.current_library_id:
+            return {"error": "No library selected"}
+        
+        context_info = lm.get_active_context_info()
+        base_info = lm.get_current_library_info()
+        
+        return {
+            "success": True,
+            "base_library": {
+                "library_id": base_info["library_id"],
+                "ucf_path": base_info["ucf_path"],
+                "input_path": base_info["input_path"],
+                "output_path": base_info["output_path"],
+                "num_parts": base_info.get("num_parts"),
+                "num_gates": base_info.get("num_gates")
+            },
+            "active_context": context_info,
+            "currently_using": {
+                "ucf_path": lm.get_active_ucf_path(),
+                "input_path": lm.get_active_input_path(),
+                "output_path": lm.get_active_output_path()
+            }
+        }
+
+
+TOOL_REGISTRY[CommitCustomLibraryTool.name] = CommitCustomLibraryTool
+TOOL_REGISTRY[GetLibraryStatusTool.name] = GetLibraryStatusTool

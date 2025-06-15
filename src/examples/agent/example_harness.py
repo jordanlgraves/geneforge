@@ -4,7 +4,7 @@ import json
 from typing import Optional, List, Dict, Any, Union
 from dotenv import load_dotenv
 
-from src.llm_module import get_llm_client, chat_with_tool
+from src.llm_module import get_llm_client, run_assistant
 from src.prompt_manager import get_system_prompt
 from src.session_state import SessionState
 from src.tools.functions import ToolIntegration
@@ -89,12 +89,12 @@ class ExampleRunner:
                         "content": "Please use the tools to complete the task."
                     })
                 
-                final_result_msg = chat_with_tool(
+                final_result_msg = run_assistant(
                     client=self.client,
-                    messages=self.messages,
+                    session_state=self.session_state,   
                     tool_integration=self.tool_integration,
-                    model=self.model,
-                    max_rounds=self.max_rounds
+                    user_prompt=self.prompt,
+                    system_prompt=self.system_prompt
                 )
                 
                 # Add the response to messages for context in case of another attempt

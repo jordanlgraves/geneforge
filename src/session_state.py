@@ -22,11 +22,30 @@ class SessionState:
         self.custom_input_path: Optional[str] = None
         self.cello_results: Optional[Dict[str, Any]] = None
         
+        # For OpenAI Assistants API
+        self.assistant_id: Optional[str] = None
+        self.thread_id: Optional[str] = None
+        
         self.design_spec: Optional[str] = None  # Natural-language high-level specification
         self.verilog_code: Optional[str] = None  # Latest generated/updated Verilog source
         self.chat_rounds: int = 0  # Number of LLM-tool interaction rounds in current session
         # Add other state variables as needed, e.g.:
         # self.design_requirements: Dict[str, Any] = {}
+
+        # SynBioHub client – lazy init in get_synbiohub_client()
+        self._synbiohub_client = None
+
+        # ------------------------------------------------------------------
+        #  Chat history logging (optional, depends on env var)
+        # ------------------------------------------------------------------
+        try:
+            from src.chat_history import ChatHistoryLogger
+            self.chat_logger: Optional[ChatHistoryLogger] = ChatHistoryLogger()
+            logger.info(f"Chat history will be saved to {self.chat_logger.get_path()}")
+        except Exception as exc:
+            # Do not crash the session if logging cannot be initialised
+            logger.warning("Chat history logger not initialised – %s", exc)
+            self.chat_logger = None
 
     def from_dict(self, **kwargs):
         """Initialize the session state from a dictionary."""
@@ -47,6 +66,8 @@ class SessionState:
             "chat_rounds": self.chat_rounds,
             "cello_results": self.cello_results,
             "custom_input_path": self.custom_input_path,
+            "assistant_id": self.assistant_id,
+            "thread_id": self.thread_id,
         }
 
     def select_library(self, library_id: str) -> bool:
@@ -114,6 +135,11 @@ class SessionState:
 
     def get_chat_rounds(self) -> int:
         return self.chat_rounds
+
+    def set_assistant(self, assistant_id: str, thread_id: str):
+        """Store Assistant and Thread IDs for the session."""
+        self.assistant_id = assistant_id
+        self.thread_id = thread_id
 
     # ------------------------------------------------------------------
     #  Automatic ProD calibration when a library is selected
@@ -199,6 +225,21 @@ class SessionState:
         except Exception as e:
             logger.warning("ProD calibration failed: %s", e)
             return {"success": False, "error": str(e)}
+
+    # ------------------------------------------------------------------
+    #  SynBioHub integration
+    # ------------------------------------------------------------------
+
+    def get_synbiohub_client(self):
+        """Return (and lazily create) a SynBioHubClient bound to this session."""
+        if self._synbiohub_client is None:
+            try:
+                from src.tools.synbiohub_integration import SynBioHubClient
+                self._synbiohub_client = SynBioHubClient()
+            except Exception as exc:
+                logger.error("Failed to initialise SynBioHub client: %s", exc)
+                raise
+        return self._synbiohub_client
 
     # Add methods to update and retrieve other state variables as needed
     # e.g., set_custom_ucf_path, get_cello_results, etc. 

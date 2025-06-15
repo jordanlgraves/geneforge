@@ -226,7 +226,7 @@ class TestProDIntegration(unittest.TestCase):
         # Test with invalid strength values
         with self.assertRaises(ValueError):
             generate_promoter_library(self.library_blueprint, [11])
-    
+
     def test_integration_extract_and_evaluate(self):
         """
         Test end-to-end workflow: extract spacer, evaluate, and regenerate promoter.

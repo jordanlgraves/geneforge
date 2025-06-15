@@ -96,7 +96,7 @@ class RBSCalculatorIntegration:  # pylint: disable=too-few-public-methods
     The goal is to expose a *clean* and *robust* API for use by higher-level
     tools in the GeneForge project while hiding the complexity of the original
     implementation.  All public methods return plain Python dictionaries to
-    make them JSON-serialisable and therefore directly consumable by the LLM
+    make them JSON-serializable and therefore directly consumable by the LLM
     tool layer.
     """
 

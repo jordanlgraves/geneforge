@@ -67,7 +67,7 @@ class TestPromoterVariantTools(unittest.TestCase):
         tool = AddPromoterVariantTool(self.session_state)
         result = tool.execute(
             parent_promoter_id=parent_id,
-            spacer="A" * 17,
+            spacer_sequence="A" * 17,
             ymax=2.5,
         )
         assert result["success"], result.get("error", "")

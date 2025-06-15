@@ -44,6 +44,17 @@ class LibraryManager:
         self.current_input_path: Optional[str] = None
         self.current_output_path: Optional[str] = None
 
+        # In-memory draft copy for incremental modifications
+        self._draft_ucf: Optional[List[Dict]] = None  # set via begin_draft()
+
+        # Active library context - tracks which files are currently "active"
+        self._active_context: Dict[str, str] = {
+            "ucf_path": None,
+            "input_path": None, 
+            "output_path": None,
+            "context_type": "base"  # "base", "custom", or "draft"
+        }
+
         if not self.available_libraries:
             logger.warning("No libraries found during scan.")
         else:
@@ -252,15 +263,37 @@ class LibraryManager:
         self.current_library_id = library_id
         logger.info(f"Successfully selected library: {library_id}")
         
+        # Update active context to use base library files
+        self._active_context = {
+            "ucf_path": self.current_ucf_path,
+            "input_path": self.current_input_path,
+            "output_path": self.current_output_path,
+            "context_type": "base"
+        }
+        
         return True
     
     def get_ucf_data(self) -> Optional[List[Dict]]:
         """
-        Get the raw UCF data for the current library.
+        Get the raw UCF data for the currently active library context.
         
         Returns:
-            Raw UCF data or None if no library is loaded
+            Raw UCF data from the active context (base, custom, or draft)
         """
+        # If we have a draft, return that
+        if self._draft_ucf is not None:
+            return self._draft_ucf
+        
+        # If we're using a custom UCF, load it fresh
+        if self._active_context["context_type"] == "custom" and self._active_context["ucf_path"]:
+            try:
+                return _read_cello_config_file(self._active_context["ucf_path"])
+            except Exception as e:
+                logger.error(f"Failed to load custom UCF: {e}")
+                # Fall back to base library
+                return self.current_ucf_data
+        
+        # Default to base library data
         return self.current_ucf_data
     
     def get_input_sensor_data(self) -> Optional[List[Dict]]:
@@ -299,7 +332,8 @@ class LibraryManager:
                          modified_parts: List = None,
                          new_parts: List[Dict] = None,
                          ucf_name: str = None,
-                         output_dir: str = None) -> Optional[str]:
+                         output_dir: str = None,
+                         ucf_data: List[Dict] | None = None) -> Optional[str]:
         """
         Create a custom UCF file with selected parts and modifications.
         
@@ -310,12 +344,14 @@ class LibraryManager:
             new_parts: List of new part definitions to add
             ucf_name: Optional name for the UCF file
             output_dir: Optional directory to save the UCF file
+            ucf_data: Optional existing UCF data to use for the custom UCF
             
         Returns:
             Path to the created UCF file or None if creation failed
         """
-        if not self.current_ucf_data:
-            logger.error("No UCF data loaded, cannot create custom UCF")
+        base_data = ucf_data if ucf_data is not None else self.current_ucf_data
+        if not base_data:
+            logger.error("No UCF data available, cannot create custom UCF")
             return None
         
         # Process selected_parts to ensure we have a list of part dictionaries
@@ -330,7 +366,7 @@ class LibraryManager:
                     part_name = part if isinstance(part, str) else part.get("id", part.get("name", ""))
                     found = False
                     
-                    for item in self.current_ucf_data:
+                    for item in base_data:
                         if item.get("collection") == "parts" and item.get("name") == part_name:
                             processed_parts.append(item)
                             found = True
@@ -345,7 +381,7 @@ class LibraryManager:
         
         # Use the module function directly instead of calling through a class instance
         custom_ucf_path = part_library_customizer.create_custom_ucf(
-            ucf_data=self.current_ucf_data,
+            ucf_data=base_data,
             selected_gates=selected_gates,
             selected_parts=processed_parts,
             modified_parts=modified_parts,
@@ -468,3 +504,171 @@ class LibraryManager:
         except Exception as e:
             logger.error(f"Failed to load or parse custom UCF from {ucf_path}: {e}")
             return False 
+
+    # ------------------------------------------------------------------
+    #  Draft-UCF transaction helpers
+    # ------------------------------------------------------------------
+
+    def begin_draft(self) -> None:
+        """Start a draft UCF if none exists.
+
+        All subsequent modification helpers operate on *self._draft_ucf* until
+        it is committed or rolled back.
+        """
+        if self.current_ucf_data is None:
+            raise RuntimeError("No library selected – cannot start draft.")
+        if self._draft_ucf is None:
+            import copy
+            self._draft_ucf = copy.deepcopy(self.current_ucf_data)
+
+    def discard_draft(self) -> None:
+        """Throw away any uncommitted draft changes."""
+        self._draft_ucf = None
+
+    # ------------------------------------------------------------------
+    #  High-level modification helpers
+    # ------------------------------------------------------------------
+
+    def add_promoter_variants(
+        self, parent_promoter: str, variants: List[Dict[str, Any]]
+    ) -> int:
+        """Duplicate *parent_promoter* with each spacer/ymax variant.
+
+        Parameters
+        ----------
+        parent_promoter : str
+            Name/ID of existing promoter in the current library.
+        variants : list of {"spacer": str, "ymax": float}
+
+        Returns
+        -------
+        int – number of new items added to the draft UCF.
+        """
+        from src.library.part_library_customizer import duplicate_promoter_dependencies
+
+        if self.current_ucf_data is None:
+            raise RuntimeError("No library selected.")
+
+        # Ensure a draft exists
+        self.begin_draft()
+
+        new_items_total: int = 0
+        for i, var in enumerate(variants, start=1):
+            spacer = var.get("spacer")
+            ymax = var.get("ymax")
+            if not spacer or len(spacer) != 17:
+                continue
+
+            new_promoter_id = f"{parent_promoter}_var{i}"
+
+            # Re-create promoter sequence using parent sequence flanks
+            from src.tools.pro_d_integration import extract_id_ecoli_spacer
+            import copy as _copy
+
+            parent_part = next(
+                (p for p in self.current_ucf_data if p.get("collection") == "parts" and p.get("name") == parent_promoter),
+                None,
+            )
+            if not parent_part:
+                raise ValueError(f"Parent promoter '{parent_promoter}' not found.")
+
+            parent_seq = parent_part.get("dnasequence") or parent_part.get("sequence")
+            spacer_parent = extract_id_ecoli_spacer(parent_seq)
+            if not spacer_parent:
+                raise ValueError("Could not extract spacer from parent promoter.")
+            idx = parent_seq.find(spacer_parent)
+            new_seq = f"{parent_seq[:idx].upper()}{spacer.upper()}{parent_seq[idx+17:].upper()}"
+
+            # Use helper to duplicate deps into *new_items*
+            new_items, _gate_map = duplicate_promoter_dependencies(
+                self._draft_ucf, parent_promoter, new_promoter_id, new_seq, ymax
+            )
+            self._draft_ucf.extend(new_items)
+            new_items_total += len(new_items)
+
+        return new_items_total
+
+    # ------------------------------------------------------------------
+    #  Commit draft
+    # ------------------------------------------------------------------
+
+    def commit_draft_ucf(self, ucf_name: str | None = None) -> str:
+        """Write the draft UCF to disk and load it as the current library.
+
+        Returns the path of the written file.
+        """
+        if self._draft_ucf is None:
+            raise RuntimeError("No draft UCF to commit.")
+
+        path = self.create_custom_ucf(
+            selected_gates=None,
+            selected_parts=None,
+            modified_parts=None,
+            new_parts=None,
+            ucf_name=ucf_name,
+            output_dir="outputs/custom_ucf",
+            ucf_data=self._draft_ucf,  # type: ignore[arg-type]
+        )
+
+        self.load_custom_ucf(path)
+        self._draft_ucf = None
+        
+        # Update active context to use the committed custom UCF
+        self._active_context = {
+            "ucf_path": path,
+            "input_path": self.current_input_path,  # Keep base input/output for now
+            "output_path": self.current_output_path,
+            "context_type": "custom"
+        }
+        
+        return path
+
+    def get_active_ucf_path(self) -> Optional[str]:
+        """Get the path to the currently active UCF file."""
+        return self._active_context["ucf_path"]
+    
+    def get_active_input_path(self) -> Optional[str]:
+        """Get the path to the currently active input file."""
+        return self._active_context["input_path"]
+    
+    def get_active_output_path(self) -> Optional[str]:
+        """Get the path to the currently active output file."""
+        return self._active_context["output_path"]
+    
+    def get_active_context_info(self) -> Dict[str, Any]:
+        """Get information about the currently active library context."""
+        return {
+            **self._active_context,
+            "library_id": self.current_library_id,
+            "has_draft": self._draft_ucf is not None
+        }
+
+    def switch_to_custom_context(self, ucf_path: str, input_path: str = None, output_path: str = None) -> bool:
+        """Switch the active context to use custom library files.
+        
+        This method allows tools to explicitly switch to using custom files
+        without modifying the base library state.
+        """
+        if not os.path.exists(ucf_path):
+            logger.error(f"Custom UCF file not found: {ucf_path}")
+            return False
+        
+        self._active_context = {
+            "ucf_path": ucf_path,
+            "input_path": input_path or self.current_input_path,
+            "output_path": output_path or self.current_output_path,
+            "context_type": "custom"
+        }
+        
+        logger.info(f"Switched to custom library context: {ucf_path}")
+        return True
+    
+    def reset_to_base_context(self) -> None:
+        """Reset the active context to use the base library files."""
+        self._active_context = {
+            "ucf_path": self.current_ucf_path,
+            "input_path": self.current_input_path,
+            "output_path": self.current_output_path,
+            "context_type": "base"
+        }
+        logger.info("Reset to base library context") 
