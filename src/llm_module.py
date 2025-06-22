@@ -14,6 +14,15 @@ logger = logging.getLogger(__name__)
 
 DEBUG_MODEL = True
 
+import os
+from dotenv import load_dotenv
+
+# Always run this at the top
+load_dotenv(dotenv_path="/home/sophia/git_repo/geneforge/.env", override=True)
+
+print("XXXXXXXLoaded DEEPSEEK_API_KEY:", repr(os.getenv("DEEPSEEK_API_KEY")))
+print("XXXXXXXLoaded DEEPSEEK_BASE_URL:", repr(os.getenv("DEEPSEEK_BASE_URL")))
+# error here
 def get_llm_client(client_type: str = None, reasoning: bool = False) -> Optional[Tuple[OpenAI, str]]:
     """Gets the LLM client and model name based on environment variables."""
     openai_api_key = os.getenv("OPENAI_API_KEY")
@@ -152,9 +161,12 @@ def main():
     # We would need a simple console-based event handler to run this.
     print("Main function cannot run streaming assistant directly. Run the UI with `streamlit run src/ui/app.py`")
     
-
+# won't run
 if __name__ == "__main__":
     # Load .env file if present
     from dotenv import load_dotenv
     load_dotenv()
+    load_dotenv(dotenv_path="/home/sophia/git_repo/geneforge/.env")
+    print("XXXXXXXLoaded DEEPSEEK_API_KEY:", repr(os.getenv("DEEPSEEK_API_KEY")))
+    print("XXXXXXXLoaded DEEPSEEK_BASE_URL:", repr(os.getenv("DEEPSEEK_BASE_URL")))
     main()

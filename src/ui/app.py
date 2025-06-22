@@ -7,6 +7,7 @@ from typing import Dict, Any
 from typing_extensions import override
 from openai import AssistantEventHandler
 
+
 # Ensure the project root is on the PYTHONPATH
 PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), os.pardir, os.pardir))
 if PROJECT_ROOT not in sys.path:
@@ -23,6 +24,7 @@ from src.examples.agent.design_w_promoter_vars_and_research import DesignWithPro
 # Configure logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 logger = logging.getLogger("GeneForge_UI")
+
 
 # --- Page Configuration ---
 st.set_page_config(
@@ -62,9 +64,15 @@ def init_session_state():
         st.session_state.current_run_id = None
     if "current_thread_id" not in st.session_state:
         st.session_state.current_thread_id = None
-    
+    print(f"llm_client_type: {st.session_state.llm_client_type}")
+
     # Initialize client and model based on selection
-    client, model = get_llm_client(client_type=st.session_state.llm_client_type)
+    result = get_llm_client(client_type=st.session_state.llm_client_type)
+    #result = get_llm_client(client_type=st.session_state.llm_client_type)
+    if result is None:
+        st.error("Failed to initialize LLM client. Please check your API key or client type.")
+        st.stop()
+    client, model = result
     st.session_state.client = client
     st.session_state.model = model
 
