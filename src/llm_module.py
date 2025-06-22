@@ -2,6 +2,7 @@ import os
 import logging
 import json
 from openai import OpenAI
+from dotenv import load_dotenv
 from typing import List, Dict, Any, Tuple, Optional
 
 from src.tools.functions import ToolIntegration, tool_functions
@@ -14,14 +15,8 @@ logger = logging.getLogger(__name__)
 
 DEBUG_MODEL = True
 
-import os
-from dotenv import load_dotenv
-
 # Always run this at the top
-load_dotenv(dotenv_path="/home/sophia/git_repo/geneforge/.env", override=True)
-
-print("XXXXXXXLoaded DEEPSEEK_API_KEY:", repr(os.getenv("DEEPSEEK_API_KEY")))
-print("XXXXXXXLoaded DEEPSEEK_BASE_URL:", repr(os.getenv("DEEPSEEK_BASE_URL")))
+load_dotenv(override=True)
 # error here
 def get_llm_client(client_type: str = None, reasoning: bool = False) -> Optional[Tuple[OpenAI, str]]:
     """Gets the LLM client and model name based on environment variables."""
@@ -166,7 +161,4 @@ if __name__ == "__main__":
     # Load .env file if present
     from dotenv import load_dotenv
     load_dotenv()
-    load_dotenv(dotenv_path="/home/sophia/git_repo/geneforge/.env")
-    print("XXXXXXXLoaded DEEPSEEK_API_KEY:", repr(os.getenv("DEEPSEEK_API_KEY")))
-    print("XXXXXXXLoaded DEEPSEEK_BASE_URL:", repr(os.getenv("DEEPSEEK_BASE_URL")))
     main()

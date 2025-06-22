@@ -7,7 +7,6 @@ from typing import Dict, Any
 from typing_extensions import override
 from openai import AssistantEventHandler
 
-
 # Ensure the project root is on the PYTHONPATH
 PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), os.pardir, os.pardir))
 if PROJECT_ROOT not in sys.path:
@@ -24,7 +23,6 @@ from src.examples.agent.design_w_promoter_vars_and_research import DesignWithPro
 # Configure logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 logger = logging.getLogger("GeneForge_UI")
-
 
 # --- Page Configuration ---
 st.set_page_config(
