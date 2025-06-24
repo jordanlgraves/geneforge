@@ -49,7 +49,7 @@ def init_session_state():
     if "loaded_prompt" not in st.session_state:
         st.session_state.loaded_prompt = None
     if "llm_client_type" not in st.session_state:
-        st.session_state.llm_client_type = "deepseek"  # Default client
+        st.session_state.llm_client_type = "openai"  # Default client
     if "core_session" not in st.session_state:
         st.session_state.core_session = SessionState()
     if "tool_integration" not in st.session_state:

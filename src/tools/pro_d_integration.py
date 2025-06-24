@@ -14,11 +14,21 @@ logger = logging.getLogger(__name__)
 import dotenv
 dotenv.load_dotenv()
 PRO_D_ROOT = os.getenv("PRO_D_ROOT")
-# add to PYTHONPATH
-sys.path.append(PRO_D_ROOT)
 
+# Option A: use environment variable if defined
+if PRO_D_ROOT and os.path.exists(PRO_D_ROOT):
+    sys.path.append(PRO_D_ROOT)
+    logger.info(f"Loaded ProD path from PRO_D_ROOT: {PRO_D_ROOT}")
+# Option B: fallback hardcoded path
+else:
+    PROD_PATH = "/home/sophia/git_repo/geneforge/ext_repos/ProD"
+    sys.path.append(PROD_PATH)
+    logger.warning(f"Using fallback ProD path: {PROD_PATH}")
+
+PROJECT_ROOT = os.getcwd()
+print(f"Project root: {PROJECT_ROOT}")
 # Default path to the ProD model
-DEFAULT_MODEL_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), '../../ext_repos/ProD/models/model_RPOD.pt'))
+DEFAULT_MODEL_PATH = os.path.join(PROJECT_ROOT, "ext_repos", "ProD", "models", "model_RPOD.pt")
 
 # ---------------------------------------------------------------------------
 #  CLASS → RPU DEFAULT MAP  (rough, log-uniform; can be re-calibrated)
