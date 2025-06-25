@@ -60,6 +60,13 @@ class LibraryManager:
         else:
             logger.info(f"Library manager initialized. Found {len(self.available_libraries)} potential libraries.")
     
+    def get_library_specs(self, library_id: str) -> Dict[str, Any]:
+        """
+        Get the specs for a library.
+        """
+        return {"library_data": f"Library: {library_id}"} # TODO: Add promoter, gates, parts, input sensors, output devices    
+        
+
     def _scan_libraries(self) -> Dict[str, Dict[str, str]]:
         """
         Scan all library directories to find available UCF, input, and output files.
@@ -551,7 +558,7 @@ class LibraryManager:
 
         # Ensure a draft exists
         self.begin_draft()
-
+        successfully_saved_variants = []
         new_items_total: int = 0
         for i, var in enumerate(variants, start=1):
             spacer = var.get("spacer")
@@ -585,8 +592,9 @@ class LibraryManager:
             )
             self._draft_ucf.extend(new_items)
             new_items_total += len(new_items)
+            successfully_saved_variants.append(var)
 
-        return new_items_total
+        return successfully_saved_variants
 
     # ------------------------------------------------------------------
     #  Commit draft

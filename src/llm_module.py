@@ -4,7 +4,7 @@ import json
 from openai import OpenAI
 from typing import List, Dict, Any, Tuple, Optional
 
-from src.tools.functions import ToolIntegration, tool_functions
+from src.functions import ToolIntegration, tool_functions
 from src.session_state import SessionState
 
 
@@ -15,28 +15,28 @@ logger = logging.getLogger(__name__)
 DEBUG_MODEL = True
 
 def get_llm_client(client_type: str = None, reasoning: bool = False) -> Optional[Tuple[OpenAI, str]]:
-    """Gets the LLM client and model name based on environment variables."""
-    openai_api_key = os.getenv("OPENAI_API_KEY")
-    deepseek_api_key = os.getenv("DEEPSEEK_API_KEY")
-    deepseek_base_url = os.getenv("DEEPSEEK_BASE_URL")
+    """Initialise an LLM client.
+
+    The caller may supply credentials via *environment variables* **or** by
+    setting them dynamically in ``os.environ`` *before* calling this
+    function.  The Streamlit UI does the latter so that users can paste keys
+    at runtime.
+
+    Returns:
+        (OpenAI client instance, model_name)  – or ``None`` on failure.
+    """
+
+    # The UI stores (or updates) credentials in the process environment so we
+    # always read from ``os.environ`` here.  This keeps the public API simple
+    # and avoids passing sensitive strings around unnecessarily.
+    openai_api_key = os.getenv("OPENAI_API_KEY", "")
+    deepseek_api_key = os.getenv("DEEPSEEK_API_KEY", "")
+    deepseek_base_url = os.getenv("DEEPSEEK_BASE_URL", "")
 
     client: Optional[OpenAI] = None
     model: Optional[str] = None
 
-    # Prioritize DeepSeek if configured
-    if client_type == "deepseek" or client_type is None:
-        logger.info("Using DeepSeek API")
-        try:
-            client = OpenAI(api_key=deepseek_api_key, base_url=deepseek_base_url)
-            model = "deepseek-reasoner" if reasoning else "deepseek-coder"
-            client.models.list()
-            logger.info(f"Successfully connected to DeepSeek with model {model}")
-        except Exception as e:
-            logger.error(f"Failed to initialize DeepSeek client: {e}")
-            client = None # Ensure client is None on failure
-            model = None
-    # Fallback to OpenAI
-    elif client_type == "openai":
+    if client_type == "openai":
         logger.info("Using OpenAI API")
         try:
             client = OpenAI(api_key=openai_api_key)
@@ -48,7 +48,17 @@ def get_llm_client(client_type: str = None, reasoning: bool = False) -> Optional
             logger.error(f"Failed to initialize OpenAI client: {e}")
             client = None
             model = None
-    # No keys found
+    elif client_type == "deepseek" or client_type is None:
+        logger.info("Using DeepSeek API")
+        try:
+            client = OpenAI(api_key=deepseek_api_key, base_url=deepseek_base_url)
+            model = "deepseek-reasoner" if reasoning else "deepseek-coder"
+            client.models.list()
+            logger.info(f"Successfully connected to DeepSeek with model {model}")
+        except Exception as e:
+            logger.error(f"Failed to initialize DeepSeek client: {e}")
+            client = None # Ensure client is None on failure
+            model = None
     else:
         logger.error("No API keys found for OpenAI or DeepSeek in environment variables.")
         return None

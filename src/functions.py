@@ -481,7 +481,7 @@ class DesignWithCelloTool(Tool):
         if not ucf_path or not input_path:
              return {"error": f"Missing UCF ({ucf_path}) or Input ({input_path}) file path for library {library_manager.current_library_id}."}
 
-        from src.tools.cello_integration import CelloIntegration
+        from src.integrations.cello_integration import CelloIntegration
 
         # Pass the library_manager from the session state
         cello = CelloIntegration(
@@ -490,6 +490,8 @@ class DesignWithCelloTool(Tool):
         )
 
         output_dir = f"outputs/cello_run_{library_manager.current_library_id}"
+    
+        self.session_state.set_verilog_code(verilog_code) # let's update the sessions state's verilog_code with the new verilog code
         results = cello.run_cello(run_name=run_name, verilog_code=verilog_code, custom_ucf=os.path.basename(ucf_path))
 
         if not results['success']:
@@ -566,7 +568,7 @@ class CreateCustomUcfTool(Tool):
                 return {
                     "success": True,
                     "library_id": library_manager.current_library_id,
-                    "custom_ucf_path": custom_ucf_path
+                    # "custom_ucf_path": custom_ucf_path
                 }
             else:
                  return {"error": "UCF customization process failed to return a path."}
@@ -657,7 +659,7 @@ class EvaluateCircuitPerformanceTool(Tool):
     
     def execute(self, output_path: str) -> Dict[str, Any]:
         """Evaluate circuit performance by extracting metrics from Cello output files."""
-        from src.tools.cello_integration import CelloIntegration
+        from src.integrations.cello_integration import CelloIntegration
         
         # Initialize Cello integration
         cello = CelloIntegration()
@@ -744,7 +746,7 @@ class GenerateVerilogToolLLM(Tool):
 #  ProD helper base (lazy session-level ProDIntegration)
 # ---------------------------------------------------------------------------
 
-from src.tools.pro_d_integration import ProDIntegration, class_to_rpu, extract_id_ecoli_spacer
+from src.integrations.pro_d_integration import ProDIntegration, class_to_rpu, extract_id_ecoli_spacer
 
 
 class _ProDToolBase(Tool):
@@ -791,6 +793,52 @@ class _ProDPromoterToolBase(_ProDToolBase):
         if not part:
             return None
         return part.get("dnasequence") or part.get("sequence")
+    
+
+    # ------------------------------------------------------------------
+    #  Helper to auto-save variants into a custom UCF
+    # ------------------------------------------------------------------
+
+    def _auto_save_variants(
+        self,
+        parent_promoter: str | None,
+        upstream: str,
+        downstream: str,
+        variants_dict: dict,
+        save_to_library: str | None,
+    ) -> dict:
+        """Write the generated variants to a new custom UCF when requested.
+
+        Currently only the *ucf* target is implemented.  Returns a dict that
+        will be merged into the tool's success payload.
+        """
+
+        if not save_to_library:
+            return {}
+
+        if save_to_library != "ucf":
+            return {"warning": f"Automatic save for '{save_to_library}' not yet supported."}
+
+        if not parent_promoter:
+            return {"error": "Parameter 'parent_promoter' is required when save_to_library is set."}
+
+        lm = self.session_state.get_library_manager()
+        if not lm.current_library_id:
+            return {"error": "No library selected. Use select_library first."}
+
+        # Build list of variant dicts with spacer & ymax
+        variants_list = []
+        for spacer_seq, props in variants_dict.items():
+            variants_list.append({
+                "spacer": spacer_seq,
+                "ymax": props.get("ymax") or props.get("strength") or 1.0,
+            })
+
+        try:
+            added_items = lm.add_promoter_variants(parent_promoter, variants_list)
+            return {"draft_ucf_pending": True, "variants_saved": added_items}
+        except Exception as exc:
+            return {"error": str(exc)}
 
     @staticmethod
     def _split_flanks(promoter_seq: str, spacer: str) -> tuple[str, str]:
@@ -909,7 +957,7 @@ class GeneratePromoterLibraryFromSpacerTool(_ProDPromoterToolBase):
             "sequences_per_class": {"type": "integer", "default": 5},
             "parent_promoter": {"type": "string", "description": "Optional promoter ID or sequence providing flanks."},
             "file_type": {"type": "string", "enum": ["ucf", "input", "output"], "default": "ucf"},
-            "save_to_library": {"type": "string", "enum": ["ucf", "input", "output"], "description": "Automatically write the generated variants to a custom library file (valid only for 'ucf' for now)."}
+            "save_to_library": {"type": "string", "enum": ["ucf", "input", "output"], "description": "Automatically write the generated variants to the selected library (valid only for 'ucf' file type for now)."}
         },
         "required": ["blueprint"],
     }
@@ -932,7 +980,7 @@ class GeneratePromoterLibraryFromSpacerTool(_ProDPromoterToolBase):
             parent_seq = self._resolve_promoter_sequence(parent_promoter, file_type)
             if not parent_seq:
                 return {"error": f"Could not resolve parent promoter '{parent_promoter}'."}
-            from src.tools.pro_d_integration import extract_id_ecoli_spacer
+            from src.integrations.pro_d_integration import extract_id_ecoli_spacer
             spacer_parent = extract_id_ecoli_spacer(parent_seq)
             if spacer_parent and spacer_parent in parent_seq:
                 upstream, downstream = self._split_flanks(parent_seq, spacer_parent)
@@ -957,50 +1005,6 @@ class GeneratePromoterLibraryFromSpacerTool(_ProDPromoterToolBase):
             "success": True,
         }
 
-    # ------------------------------------------------------------------
-    #  Helper to auto-save variants into a custom UCF
-    # ------------------------------------------------------------------
-
-    def _auto_save_variants(
-        self,
-        parent_promoter: str | None,
-        upstream: str,
-        downstream: str,
-        variants_dict: dict,
-        save_to_library: str | None,
-    ) -> dict:
-        """Write the generated variants to a new custom UCF when requested.
-
-        Currently only the *ucf* target is implemented.  Returns a dict that
-        will be merged into the tool's success payload.
-        """
-
-        if not save_to_library:
-            return {}
-
-        if save_to_library != "ucf":
-            return {"warning": f"Automatic save for '{save_to_library}' not yet supported."}
-
-        if not parent_promoter:
-            return {"error": "Parameter 'parent_promoter' is required when save_to_library is set."}
-
-        lm = self.session_state.get_library_manager()
-        if not lm.current_library_id:
-            return {"error": "No library selected. Use select_library first."}
-
-        # Build list of variant dicts with spacer & ymax
-        variants_list = []
-        for spacer_seq, props in variants_dict.items():
-            variants_list.append({
-                "spacer": spacer_seq,
-                "ymax": props.get("ymax") or props.get("strength") or 1.0,
-            })
-
-        try:
-            n_items = lm.add_promoter_variants(parent_promoter, variants_list)
-            return {"draft_ucf_pending": True, "n_variants_saved": n_items}
-        except Exception as exc:
-            return {"error": str(exc)}
 
 
 class GeneratePromoterLibraryFromPromoterTool(_ProDPromoterToolBase):
@@ -1034,7 +1038,7 @@ class GeneratePromoterLibraryFromPromoterTool(_ProDPromoterToolBase):
         file_type: str = "ucf",
         save_to_library: str | None = None,
     ) -> Dict[str, Any]:
-        from src.tools.pro_d_integration import extract_id_ecoli_spacer
+        from src.integrations.pro_d_integration import extract_id_ecoli_spacer
         prod = self._get_prod()
 
         parent_seq = self._resolve_promoter_sequence(promoter, file_type)
@@ -1122,7 +1126,7 @@ class PatchUcfWithPromotersTool(Tool):
 
     def execute(self, parent_promoter_id: str, variants: List[Dict[str, Any]], replace_parent: bool = False):
         import copy
-        from src.tools.pro_d_integration import extract_id_ecoli_spacer
+        from src.integrations.pro_d_integration import extract_id_ecoli_spacer
         import src.library.part_library_customizer as plc
 
         lm = self.session_state.get_library_manager()
@@ -1196,8 +1200,6 @@ class PatchUcfWithPromotersTool(Tool):
 
 
 # RBS Calculator Tools
-
-
 class PredictInitiationRateWithRbsCalculatorTool(Tool):
     name = "predict_initiation_rate_with_rbs_calculator"
     description = (
@@ -1230,7 +1232,7 @@ class PredictInitiationRateWithRbsCalculatorTool(Tool):
         verbose: bool = False,
     ) -> Dict[str, Any]:
         # RBS Calculator integration
-        from src.tools.rbs_calculator_integration import RBSCalculatorIntegration
+        from src.integrations.rbs_calculator_integration import RBSCalculatorIntegration
 
         # Convert start_range to tuple[int, int] if provided.
         sr_tuple = tuple(start_range) if start_range else None  # type: ignore[arg-type]
@@ -1271,7 +1273,7 @@ class DesignRbsWithRbsCalculatorTool(Tool):
         verbose: bool = False,
     ) -> Dict[str, Any]:
         # RBS Calculator integration
-        from src.tools.rbs_calculator_integration import RBSCalculatorIntegration
+        from src.integrations.rbs_calculator_integration import RBSCalculatorIntegration
 
         return RBSCalculatorIntegration.design_rbs(
             pre_sequence=pre_sequence,
@@ -1308,7 +1310,7 @@ class AddPromoterVariantTool(Tool):
         new_promoter_id: Optional[str] = None,
     ) -> Dict[str, Any]:
         import copy
-        from src.tools.pro_d_integration import extract_id_ecoli_spacer
+        from src.integrations.pro_d_integration import extract_id_ecoli_spacer
         import src.library.part_library_customizer as plc
         
 
@@ -1345,7 +1347,7 @@ class AddPromoterVariantTool(Tool):
                 new_promoter_id = f"{base}var{i}"
         else: # Check that new_promoter_id is alphanumeric only
             if not new_promoter_id.isalnum():
-                return {"error": "New promoter ID must be alphanumeric only."}
+                return {"error": "new_promoter_id must be alphanumeric only."}
         
         # Duplicate dependencies
         new_items, gate_map = plc.duplicate_promoter_dependencies(
@@ -1378,9 +1380,9 @@ class AddPromoterVariantTool(Tool):
             self.session_state.custom_ucf_path = path
             return {
                 "success": True,
-                "custom_ucf_path": path,
+                # "custom_ucf_path": path,
                 "new_promoter_id": new_promoter_id,
-                "n_new_items": len(new_items),
+                "added_items": new_items,
             }
         except Exception as exc:
             if DEBUG_MODE:
@@ -1433,7 +1435,7 @@ class RemovePromoterTool(Tool):
 
             return {
                 "success": True,
-                "custom_ucf_path": path,
+                # "custom_ucf_path": path,
                 "removed_items_summary": summary,
             }
         except Exception as exc:
@@ -1587,53 +1589,6 @@ class SynBioHubGetRelatedTool(Tool):
         except Exception as exc:
             return {"error": str(exc)}
 
-
-        
-# ---------------------------------------------------------------------------
-#  Register in existing TOOL_REGISTRY and expose schemas
-# ---------------------------------------------------------------------------
-
-TOOL_REGISTRY = {}
-
-TOOL_REGISTRY[DescribeAvailableLibrariesTool.name] = DescribeAvailableLibrariesTool
-TOOL_REGISTRY[SelectLibraryTool.name] = SelectLibraryTool
-TOOL_REGISTRY[QueryLibrariesByOrganismTool.name] = QueryLibrariesByOrganismTool
-
-TOOL_REGISTRY[ListPromotersTool.name] = ListPromotersTool
-TOOL_REGISTRY[ListRepressorsTool.name] = ListRepressorsTool
-TOOL_REGISTRY[ListInputSensorsTool.name] = ListInputSensorsTool
-TOOL_REGISTRY[GetDnaPartByNameTool.name] = GetDnaPartByNameTool
-TOOL_REGISTRY[ListTerminatorsTool.name] = ListTerminatorsTool
-
-TOOL_REGISTRY[GenerateVerilogToolLLM.name] = GenerateVerilogToolLLM
-TOOL_REGISTRY[DesignWithCelloTool.name] = DesignWithCelloTool
-TOOL_REGISTRY[EvaluateCircuitPerformanceTool.name] = EvaluateCircuitPerformanceTool
-
-TOOL_REGISTRY[CreateCustomUcfTool.name] = CreateCustomUcfTool
-TOOL_REGISTRY[CreateCustomInputSensorsFileTool.name] = CreateCustomInputSensorsFileTool
-
-TOOL_REGISTRY[EstimatePromoterStrengthWithProDTool.name] = EstimatePromoterStrengthWithProDTool
-TOOL_REGISTRY[GetSpacerFromPromoterTool.name] = GetSpacerFromPromoterTool
-
-# RBS Calculator tools
-TOOL_REGISTRY[PredictInitiationRateWithRbsCalculatorTool.name] = PredictInitiationRateWithRbsCalculatorTool
-TOOL_REGISTRY[DesignRbsWithRbsCalculatorTool.name] = DesignRbsWithRbsCalculatorTool
-
-# Promoter variant tools
-TOOL_REGISTRY[AddPromoterVariantTool.name] = AddPromoterVariantTool
-TOOL_REGISTRY[RemovePromoterTool.name] = RemovePromoterTool
-
-# New promoter library generation tools
-TOOL_REGISTRY[GeneratePromoterLibraryFromSpacerTool.name] = GeneratePromoterLibraryFromSpacerTool
-TOOL_REGISTRY[GeneratePromoterLibraryFromPromoterTool.name] = GeneratePromoterLibraryFromPromoterTool
-
-# Register SynBioHub tools
-TOOL_REGISTRY[SynBioHubSearchTool.name] = SynBioHubSearchTool
-TOOL_REGISTRY[SynBioHubDownloadPartTool.name] = SynBioHubDownloadPartTool
-TOOL_REGISTRY[SynBioHubSubmitTool.name] = SynBioHubSubmitTool
-TOOL_REGISTRY[SynBioHubSequenceSearchTool.name] = SynBioHubSequenceSearchTool
-TOOL_REGISTRY[SynBioHubGetRelatedTool.name] = SynBioHubGetRelatedTool
-
 # ---------------------------------------------------------------------------
 #  Scientific search & utility tools
 # ---------------------------------------------------------------------------
@@ -1651,7 +1606,7 @@ class ScientificSearchTool(Tool):
     }
 
     def execute(self, query: str, max_results: int = 5):
-        from src.tools.scientific_search_integration import scientific_search
+        from src.integrations.scientific_search_integration import scientific_search
         try:
             papers = scientific_search(query, max_results=max_results)
             return {"success": True, "papers": papers}
@@ -1828,11 +1783,377 @@ class GcContentTool(Tool):
         else:
             return {"success": True, "gc_percent": gc(seq)}
 
-# Register new tools
+
+        
+# ---------------------------------------------------------------------------
+#  CommitCustomLibraryTool – finalises draft UCF
+# ---------------------------------------------------------------------------
+
+
+class CommitCustomLibraryTool(Tool):
+    name = "commit_custom_library"
+    description = "Write the current draft UCF (if any) to disk, load it, and set it as the active library. Optionally specify the filename."
+    parameters = {
+        "type": "object",
+        "properties": {
+            "ucf_name": {"type": "string", "description": "Filename for the custom UCF (must end with .UCF.json)", "default": None},
+        },
+        "required": [],
+    }
+
+    def execute(self, ucf_name: str | None = None):
+        lm = self.session_state.get_library_manager()
+        try:
+            path = lm.commit_draft_ucf(ucf_name)
+            self.session_state.custom_ucf_path = path
+            
+            # Get updated context info
+            context_info = lm.get_active_context_info()
+            
+            return {
+                "success": True, 
+                # "custom_ucf_path": path,
+                "active_context": context_info,
+                "message": f"Custom library committed and activated. Context: {context_info['context_type']}"
+            }
+        except Exception as exc:
+            return {"error": str(exc)}
+
+
+class GetCelloLibraryStatusTool(Tool):
+    name = "get_cello_library_status"
+    description = "Get the current Cello library status including active context, base library, and any pending drafts."
+    parameters = {
+        "type": "object",
+        "properties": {},
+        "required": [],
+    }
+
+    def execute(self):
+        lm = self.session_state.get_library_manager()
+        
+        if not lm.current_library_id:
+            return {"error": "No library selected"}
+        
+        context_info = lm.get_active_context_info()
+        base_info = lm.get_current_library_info()
+        
+        return {
+            "success": True,
+            "base_library": {
+                "library_id": base_info["library_id"],
+                "ucf_path": base_info["ucf_path"],
+                "input_path": base_info["input_path"],
+                "output_path": base_info["output_path"],
+                "num_parts": base_info.get("num_parts"),
+                "num_gates": base_info.get("num_gates")
+            },
+            "active_context": context_info,
+            "currently_using": {
+                "ucf_path": lm.get_active_ucf_path(),
+                "input_path": lm.get_active_input_path(),
+                "output_path": lm.get_active_output_path()
+            }
+        }
+
+
+# ---------------------------------------------------------------------------
+#  SBOL → SBML conversion & parameter template tools
+# ---------------------------------------------------------------------------
+
+class ConvertSbolToSbmlTool(Tool):
+    name = "convert_sbol_to_sbml"
+    description = (
+        "Convert an SBOL design file to SBML, extract a parameter template (species/parameters → value/unit/source), "
+        "store it in the session's DesignState, and return the template so the assistant can fill it."
+    )
+    parameters = {
+        "type": "object",
+        "properties": {
+            "sbol_path": {"type": "string", "description": "Path to the SBOL (.xml/.rdf) file."},
+        },
+        "required": ["sbol_path"],
+    }
+
+    def execute(self, sbol_path: str) -> Dict[str, Any]:
+        import os
+        from pathlib import Path
+        from datetime import datetime
+        # 'outputs/cello_run/not_gate_design/output/main.v/main.v_ucf._pySBOl...'
+        # ------------------------------------------------------------------
+        #  1) Validate input & prepare paths
+        # ------------------------------------------------------------------
+        sbol_path_p = Path(sbol_path)
+        if not sbol_path_p.exists():
+            return {"error": f"SBOL file not found: {sbol_path}"}
+
+        # get the output directory from the session state
+        output_directory = self.session_state.output_directory
+        sbml_filename = sbol_path_p.stem + "_" + datetime.now().strftime("%Y%m%d_%H%M%S") + ".xml"
+        sbml_output_zip_path = os.path.join(output_directory,  sbml_filename + ".zip")
+
+        # ------------------------------------------------------------------
+        #  2) Run conversion 
+        # ------------------------------------------------------------------
+        try:
+            from src.convert import SBOL2SBMLConverter  # remote Java service
+            import dotenv
+            dotenv.load_dotenv()
+            base_url = os.getenv("IBIOSIM_URL")
+            converter = SBOL2SBMLConverter(base_url)
+
+            sbml_output_zip_path = converter.convert_sbol_to_sbml(str(sbol_path_p), str(sbml_output_zip_path))
+            if not sbml_output_zip_path:
+                raise RuntimeError("Converter returned None – see logs above")
+            sbml_output_zip_path = Path(sbml_output_zip_path)
+        except Exception as exc_local:
+            return {"error": f"Converter failed: {exc_local}"}
+
+        # ------------------------------------------------------------------
+        #  3) Build parameter template
+        # ------------------------------------------------------------------
+        try:
+            import libsbml
+            import zipfile
+            from src.simulate.param_template import build_param_template
+
+            with zipfile.ZipFile(sbml_output_zip_path, "r") as zip_ref:
+                zip_ref.extractall(output_directory)
+
+            # Go through the files in the manifest and find the first SBML file
+            with open(f"{output_directory}/manifest.xml", "r") as manifest_file:
+                manifest_content = manifest_file.read()
+
+            # Find the first SBML file in the manifest
+            sbml_file_path = None
+            for line in manifest_content.split("\n"):
+                if "http://identifiers.org/combine.specifications/sbml" in line:
+                    sbml_file_path = line.split("location=")[1].split(" ")[0].strip("\"")
+                    full_path = os.path.join(output_directory, sbml_file_path)
+                    break
+            
+            if not sbml_file_path:
+                # raise RuntimeError("No SBML file found in the manifest")
+                return {"error": "No SBML file found in the manifest"}
+            
+            sbml_doc = libsbml.SBMLReader().readSBML(full_path)
+            template = build_param_template(sbml_doc)
+            
+        except Exception as exc:
+            return {"error": f"SBML parsing failed. Path: {sbml_output_zip_path}. Error: {exc}"}
+
+        # ------------------------------------------------------------------
+        #  4) Persist inside session state
+        # ------------------------------------------------------------------
+        self.session_state.design_state.sbol_file = sbol_path_p
+        self.session_state.design_state.sbml_file = sbml_output_zip_path
+        self.session_state.initialise_parameter_template(template)
+
+        return {
+            "success": True,
+            "sbml_path": str(sbml_output_zip_path),
+            "parameter_template": template,
+        }
+
+
+class SetParameterValueTool(Tool):
+    name = "set_parameter_value"
+    description = (
+        "Bulk-update values inside the current parameter template for the loaded kinetic model. "
+        "Supply an *updates* JSON object that mirrors the parameter template hierarchy. "
+        "Missing keys are ignored. Example::\n\n"
+        "    {\"species\": {\"AraC\": 1.0}, \"parameters\": {\"k_syn\": 0.05}}"
+    )
+    parameters = {
+        "type": "object",
+        "properties": {
+            "updates": {
+                "type": "object",
+                "description": "Nested mapping matching the parameter template (species/parameters → IDs). Values can be number or string.",
+                "additionalProperties": True,
+            }
+        },
+        "required": ["updates"],
+    }
+
+    def execute(self, updates: Dict[str, Any]):
+        if not self.session_state.design_state.parameter_template:
+            return {"error": "No parameter template initialized. Run convert_sbol_to_sbml first."}
+
+        template = self.session_state.design_state.parameter_template
+        changes: Dict[str, Dict[str, Any]] = {}
+
+        for section, inner in updates.items():
+            if section not in template:
+                continue  # silently ignore unknown top-level keys
+            if not isinstance(inner, dict):
+                continue
+            for key, value in inner.items():
+                if key not in template[section]:
+                    continue  # unknown ID → ignore
+                old = template[section][key]["value"]
+                template[section][key]["value"] = value
+                template[section][key]["source"] = "agent"
+                changes.setdefault(section, {})[key] = {"old": old, "new": value}
+
+        return {"success": True, "changes": changes, "parameter_template": template}
+
+class GetParameterTemplateTool(Tool):
+    name = "get_parameter_template"
+    description = "Return the current kinetic model parameters stored in the session."
+    parameters = {"type": "object", "properties": {}, "required": []}
+
+    def execute(self):
+        template = self.session_state.design_state.parameter_template
+        if not template:
+            return {"error": "No parameter template initialized yet."}
+        return {"success": True, "parameter_template": template}
+
+
+
+class GenerateKineticModelFromNaturalLanguageTool(Tool):
+    """
+    https://github.com/kmaeda16/KinModGPT/
+    """
+    name = "generate_model_from_natural_language"
+    description = "Create a kinetic model from a natural language description of biochemical reactions. This tool creates a kinetic model and returns the various parameters and species. The model is stored in the session state for further use."
+    parameters = { "type": "object",
+                   "properties": { 
+                       "spec": 
+                        {
+                           "type": "string",
+                           "description": "A description of the biochemical reactions to model (e.g. 'Protein P decays. The initial concentration is 1 uM.', 'mRNA_s32 is upregurated by Pg_s70_RNAP. Similarly, mRNA_DnaK and mRNA_FtsH are positively regulated by Ph_RNAP_s32. mRNA_Protein is transcribed without regulation. s32, FtsH, DnaK, and Pfold are translated from mRNA_s32, mRNA_FtsH, mRNA_DnaK, and mRNA_Protein, respectively. All the mRNAs (mRNA_s32, mRNA_DnaK, mRNA_FtsH, and mRNA_Protein) decay. s32, s32_DnaK, s32_FtsH, s32_DnaK_FtsH, FtsH, DnaK, Punfold_DnaK, Pfold, and Punfold decay. RNAP_s32 is degraded into RNAP. Similarly, Ph_RNAP_s32 is degraded into Ph and RNAP. D_RNAP_s32 is degraded into RNAP_D.')"
+                        }, 
+                    },
+                   "required": ["spec"] }
+
+    def execute(self, spec: str):
+        from src.integrations.kinmod_gpt_integration import KineticModelingGPTIntegration
+        import tellurium as te, libsbml, os, uuid
+
+        gpt = KineticModelingGPTIntegration()
+        antimony = gpt.generate_kinetic_model(spec)
+
+        try:
+            sbml_xml = te.antimonyToSBML(antimony)
+            sbml_doc = libsbml.readSBMLFromString(sbml_xml)
+        except Exception as exc:
+            return {"error": f"Antimony→SBML conversion failed: {exc}"}
+
+        from src.simulate.param_template import build_param_template
+        template = build_param_template(sbml_doc)
+
+        # Persist in session
+        self.session_state.design_state.antimony  = antimony
+        self.session_state.design_state.sbml_doc  = sbml_doc
+
+        outdir = self.session_state.output_directory or Path("uploads")
+        outdir.mkdir(exist_ok=True, parents=True)
+        fn = outdir / f"model_{uuid.uuid4().hex[:8]}.xml"
+        libsbml.writeSBMLToFile(sbml_doc, str(fn))
+        self.session_state.design_state.sbml_file = fn
+        self.session_state.initialise_parameter_template(template)
+        return {"success": True,
+                "sbml_path": str(fn),
+                "antimony": antimony,
+                "parameter_template": template}
+
+class RunKineticModelSimulationTool(Tool):
+    name = "run_kinetic_model_simulation"
+    description = "Simulate the currently loaded kinetic model with the current parameters."
+    parameters = {"type": "object", "properties": {}, "required": []}
+
+    def execute(self):
+        from src.simulate.run import run_kinetic_model_tellurium
+        template = self.session_state.design_state.parameter_template
+        result = run_kinetic_model_tellurium(self.session_state.design_state.sbml_doc, 
+                                             template['parameters'],
+                                             template['species'])
+
+        return {"success": True, "result": result.tolist()}
+
+
+class SearchBioNumbersTool(Tool):
+    name = "search_bio_numbers"
+    description = "Search the BioNumbers database of useful biological numbers for parameters, constants and other values to complete and enrich biological models"
+    parameters = {
+        "type": "object", 
+        "properties": {
+            "query": {
+                "type": "string", 
+                "description": "The query to search for."
+            }
+        }, 
+        "required": ["query"]
+    }
+
+    def execute(self, query: str):
+        from src.integrations.bionumbers_integration import search_bionumbers   
+        results = search_bionumbers(query)
+        return {"success": True, "results": results}
+
+# ---------------------------------------------------------------------------
+#  Register in existing TOOL_REGISTRY and expose schemas
+# ---------------------------------------------------------------------------
+
+TOOL_REGISTRY = {}
+
+# Library management tools
+TOOL_REGISTRY[DescribeAvailableLibrariesTool.name] = DescribeAvailableLibrariesTool
+TOOL_REGISTRY[SelectLibraryTool.name] = SelectLibraryTool
+TOOL_REGISTRY[QueryLibrariesByOrganismTool.name] = QueryLibrariesByOrganismTool
+
+# Library query tools
+TOOL_REGISTRY[ListPromotersTool.name] = ListPromotersTool
+TOOL_REGISTRY[ListRepressorsTool.name] = ListRepressorsTool
+TOOL_REGISTRY[ListInputSensorsTool.name] = ListInputSensorsTool
+TOOL_REGISTRY[GetDnaPartByNameTool.name] = GetDnaPartByNameTool
+TOOL_REGISTRY[ListTerminatorsTool.name] = ListTerminatorsTool
+
+# Library modification tools
+TOOL_REGISTRY[AddPromoterVariantTool.name] = AddPromoterVariantTool
+TOOL_REGISTRY[RemovePromoterTool.name] = RemovePromoterTool
+TOOL_REGISTRY[CommitCustomLibraryTool.name] = CommitCustomLibraryTool
+TOOL_REGISTRY[GetCelloLibraryStatusTool.name] = GetCelloLibraryStatusTool
+TOOL_REGISTRY[CreateCustomUcfTool.name] = CreateCustomUcfTool
+TOOL_REGISTRY[CreateCustomInputSensorsFileTool.name] = CreateCustomInputSensorsFileTool
+
+
+# Cello design tools
+TOOL_REGISTRY[GenerateVerilogToolLLM.name] = GenerateVerilogToolLLM
+TOOL_REGISTRY[DesignWithCelloTool.name] = DesignWithCelloTool
+TOOL_REGISTRY[EvaluateCircuitPerformanceTool.name] = EvaluateCircuitPerformanceTool
+
+# RBS Calculator tools
+TOOL_REGISTRY[PredictInitiationRateWithRbsCalculatorTool.name] = PredictInitiationRateWithRbsCalculatorTool
+TOOL_REGISTRY[DesignRbsWithRbsCalculatorTool.name] = DesignRbsWithRbsCalculatorTool
+
+# Promoter design/generation tools
+TOOL_REGISTRY[GeneratePromoterLibraryFromSpacerTool.name] = GeneratePromoterLibraryFromSpacerTool
+TOOL_REGISTRY[GeneratePromoterLibraryFromPromoterTool.name] = GeneratePromoterLibraryFromPromoterTool
+TOOL_REGISTRY[EstimatePromoterStrengthWithProDTool.name] = EstimatePromoterStrengthWithProDTool
+TOOL_REGISTRY[GetSpacerFromPromoterTool.name] = GetSpacerFromPromoterTool
+
+
+# Register SynBioHub tools
+TOOL_REGISTRY[SynBioHubSearchTool.name] = SynBioHubSearchTool
+TOOL_REGISTRY[SynBioHubDownloadPartTool.name] = SynBioHubDownloadPartTool
+TOOL_REGISTRY[SynBioHubSubmitTool.name] = SynBioHubSubmitTool
+TOOL_REGISTRY[SynBioHubSequenceSearchTool.name] = SynBioHubSequenceSearchTool
+TOOL_REGISTRY[SynBioHubGetRelatedTool.name] = SynBioHubGetRelatedTool
+
+# Simulation & parameter template tools
+# TOOL_REGISTRY[ConvertSbolToSbmlTool.name] = ConvertSbolToSbmlTool TODO:  Not Working
+TOOL_REGISTRY[SetParameterValueTool.name] = SetParameterValueTool
+TOOL_REGISTRY[GetParameterTemplateTool.name] = GetParameterTemplateTool
+TOOL_REGISTRY[GenerateKineticModelFromNaturalLanguageTool.name] = GenerateKineticModelFromNaturalLanguageTool
+TOOL_REGISTRY[RunKineticModelSimulationTool.name] = RunKineticModelSimulationTool   
+
 TOOL_REGISTRY[ScientificSearchTool.name] = ScientificSearchTool
 TOOL_REGISTRY[ToolDocsQueryTool.name] = ToolDocsQueryTool
 TOOL_REGISTRY[TranslateDnaTool.name] = TranslateDnaTool
 TOOL_REGISTRY[GcContentTool.name] = GcContentTool
+TOOL_REGISTRY[SearchBioNumbersTool.name] = SearchBioNumbersTool
 
 # Generate OpenAI function schemas from tools
 _tool_schemas = [
@@ -1842,11 +2163,11 @@ _tool_schemas = [
 tool_functions = [{"type": "function", "function": schema} for schema in _tool_schemas]
 
 class ToolIntegration:
-    def __init__(self, session_state: SessionState):
+    def __init__(self, session_state: SessionState, tool_registry: dict = TOOL_REGISTRY):
         self.session_state = session_state
         self.tools = {
             tool_name: tool_class(session_state) 
-            for tool_name, tool_class in TOOL_REGISTRY.items()
+            for tool_name, tool_class in tool_registry.items()
         }
 
     def call_tool_function(self, function_name, function_args):
@@ -1890,78 +2211,3 @@ class ToolIntegration:
         
         # If no tool found, return error
         return {"error": f"No such function: {function_name}"}
-        
-# ---------------------------------------------------------------------------
-#  CommitCustomLibraryTool – finalises draft UCF
-# ---------------------------------------------------------------------------
-
-
-class CommitCustomLibraryTool(Tool):
-    name = "commit_custom_library"
-    description = "Write the current draft UCF (if any) to disk, load it, and set it as the active library. Optionally specify the filename."
-    parameters = {
-        "type": "object",
-        "properties": {
-            "ucf_name": {"type": "string", "description": "Filename for the custom UCF (must end with .UCF.json)", "default": None},
-        },
-        "required": [],
-    }
-
-    def execute(self, ucf_name: str | None = None):
-        lm = self.session_state.get_library_manager()
-        try:
-            path = lm.commit_draft_ucf(ucf_name)
-            self.session_state.custom_ucf_path = path
-            
-            # Get updated context info
-            context_info = lm.get_active_context_info()
-            
-            return {
-                "success": True, 
-                "custom_ucf_path": path,
-                "active_context": context_info,
-                "message": f"Custom library committed and activated. Context: {context_info['context_type']}"
-            }
-        except Exception as exc:
-            return {"error": str(exc)}
-
-
-class GetLibraryStatusTool(Tool):
-    name = "get_library_status"
-    description = "Get the current library status including active context, base library, and any pending drafts."
-    parameters = {
-        "type": "object",
-        "properties": {},
-        "required": [],
-    }
-
-    def execute(self):
-        lm = self.session_state.get_library_manager()
-        
-        if not lm.current_library_id:
-            return {"error": "No library selected"}
-        
-        context_info = lm.get_active_context_info()
-        base_info = lm.get_current_library_info()
-        
-        return {
-            "success": True,
-            "base_library": {
-                "library_id": base_info["library_id"],
-                "ucf_path": base_info["ucf_path"],
-                "input_path": base_info["input_path"],
-                "output_path": base_info["output_path"],
-                "num_parts": base_info.get("num_parts"),
-                "num_gates": base_info.get("num_gates")
-            },
-            "active_context": context_info,
-            "currently_using": {
-                "ucf_path": lm.get_active_ucf_path(),
-                "input_path": lm.get_active_input_path(),
-                "output_path": lm.get_active_output_path()
-            }
-        }
-
-
-TOOL_REGISTRY[CommitCustomLibraryTool.name] = CommitCustomLibraryTool
-TOOL_REGISTRY[GetLibraryStatusTool.name] = GetLibraryStatusTool

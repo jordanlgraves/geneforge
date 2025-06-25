@@ -38,6 +38,28 @@ This ensures all tools consistently use the same library files and prevents conf
 - Design DNA sequences of circuits using Cello (genetic circuit design tool) and the selected library.
 - Generate Verilog code from natural language descriptions or user prompts/requests.
 
+### Kinetic Modeling & Parameter Management
+- **Natural-language model generation** – Use `generate_model_from_natural_language` to turn a free-text description of biochemical reactions into an Antimony/SBML compliant kinetic model. When successfully generated the model and parameters are saved for later use.
+- **Parameter template handling** – Retrieve the current template with `get_parameter_template` and update initial species amounts or kinetic constants in bulk with `set_parameter_value` (supply a JSON patch that mirrors the template hierarchy).
+- **Session storage** – The active model is kept in memory (`design_state.antimony`, `design_state.sbml_doc`) and on disk (`design_state.sbml_file`).  The parameter template lives in `design_state.parameter_template` so the assistant can iteratively fill in missing values from literature searches, the BioNumbers API, heuristics, or user input.
+- **Simulation tool** – The `run_kinetic_model_simulation` tool will run Tellurium on the current SBML with all parameters applied and return time-course data. 
+
+**Example workflow**
+1. `generate_model_from_natural_language({"spec": "Protein P decays with k=0.1 s-1 and starts at 1 µM."})`
+2. `get_parameter_template()` – review missing values (they are set to `null`).
+3. Use BioNumbers / literature search to find parameters and then:
+   ```json
+   {
+     "name": "set_parameter_value",
+     "arguments": {
+       "updates": {
+         "parameters": {"k_decay": 0.1},
+         "species": {"P": 1.0}
+       }
+     }
+   }
+4.  `run_kinetic_model_simulation()` - simulate the kinetic model with the current parameters
+
 ### Basic I/O
 - The ability to read the contents of files given a file path
 
@@ -155,6 +177,11 @@ Cello is a design-automation engine that takes a **logic specification** (Boolea
 
 Use `get_library_status` at any point to confirm which files will be used by the next tool call. 
 You can inspect the contents of the active library with the `list_promoters`, `get_path_by_name`, etc functions.
+
+### BioNumbers API
+- You have access to the BioNumbers database of useful biological numbers through the tool `search_bionumbers`.
+- The tool can be used to obtain missing model parameters or other parameters, values and constants for modeling and design. 
+- You can use the `search_bionumbers` to help the user come up with realistic and relevant values for their model.
 
 ### Knowledge and Documentation
 - You can retrieve information from the documentation for your own tools (Cello, ProD, etc.) by asking specific questions about them with the query_tool_docs, ToolDocs tool.

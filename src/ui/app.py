@@ -3,6 +3,8 @@ import sys
 import os
 import logging
 import json
+import uuid
+from pathlib import Path
 from typing import Dict, Any
 from typing_extensions import override
 from openai import AssistantEventHandler
@@ -12,13 +14,19 @@ PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), os.pardir
 if PROJECT_ROOT not in sys.path:
     sys.path.append(PROJECT_ROOT)
 
+
 from src.llm_module import get_llm_client, run_assistant
 from src.prompt_manager import get_system_prompt
 from src.session_state import SessionState
-from src.tools.functions import ToolIntegration
+from src.functions import ToolIntegration
+
 from src.examples.agent.design_w_promoter_vars import DesignWithPromoterVarsRunner, PROMPT as PROMPT_VARS
 from src.examples.agent.design_minimal_input_sensors import MinimalInputSensorsRunner, PROMPT as PROMPT_SENSORS
 from src.examples.agent.design_w_promoter_vars_and_research import DesignWithPromoterVarsWResearchRunner, PROMPT as PROMPT_VARS_W_RESEARCH
+from src.examples.agent.design_toggle_switch import SimpleNotGateSimulationRunner, PROMPT as PROMPT_SIMPLE_NOT_GATE
+from src.examples.agent.km_simulation import KineticModelingSimulationRunner, PROMPT as PROMPT_KM_SIMULATION
+from src.examples.agent.km_simulation_laci_decay import KMEColiLacIDecayExample, PROMPT as PROMPT_KM_SIMULATION_LACI_DECAY
+from src.examples.agent.km_simulation_aa_starvation import KMAminoAcidStarvationExample, PROMPT as PROMPT_KM_SIMULATION_AA_STARVATION
 
 # Configure logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
@@ -34,14 +42,20 @@ st.set_page_config(
 
 # --- Examples ---
 EXAMPLES: Dict[str, Any] = {
-    "Design with Promoter Variants": (DesignWithPromoterVarsRunner, PROMPT_VARS),
-    "Design with Minimal Input Sensors": (MinimalInputSensorsRunner, PROMPT_SENSORS),
-    "Design with Promoter Variants and Research": (DesignWithPromoterVarsWResearchRunner, PROMPT_VARS_W_RESEARCH),
+    # "Circuit Design: Simple Not Gate Simulation": (SimpleNotGateSimulationRunner, PROMPT_SIMPLE_NOT_GATE),
+    "Circuit Design: with Promoter Variants": (DesignWithPromoterVarsRunner, PROMPT_VARS),
+    "Circuit Design: with Minimal Input Sensors": (MinimalInputSensorsRunner, PROMPT_SENSORS),
+    "Circuit Design: with Promoter Variants and Research": (DesignWithPromoterVarsWResearchRunner, PROMPT_VARS_W_RESEARCH),
+    "Kinetic Modeling: Simple Simulation": (KineticModelingSimulationRunner, PROMPT_KM_SIMULATION),
+    "Kinetic Modeling: E. coli LacI Decay": (KMEColiLacIDecayExample, PROMPT_KM_SIMULATION_LACI_DECAY),
+    "Kinetic Modeling: Amino Acid Starvation": (KMAminoAcidStarvationExample, PROMPT_KM_SIMULATION_AA_STARVATION),
 }
 
 # --- Session State Initialization ---
 def init_session_state():
-    """Initialize Streamlit session state."""
+    """Initialize Streamlit session state.  The first call creates default
+    placeholders for provider-specific credentials so they persist across
+    reruns."""
     if "messages" not in st.session_state:
         st.session_state.messages = []
     if "system_prompt" not in st.session_state:
@@ -50,6 +64,28 @@ def init_session_state():
         st.session_state.loaded_prompt = None
     if "llm_client_type" not in st.session_state:
         st.session_state.llm_client_type = "deepseek"  # Default client
+
+    # Provider credentials – pre-populate from the current environment
+    if "openai_api_key" not in st.session_state:
+        st.session_state.openai_api_key = os.getenv("OPENAI_API_KEY", "")
+    if "deepseek_api_key" not in st.session_state:
+        st.session_state.deepseek_api_key = os.getenv("DEEPSEEK_API_KEY", "")
+    if "deepseek_base_url" not in st.session_state:
+        st.session_state.deepseek_base_url = os.getenv("DEEPSEEK_BASE_URL", "https://api.deepseek.com")
+
+    # Ensure environment variables reflect current credentials **before**
+    # initialising the SDK client.
+    if st.session_state.openai_api_key:
+        os.environ["OPENAI_API_KEY"] = st.session_state.openai_api_key
+    if st.session_state.deepseek_api_key:
+        os.environ["DEEPSEEK_API_KEY"] = st.session_state.deepseek_api_key
+    if st.session_state.deepseek_base_url:
+        os.environ["DEEPSEEK_BASE_URL"] = st.session_state.deepseek_base_url
+
+    # Initialize client and model based on selection using the up-to-date env
+    client, model = get_llm_client(client_type=st.session_state.llm_client_type)
+    st.session_state.client = client
+    st.session_state.model = model
     if "core_session" not in st.session_state:
         st.session_state.core_session = SessionState()
     if "tool_integration" not in st.session_state:
@@ -62,44 +98,67 @@ def init_session_state():
         st.session_state.current_run_id = None
     if "current_thread_id" not in st.session_state:
         st.session_state.current_thread_id = None
-    
-    # Initialize client and model based on selection
-    client, model = get_llm_client(client_type=st.session_state.llm_client_type)
-    st.session_state.client = client
-    st.session_state.model = model
 
 # --- UI Components ---
 def draw_sidebar():
     """Draw the sidebar with example runners and controls."""
     with st.sidebar:
-        st.title("Settings")
-        
-        # LLM Client Selector
-        client_type = st.radio(
-            "Select LLM Client",
-            ("openai", "deepseek"),
-            index=1 if st.session_state.llm_client_type == "deepseek" else 0,
-        )
-        if client_type != st.session_state.llm_client_type:
-            st.session_state.llm_client_type = client_type
-            # Clear client-specific session state to force re-initialization
-            if "client" in st.session_state: del st.session_state["client"]
-            if "model" in st.session_state: del st.session_state["model"]
-            st.rerun()
+        # ---------------- Settings ----------------
+        with st.expander("⚙️ Settings", expanded=False):
+            client_type = st.radio(
+                "Select LLM Provider",
+                ("openai", "deepseek"),
+                index=0 if (st.session_state.llm_client_type in (None, "openai")) else 1,
+                key="llm_provider_radio"
+            )
 
-        # Agent Mode Toggle
-        agent_mode = st.toggle(
-            "🤖 Agent Mode",
-            value=st.session_state.agent_mode,
-            help="When enabled, the agent executes tools automatically. When disabled, you approve each tool call manually."
-        )
-        if agent_mode != st.session_state.agent_mode:
-            st.session_state.agent_mode = agent_mode
-            st.rerun()
-        
-        st.divider()
-        st.title("GeneForge Examples")
-        st.write("Select an example to load its prompt.")
+            if client_type != st.session_state.llm_client_type:
+                st.session_state.llm_client_type = client_type
+                if "client" in st.session_state: del st.session_state["client"]
+                if "model" in st.session_state: del st.session_state["model"]
+                st.rerun()
+
+            st.markdown("---")
+
+            # Provider-specific creds
+            if client_type == "openai":
+                openai_key = st.text_input("OpenAI API Key", value=st.session_state.openai_api_key, type="password")
+                if openai_key != st.session_state.openai_api_key:
+                    st.session_state.openai_api_key = openai_key
+                    os.environ["OPENAI_API_KEY"] = openai_key
+                    if "client" in st.session_state: del st.session_state["client"]
+                    if "model" in st.session_state: del st.session_state["model"]
+                    st.rerun()
+            else:
+                deepseek_key = st.text_input("DeepSeek API Key", value=st.session_state.deepseek_api_key, type="password")
+                deepseek_url = st.text_input("DeepSeek Base URL", value=st.session_state.deepseek_base_url)
+
+                changed = False
+                if deepseek_key != st.session_state.deepseek_api_key:
+                    st.session_state.deepseek_api_key = deepseek_key
+                    os.environ["DEEPSEEK_API_KEY"] = deepseek_key
+                    changed = True
+                if deepseek_url != st.session_state.deepseek_base_url:
+                    st.session_state.deepseek_base_url = deepseek_url
+                    os.environ["DEEPSEEK_BASE_URL"] = deepseek_url
+                    changed = True
+                if changed:
+                    if "client" in st.session_state: del st.session_state["client"]
+                    if "model" in st.session_state: del st.session_state["model"]
+                    st.rerun()
+
+            agent_mode = st.toggle(
+                "🤖 Agent Mode",
+                value=st.session_state.agent_mode,
+                help="When enabled, the agent executes tools automatically. When disabled, you approve each tool call manually."
+            )
+            if agent_mode != st.session_state.agent_mode:
+                st.session_state.agent_mode = agent_mode
+                st.rerun()
+
+        # ---------------- Examples ----------------
+        st.caption("### Examples")
+        st.caption("Select an example to load its prompt.")
         
         example_name = st.selectbox("Choose an example:", list(EXAMPLES.keys()))
         
@@ -112,8 +171,63 @@ def draw_sidebar():
             st.rerun()
 
         st.divider()
-        st.title("Session Controls")
-        if st.button("Reset Session"):
+        st.subheader("Session State")
+
+        # ---- Session Overview inside sidebar ----
+        if "overview_placeholder" not in st.session_state:
+            st.session_state.overview_placeholder = st.empty()
+        _render_session_overview(st.session_state.overview_placeholder)
+
+        st.divider()
+
+        # ---------------- SBML Upload ----------------
+        with st.expander("📄 Upload SBML", expanded=False):
+            uploaded_sbml = st.file_uploader("Upload SBML file (.xml, .sbml, .rdf)", type=["xml", "sbml", "rdf"])
+            if uploaded_sbml is not None:
+                import tellurium as te
+                try:
+                    rr = te.loadSBMLModel(uploaded_sbml.getvalue().decode('utf-8'))
+                except Exception as e:
+                    st.error(f"Error loading SBML file: {e}")
+                    return
+
+                # Determine save directory (session-specific if available)
+                sess = st.session_state.core_session
+                save_dir: Path = sess.output_directory if sess.output_directory else Path("uploads")
+                os.makedirs(save_dir, exist_ok=True)
+
+                # Build unique filename preserving original extension
+                orig_name = Path(uploaded_sbml.name)
+                unique_name = f"{orig_name.stem}_{uuid.uuid4().hex[:8]}{orig_name.suffix}"
+                save_path = save_dir / unique_name
+
+
+
+                
+                # make sure we can read with tellurium
+                # Persist file bytes
+                with open(save_path, "wb") as fp:
+                    fp.write(uploaded_sbml.getbuffer())
+
+                # Update session state
+                sess.set_sbml_file(save_path)
+
+                st.success(f"SBML file saved to {save_path}")
+
+                # Optional preview
+                if st.checkbox("Show first 20 lines", key="preview_sbml"):
+                    try:
+                        txt = uploaded_sbml.getvalue().decode("utf-8", errors="ignore")
+                        preview = "\n".join(txt.splitlines()[:20])
+                        st.code(preview, language="xml")
+                    except Exception:
+                        st.warning("Could not decode file for preview.")
+
+                # Force UI refresh so that session overview updates immediately
+                # st.rerun()
+
+        st.divider()
+        if st.button("🔄 Reset Session"):
             for key in list(st.session_state.keys()):
                 del st.session_state[key]
             st.rerun()
@@ -133,7 +247,7 @@ def display_chat():
                     args = tool_call.get("arguments", {})
                     result = tool_call.get("result")
                     
-                    with st.expander(f"�� Tool Call: `{tool_name}`", expanded=False):
+                    with st.expander(f"Tool Call: `{tool_name}`", expanded=False):
                         st.write("**Arguments:**")
                         st.json(args)
                         if result:
@@ -176,6 +290,11 @@ def display_chat():
                 continue_without_tools()
                 st.rerun()
 
+    # Clear pending tool calls
+    st.session_state.pending_tool_calls = []
+    st.session_state.current_run_id = None
+    st.session_state.current_thread_id = None
+
 def execute_pending_tool_call(index: int):
     """Execute a specific pending tool call."""
     if index >= len(st.session_state.pending_tool_calls):
@@ -206,6 +325,9 @@ def execute_pending_tool_call(index: int):
             
         st.success(f"Executed {fn_name} successfully!")
         
+        # Update live session overview
+        refresh_session_overview()
+        
     except Exception as e:
         st.error(f"Error executing {fn_name}: {e}")
         tool_call['result'] = {"error": str(e)}
@@ -220,6 +342,9 @@ def skip_pending_tool_call(index: int):
     tool_call['result'] = {"error": "Tool execution skipped by user"}
     tool_call['executed'] = True
     st.info(f"Skipped {tool_call['function']['name']}")
+
+    # Update live session overview
+    refresh_session_overview()
 
 def execute_all_pending_tools():
     """Execute all pending tool calls."""
@@ -397,6 +522,10 @@ def handle_chat_submission(prompt: str):
                             st.session_state.messages.append(tool_msg)
                             if self.chat_logger:
                                 self.chat_logger.add_message(tool_msg)
+
+                            # Refresh overview in real time
+                            refresh_session_overview()
+
                         except Exception as e:
                             st.error(f"Error calling {fn_name}: {e}")
                             tool_outputs.append({
@@ -450,28 +579,75 @@ def handle_chat_submission(prompt: str):
             logger.error(f"An error occurred: {e}", exc_info=True)
             st.error(f"An error occurred: {e}")
 
+# ---------------------------------------------------------------------------
+#  Session overview (read-only) panel (updates live via placeholder)
+# ---------------------------------------------------------------------------
+
+def _render_session_overview(container):
+    """Populate *container* with the current SessionState snapshot."""
+    container.empty()  # clear previous content
+    sess = st.session_state.core_session
+    with container.container():        
+        st.write(f"**Selected library:** {sess.get_current_library_id() or '—'}")
+    
+        # gather some specs from the selected library
+        if sess.get_current_library_id():
+            lib_manager = sess.get_library_manager()
+            lib_specs = lib_manager.get_library_specs(sess.get_current_library_id())
+            st.write("**Library specs:**")
+            st.json(lib_specs)
+
+        if sess.get_design_spec():
+            st.write("**Design spec:**")
+            st.markdown(sess.get_design_spec()[:400] + (" …" if len(sess.get_design_spec()) > 400 else ""))
+
+        verilog = sess.get_verilog_code()
+        if verilog:
+            st.write("**Current Verilog:**")
+            st.code("\n".join(verilog.splitlines()), language="verilog")
+        else:
+            st.write("**Current Verilog:** —")
+
+    with container.container():
+        # Display SBML file path if present
+        if sess.design_state.sbml_file:
+            st.write("**SBML file:**")
+            st.code(str(sess.design_state.sbml_file))
+        # Show the parameter template if it exists
+        if sess.design_state.parameter_template:
+            st.write("**Parameter template:**")
+            st.json(sess.design_state.parameter_template)
+
+def refresh_session_overview():
+    """Re-render the overview placeholder if it exists in session_state."""
+    placeholder = st.session_state.get("overview_placeholder")
+    if placeholder is not None:
+        _render_session_overview(placeholder)
+
 # --- Main Application Logic ---
 def main():
     """Main function to run the Streamlit app."""
     init_session_state()
-    st.title("GeneForge Agentic Design 🧬")
+    st.title("Genetic Design Assistant")
     
-    with st.expander("View System Prompt"):
-        st.markdown(f"```\n{st.session_state.system_prompt}\n```")
+    # with st.expander("View System Prompt"):
+    #     st.markdown(f"```\n{st.session_state.system_prompt}\n```")
 
     draw_sidebar()
+
+    # --- Main chat area ---
     display_chat()
 
-    # If an example prompt has been loaded, show it in a form
+    # Example prompt form
     if st.session_state.get("loaded_prompt"):
         with st.form("loaded_prompt_form"):
             prompt_text = st.text_area("Loaded Example Prompt:", value=st.session_state.loaded_prompt, height=150)
             submitted = st.form_submit_button("Send Prompt")
             if submitted:
-                st.session_state.loaded_prompt = None  # Clear prompt after sending
+                st.session_state.loaded_prompt = None
                 handle_chat_submission(prompt_text)
 
-    # The main chat input for freeform conversation
+    # Free-form chat input
     if prompt := st.chat_input("What would you like to design?"):
         handle_chat_submission(prompt)
 

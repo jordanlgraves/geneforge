@@ -1,10 +1,21 @@
 import logging
-from typing import Optional, Dict, Any
-
+from typing import Optional, Dict, Any, Literal
+from pathlib import Path
+import time
+import os
 from src.library.library_manager import LibraryManager
 from src.library.part_library_customizer import get_promoter_dependencies
 
 logger = logging.getLogger(__name__)
+
+# ------------------------------------------------------------------
+#  New design-specific container
+# ------------------------------------------------------------------
+
+try:
+    from src.design_state import DesignState
+except ImportError as exc:  # pragma: no cover – should never happen in production
+    raise ImportError("DesignState module not found – did you forget to add it?") from exc
 
 class SessionState:
     """
@@ -29,8 +40,13 @@ class SessionState:
         self.design_spec: Optional[str] = None  # Natural-language high-level specification
         self.verilog_code: Optional[str] = None  # Latest generated/updated Verilog source
         self.chat_rounds: int = 0  # Number of LLM-tool interaction rounds in current session
-        # Add other state variables as needed, e.g.:
-        # self.design_requirements: Dict[str, Any] = {}
+
+        self.output_directory: Optional[Path] = None
+
+        # ------------------------------------------------------------------
+        #  New design artefacts container
+        # ------------------------------------------------------------------
+        self.design_state: DesignState = DesignState()
 
         # SynBioHub client – lazy init in get_synbiohub_client()
         self._synbiohub_client = None
@@ -47,6 +63,18 @@ class SessionState:
             logger.warning("Chat history logger not initialised – %s", exc)
             self.chat_logger = None
 
+        try:
+            # try setting the output directory from the env vars
+            import dotenv
+            
+            dotenv.load_dotenv()
+            out_folder_name = time.strftime("%Y%m%d_%H%M%S")
+            self.output_directory = Path(os.getenv("SESSION_STATE_OUTDIR")) / out_folder_name
+            os.makedirs(self.output_directory, exist_ok=True)
+        except Exception as exc:
+            logger.warning("Output directory not set – %s", exc)
+            self.output_directory = None
+
     def from_dict(self, **kwargs):
         """Initialize the session state from a dictionary."""
         for key, value in kwargs.items():
@@ -54,6 +82,12 @@ class SessionState:
         if "library_manager" in kwargs:
             self.library_manager = LibraryManager()
             self.library_manager.select_library(kwargs["library_manager"]["current_library_id"])
+
+        # Restore DesignState if serialised
+        if "design_state" in kwargs and kwargs["design_state"] is not None:
+            self.design_state = DesignState.from_dict(kwargs["design_state"])
+        else:
+            self.design_state = DesignState()
 
     def to_dict(self) -> Dict[str, Any]:
         """Convert the session state to a dictionary."""
@@ -68,6 +102,7 @@ class SessionState:
             "custom_input_path": self.custom_input_path,
             "assistant_id": self.assistant_id,
             "thread_id": self.thread_id,
+            "design_state": self.design_state.as_dict(),
         }
 
     def select_library(self, library_id: str) -> bool:
@@ -129,6 +164,9 @@ class SessionState:
     def set_verilog_code(self, verilog: str):
         """Persist Verilog code generated during this session."""
         self.verilog_code = verilog
+
+        # Keep design_state in sync if user wishes
+        self.design_state.verilog = verilog
 
     def get_verilog_code(self) -> Optional[str]:
         return self.verilog_code
@@ -240,6 +278,68 @@ class SessionState:
                 logger.error("Failed to initialise SynBioHub client: %s", exc)
                 raise
         return self._synbiohub_client
+
+    # ------------------------------------------------------------------
+    #  Parameter template helpers
+    # ------------------------------------------------------------------
+
+    def initialise_parameter_template(self, template: Dict[str, Any]):
+        """Attach a freshly generated parameter *template* to the DesignState."""
+        self.design_state.parameter_template = template
+        self.design_state.last_editor = None
+
+    def set_parameter_value(
+        self,
+        section: Literal["species", "parameters"],
+        key: str,
+        value: Any,
+        unit: str | None = None,
+        source: str | None = None,
+        editor: Literal["agent", "user"] = "agent",
+    ) -> None:
+        """Update a single entry inside the parameter template.
+
+        Parameters
+        ----------
+        section
+            Either ``"species"`` or ``"parameters"``.
+        key
+            The ID inside that section (e.g. *AraC* or *deg::P1*).
+        value
+            Numeric or string value to assign.
+        unit
+            New unit string. If *None* the existing unit is kept.
+        source
+            Provenance tag (BNID, DOI…). If *None* the existing source is kept.
+        editor
+            Who made the change – used for conflict handling.
+        """
+        tmpl = self.design_state.parameter_template.setdefault(section, {})
+        entry = tmpl.setdefault(key, {"value": None, "unit": None, "source": None})
+        entry["value"] = value
+        if unit is not None:
+            entry["unit"] = unit
+        if source is not None:
+            entry["source"] = source
+
+        self.design_state.last_editor = editor
+
+    # ------------------------------------------------------------------
+    #  SBML file helper
+    # ------------------------------------------------------------------
+
+    def set_sbml_file(self, path: str | Path):
+        """Persist the path of the SBML file uploaded by the user.
+
+        The path is stored inside the session-scoped ``DesignState`` so that
+        downstream tools (e.g. parameter extraction, simulations) can access
+        it without needing to pass the filename around explicitly.
+        """
+        try:
+            self.design_state.sbml_file = Path(path)
+        except Exception as exc:
+            logger.error("Failed to set SBML file path: %s", exc)
+            raise
 
     # Add methods to update and retrieve other state variables as needed
     # e.g., set_custom_ucf_path, get_cello_results, etc. 

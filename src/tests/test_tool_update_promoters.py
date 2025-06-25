@@ -14,7 +14,7 @@ import pytest
 from src.library import part_library_customizer as plc
 from src.library.library_manager import LibraryManager, _read_cello_config_file
 from src.session_state import SessionState
-from src.tools.functions import (
+from src.functions import (
     AddPromoterVariantTool,
     RemovePromoterTool,
 )

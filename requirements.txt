@@ -19,6 +19,10 @@ colorlog>=6.0.0
 
 # Biological formats
 sbol3==1.2
+# Needed for SBOL-2 support (conversion + legacy designs)
+sbol2>=1.0
+# High-level utilities that perform SBOL-3 ↔ SBOL-2 graph conversion
+sbol_utilities>=1.1
 
 # Type checking
 mypy>=1.0.0
@@ -46,3 +50,4 @@ threadpoolctl==3.6.0
 matplotlib==3.10.1
 dnaplotlib
 stable-baselines3==2.6.0
+beautifulsoup4>=4.12.0

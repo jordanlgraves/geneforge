@@ -7,7 +7,7 @@ from dotenv import load_dotenv
 from src.llm_module import get_llm_client, run_assistant
 from src.prompt_manager import get_system_prompt
 from src.session_state import SessionState
-from src.tools.functions import ToolIntegration
+from src.functions import ToolIntegration
 
 class ExampleRunner:
     """

@@ -16,7 +16,7 @@ project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), "../.."))
 sys.path.insert(0, project_root)
 
 from src.geneforge_config import Config
-from src.tools.functions import ToolIntegration
+from src.functions import ToolIntegration
 from src.llm_module import chat_with_tool
 from src.tests.test_ucf_customization import TestUCFCustomization
 
