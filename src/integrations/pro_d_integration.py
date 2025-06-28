@@ -502,7 +502,7 @@ class ProDIntegration:
         )
         
         if results.empty:
-            return {"error": "Tool returned empty results. It is likely that no variants could be found for the given blueprint and desired strengths."}
+            return {"error": "Tool returned empty results. It is likely that no variants could be found for the given blueprint and desired strengths. Try again with different parameters such as more `mutable_positions` or with more degenerate characters in the `blueprint` if `blueprint` is a DNA sequence. You can also indicating more strength classes"}
             
         # Convert results to dictionary with detailed information
         # Harmonise column names: ProD (run_tool) gives [ID, spacer, strength, promoter]

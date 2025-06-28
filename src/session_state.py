@@ -75,6 +75,13 @@ class SessionState:
             logger.warning("Output directory not set – %s", exc)
             self.output_directory = None
 
+        # ------------------------------------------------------------------
+        #  Generated artefacts (plots, SBML files, data tables, etc.) tracked
+        #  for convenient download links in the UI.
+        # ------------------------------------------------------------------
+        self.generated_files: list[dict[str, str]] = []  # each: {path, label}
+
+    
     def from_dict(self, **kwargs):
         """Initialize the session state from a dictionary."""
         for key, value in kwargs.items():
@@ -201,7 +208,7 @@ class SessionState:
             Dict summarising the calibration (or reason for skipping).
         """
         try:
-            from src.tools.pro_d_integration import ProDIntegration
+            from src.integrations.pro_d_integration import ProDIntegration
         except ImportError:
             logger.error("ProDIntegration not found. Please install ProD.")
             return {"success": False, "error": "ProDIntegration not found. Please install ProD."}
@@ -340,6 +347,30 @@ class SessionState:
         except Exception as exc:
             logger.error("Failed to set SBML file path: %s", exc)
             raise
+
+    # ------------------------------------------------------------------
+    #  Generated-file helpers
+    # ------------------------------------------------------------------
+
+    def add_generated_file(self, path: str | Path, label: str | None = None):
+        """Register *path* so the UI can offer a download button.
+
+        Parameters
+        ----------
+        path
+            Location on disk.
+        label
+            Optional human-readable label (defaults to filename).
+        """
+        p = Path(path)
+        if not p.exists():
+            logger.warning("Generated file not found: %s", p)
+            return
+        # Avoid duplicates
+        for entry in self.generated_files:
+            if entry.get("path") == str(p):
+                return  # already tracked
+        self.generated_files.append({"path": str(p), "label": label or p.name})
 
     # Add methods to update and retrieve other state variables as needed
     # e.g., set_custom_ucf_path, get_cello_results, etc. 

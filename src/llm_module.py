@@ -80,7 +80,8 @@ def get_or_create_assistant(client: OpenAI, session_state: SessionState, system_
         name="GeneForge Assistant",
         instructions=system_prompt,
         model="gpt-4o-mini",
-        tools=tool_functions
+        tools=tool_functions,
+        temperature=0.0
     )
     session_state.assistant_id = assistant.id
     logger.info(f"Created new assistant: {assistant.id}")

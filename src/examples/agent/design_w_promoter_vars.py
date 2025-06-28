@@ -9,10 +9,13 @@ import src.library.part_library_customizer as part_library_customizer
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 logger = logging.getLogger("DesignWithPromoterVarsExample")
 
-PROMPT = """Your task is to design a simple genetic circuit, a NOT gate, for E. coli. However, you must use custom promoters. 
-Please start by selecting the 'Eco1C1G1T1' library. Then, take a random promoter from the library and generate three new promoter variants that are stronger than the original using the ProD tool. 
+PROMPT = """Your task is to design a simple genetic circuit, a NOR gate, for E. coli. 
+
+However, you must use custom promoters. 
+Please start by selecting the 'Eco1C1G1T1' library. 
+Then, take a random promoter from the library and generate three new promoter variants that are stronger than the original. 
 Then, create a new, minimal genetic library that contains *only* these three new variants and their necessary dependencies. 
-Finally, use this new custom library to design and simulate the NOT gate with Cello. 
+Finally, use this new custom library to design the NOR gate with Cello. 
 Report the name of the final DNA sequence design if successful."""
 
 SYSTEM_PROMPT = get_system_prompt()

@@ -526,7 +526,7 @@ class CreateCustomUcfTool(Tool):
             "selected_parts": {
                 "type": "array",
                 "items": {"type": "string"},
-                "description": "List of part IDs to include in the custom UCF"
+                "description": "List of part names or IDs to include in the custom UCF"
             },
             "modified_parts": {
                 "type": "object",
@@ -539,10 +539,17 @@ class CreateCustomUcfTool(Tool):
         },
         "required": []
     }
+
+    def _is_dna(self, part: str) -> bool:
+        """Check if a part is a DNA sequence."""
+        dna_chars = set("ATGCRYSWKMBDHVNatgcryswkmbdhvn")
+        is_dna = set(part).issubset(dna_chars)
+        return is_dna
     
     def execute(self, selected_gates: List[str] = None, selected_parts: List[str] = None, modified_parts: Dict[str, Dict] = None, ucf_name: str = None) -> Dict[str, Any]:
         """Create a customized UCF file based on the currently selected library."""
         library_manager = self.session_state.get_library_manager()
+        from src.library.part_library_customizer import get_part_by_name
         if not library_manager.current_library_id:
             return {"error": "No library selected as base for custom UCF. Please use 'select_library' first."}
 
@@ -554,9 +561,41 @@ class CreateCustomUcfTool(Tool):
         custom_ucf_name = ucf_name or f"custom_{library_manager.current_library_id}.UCF.json"
 
         try:
+            # Check if the parts are DNA sequences or names
+            part_ids = []
+            for part_id_or_sequence in selected_parts:
+                if get_part_by_name(base_ucf_data, part_id_or_sequence):
+                    part_ids.append(part_id_or_sequence)
+                    continue
+
+                if self._is_dna(part_id_or_sequence) and len(part_id_or_sequence) >= 16:
+                    part_id = library_manager.find_part_by_sequence(part_id_or_sequence)
+                    if not part_id:
+                        # The sequence may be a spacer sequence, so we need to find the promoter
+                        collections = library_manager.get_ucf_data()
+                        for col in collections:
+                            if col.get("collection") == "promoter":
+                                promoter_seq = col.get("dnasequence")
+                                if promoter_seq and part_id_or_sequence.lower() in promoter_seq.lower():
+                                    # Could be this one
+                                    spacer = extract_id_ecoli_spacer(part_id_or_sequence)
+                                    if spacer:
+                                        part_id = col.get("name")
+                                        break # found the part, break out of the loop
+                            elif col.get("collection") == "promoter_variants":
+                                for variant in col.get("promoter_variants"):
+                                    if variant.get("dnasequence") and variant.get("dnasequence").lower() == part_id_or_sequence.lower():
+                                        part_id = variant.get("name")
+                                        break # found the part, break out of the loop
+                        if not part_id:
+                            return {"error": f"Part {part_id_or_sequence} is not a DNA sequence. Please provide a list of part names or IDs."}
+                    part_ids.append(part_id)
+                else:   
+                    part_ids.append(part_id_or_sequence)
+
             custom_ucf_path = library_manager.create_custom_ucf(
                 selected_gates=selected_gates,
-                selected_parts=selected_parts,
+                selected_parts=part_ids,
                 modified_parts=modified_parts,
                 ucf_name=custom_ucf_name,
                 output_dir=output_dir
@@ -1064,9 +1103,9 @@ class GeneratePromoterLibraryFromPromoterTool(_ProDPromoterToolBase):
         else:
             # If mutable_positions is not provided, check that the spacer contains at least one IUPAC ambiguity code
             if not any(c in "N" for c in spacer_chars):
-                return {"error": """The algorithm requires that the spacer sequence contain at least one IUPAC ambiguity code in order to \
-                        determine the blueprint sequence. Please provide `mutable_positions` to mutate the spacer or provide `promoter` \
-                        as DNA sequence containing at least one IUPAC ambiguity code within a spacer region."""}
+                return {"error": """The algorithm requires that the spacer sequence contain at least one IUPAC ambiguity code in order to """ +
+                        """determine the blueprint sequence. Please provide `mutable_positions` to mutate the spacer or provide `promoter` """ +
+                        """as  DNA sequence containing at least one IUPAC ambiguity code within a spacer region."""}
 
         blueprint = "".join(spacer_chars)
 
@@ -1289,7 +1328,7 @@ class AddPromoterVariantTool(Tool):
     name = "add_promoter_variant"
     description = (
         "Create a new promoter variant by copying an existing promoter (and all dependent structures/gates/models) and replacing its 17-bp spacer with a new 17-bp spacer sequence. "
-        "`ymax` (calibrated RPU) is mandatory so that associated models remain consistent."
+        "`ymax` (calibrated RPU) is mandatory so that associated models remain consistent. `new_promoter_id` must be alphanumeric only, no spaces or special characters."
     )
     parameters = {
         "type": "object",
@@ -1978,7 +2017,7 @@ class SetParameterValueTool(Tool):
 
     def execute(self, updates: Dict[str, Any]):
         if not self.session_state.design_state.parameter_template:
-            return {"error": "No parameter template initialized. Run convert_sbol_to_sbml first."}
+            return {"error": "No model loaded and no parameter template initialized. Run `generate_model_from_natural_language` or upload and SBML file first."}
 
         template = self.session_state.design_state.parameter_template
         changes: Dict[str, Dict[str, Any]] = {}
@@ -2006,7 +2045,7 @@ class GetParameterTemplateTool(Tool):
     def execute(self):
         template = self.session_state.design_state.parameter_template
         if not template:
-            return {"error": "No parameter template initialized yet."}
+            return {"error": "No parameter template initialized yet. Generate a model with `generate_model_from_natural_language` or upload an SBML file first."}
         return {"success": True, "parameter_template": template}
 
 
@@ -2027,18 +2066,26 @@ class GenerateKineticModelFromNaturalLanguageTool(Tool):
                     },
                    "required": ["spec"] }
 
+    num_attempts = 3
+    
     def execute(self, spec: str):
         from src.integrations.kinmod_gpt_integration import KineticModelingGPTIntegration
         import tellurium as te, libsbml, os, uuid
 
         gpt = KineticModelingGPTIntegration()
-        antimony = gpt.generate_kinetic_model(spec)
-
-        try:
-            sbml_xml = te.antimonyToSBML(antimony)
-            sbml_doc = libsbml.readSBMLFromString(sbml_xml)
-        except Exception as exc:
-            return {"error": f"Antimony→SBML conversion failed: {exc}"}
+        messages = None
+        previous_attempt_message = None
+        for attempt in range(self.num_attempts):
+            try:
+                antimony, messages = gpt.generate_kinetic_model(spec, previous_messages=messages, previous_attempt_message=previous_attempt_message)
+                sbml_xml = te.antimonyToSBML(antimony)
+                sbml_doc = libsbml.readSBMLFromString(sbml_xml)
+                break
+            except Exception as exc:
+                if attempt == self.num_attempts - 1:
+                    return {"error": f"Antimony→SBML conversion failed: {exc}"}
+                else:
+                    previous_attempt_message = f"The generated model from specification is invalid: Antimony: \n{antimony} \n\nSpec: {spec} \n\n due to error: {exc}."
 
         from src.simulate.param_template import build_param_template
         template = build_param_template(sbml_doc)
@@ -2053,6 +2100,11 @@ class GenerateKineticModelFromNaturalLanguageTool(Tool):
         libsbml.writeSBMLToFile(sbml_doc, str(fn))
         self.session_state.design_state.sbml_file = fn
         self.session_state.initialise_parameter_template(template)
+        # Track SBML file for download in UI
+        try:
+            self.session_state.add_generated_file(fn, label="Generated SBML model")
+        except Exception:
+            pass
         return {"success": True,
                 "sbml_path": str(fn),
                 "antimony": antimony,
@@ -2061,16 +2113,90 @@ class GenerateKineticModelFromNaturalLanguageTool(Tool):
 class RunKineticModelSimulationTool(Tool):
     name = "run_kinetic_model_simulation"
     description = "Simulate the currently loaded kinetic model with the current parameters."
-    parameters = {"type": "object", "properties": {}, "required": []}
+    parameters = {"type": "object", "properties": {
+        "start": {"type": "number", "description": "The start time of the simulation. default: 0.0"},
+        "end": {"type": "number", "description": "The end time of the simulation. default: 100.0"},
+        "steps": {"type": "integer", "description": "The number of steps in the simulation. default: 100"},
+        "events": {
+            "type": "array",
+            "description": "A list of event objects to schedule. Each event must include 'time', 'species', and 'value'. Example: [{\"time\": 50, \"species\": \"P\", \"value\": 10}]",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "time": {"type": "number"},
+                    "species": {"type": "string"},
+                    "value": {"type": "number"}
+                },
+                "required": ["time", "species", "value"]
+            }
+        }
+    }, "required": []}
 
-    def execute(self):
+    def execute(self, start: float = 0.0, end: float = 100.0, steps: int = 100, events: list[dict] | None = None):
         from src.simulate.run import run_kinetic_model_tellurium
-        template = self.session_state.design_state.parameter_template
-        result = run_kinetic_model_tellurium(self.session_state.design_state.sbml_doc, 
-                                             template['parameters'],
-                                             template['species'])
+        import uuid, os, json, io, matplotlib
+        matplotlib.use("Agg")
+        import matplotlib.pyplot as plt
+        import pandas as pd
+        from pathlib import Path
+        try:
+            from openai import OpenAI
+        except ImportError:
+            OpenAI = None
 
-        return {"success": True, "result": result.tolist()}
+        template = self.session_state.design_state.parameter_template
+        result = run_kinetic_model_tellurium(
+            self.session_state.design_state.sbml_doc,
+            template.get('parameters', {}),
+            template.get('species', {}),
+            events=events,
+            start=start,
+            end=end,
+            steps=steps,
+        )
+
+        outdir = self.session_state.output_directory or Path("uploads")
+        outdir.mkdir(parents=True, exist_ok=True)
+
+        # Create plot
+        df = pd.DataFrame(result.tolist(), columns=result.colnames)
+        if df.shape[1] >= 2:
+            time_col = df.columns[0]
+            df.set_index(time_col, inplace=True)
+        fig, ax = plt.subplots(figsize=(6, 4))
+        df.plot(ax=ax, legend=False)
+        ax.set_xlabel("Time")
+        ax.set_ylabel("Concentration / Value")
+        plot_path = outdir / f"sim_{uuid.uuid4().hex[:8]}.png"
+        fig.tight_layout()
+        fig.legend()
+        fig.savefig(plot_path, dpi=150)
+        plt.close(fig)
+
+        # Track generated plot
+        try:
+            self.session_state.add_generated_file(plot_path, label="Simulation plot")
+        except Exception:
+            pass
+
+        # Optionally upload to OpenAI if client available
+        file_id = None
+        if OpenAI and os.getenv("OPENAI_API_KEY"):
+            try:
+                client = OpenAI()
+                with open(plot_path, "rb") as fp:
+                    up_file = client.files.create(file=fp, purpose="assistants")
+                    file_id = up_file.id
+            except Exception:
+                file_id = None
+
+        return {
+            "success": True,
+            "columns": result.colnames,
+            "result": result.tolist(),
+            "plot_path": str(plot_path),
+            **({"file_id": file_id} if file_id else {}),
+        }
 
 
 class SearchBioNumbersTool(Tool):
@@ -2098,31 +2224,26 @@ class SearchBioNumbersTool(Tool):
 
 TOOL_REGISTRY = {}
 
-# Library management tools
+# Cello design tools
 TOOL_REGISTRY[DescribeAvailableLibrariesTool.name] = DescribeAvailableLibrariesTool
 TOOL_REGISTRY[SelectLibraryTool.name] = SelectLibraryTool
 TOOL_REGISTRY[QueryLibrariesByOrganismTool.name] = QueryLibrariesByOrganismTool
-
-# Library query tools
 TOOL_REGISTRY[ListPromotersTool.name] = ListPromotersTool
 TOOL_REGISTRY[ListRepressorsTool.name] = ListRepressorsTool
 TOOL_REGISTRY[ListInputSensorsTool.name] = ListInputSensorsTool
 TOOL_REGISTRY[GetDnaPartByNameTool.name] = GetDnaPartByNameTool
 TOOL_REGISTRY[ListTerminatorsTool.name] = ListTerminatorsTool
-
-# Library modification tools
 TOOL_REGISTRY[AddPromoterVariantTool.name] = AddPromoterVariantTool
 TOOL_REGISTRY[RemovePromoterTool.name] = RemovePromoterTool
 TOOL_REGISTRY[CommitCustomLibraryTool.name] = CommitCustomLibraryTool
 TOOL_REGISTRY[GetCelloLibraryStatusTool.name] = GetCelloLibraryStatusTool
 TOOL_REGISTRY[CreateCustomUcfTool.name] = CreateCustomUcfTool
 TOOL_REGISTRY[CreateCustomInputSensorsFileTool.name] = CreateCustomInputSensorsFileTool
-
-
-# Cello design tools
-TOOL_REGISTRY[GenerateVerilogToolLLM.name] = GenerateVerilogToolLLM
 TOOL_REGISTRY[DesignWithCelloTool.name] = DesignWithCelloTool
 TOOL_REGISTRY[EvaluateCircuitPerformanceTool.name] = EvaluateCircuitPerformanceTool
+
+# Verilog generation tools
+TOOL_REGISTRY[GenerateVerilogToolLLM.name] = GenerateVerilogToolLLM
 
 # RBS Calculator tools
 TOOL_REGISTRY[PredictInitiationRateWithRbsCalculatorTool.name] = PredictInitiationRateWithRbsCalculatorTool
@@ -2134,7 +2255,6 @@ TOOL_REGISTRY[GeneratePromoterLibraryFromPromoterTool.name] = GeneratePromoterLi
 TOOL_REGISTRY[EstimatePromoterStrengthWithProDTool.name] = EstimatePromoterStrengthWithProDTool
 TOOL_REGISTRY[GetSpacerFromPromoterTool.name] = GetSpacerFromPromoterTool
 
-
 # Register SynBioHub tools
 TOOL_REGISTRY[SynBioHubSearchTool.name] = SynBioHubSearchTool
 TOOL_REGISTRY[SynBioHubDownloadPartTool.name] = SynBioHubDownloadPartTool
@@ -2142,13 +2262,13 @@ TOOL_REGISTRY[SynBioHubSubmitTool.name] = SynBioHubSubmitTool
 TOOL_REGISTRY[SynBioHubSequenceSearchTool.name] = SynBioHubSequenceSearchTool
 TOOL_REGISTRY[SynBioHubGetRelatedTool.name] = SynBioHubGetRelatedTool
 
-# Simulation & parameter template tools
-# TOOL_REGISTRY[ConvertSbolToSbmlTool.name] = ConvertSbolToSbmlTool TODO:  Not Working
+# Kinetic modeling tools
 TOOL_REGISTRY[SetParameterValueTool.name] = SetParameterValueTool
 TOOL_REGISTRY[GetParameterTemplateTool.name] = GetParameterTemplateTool
 TOOL_REGISTRY[GenerateKineticModelFromNaturalLanguageTool.name] = GenerateKineticModelFromNaturalLanguageTool
 TOOL_REGISTRY[RunKineticModelSimulationTool.name] = RunKineticModelSimulationTool   
 
+# Utility tools
 TOOL_REGISTRY[ScientificSearchTool.name] = ScientificSearchTool
 TOOL_REGISTRY[ToolDocsQueryTool.name] = ToolDocsQueryTool
 TOOL_REGISTRY[TranslateDnaTool.name] = TranslateDnaTool
@@ -2211,3 +2331,28 @@ class ToolIntegration:
         
         # If no tool found, return error
         return {"error": f"No such function: {function_name}"}
+
+# ---------------------------------------------------------------------------
+#  Override duplicate Cello-related tool class definitions with the canonical
+#  implementations now hosted in ``src.tools.cello_tools``.  We import them
+#  *after* the legacy class blocks above so the new versions take precedence
+#  when the module registers tools in TOOL_REGISTRY below.
+# ---------------------------------------------------------------------------
+from src.tools.cello_tools import (
+    ListPromotersTool,
+    ListInputSensorsTool,
+    DescribeAvailableLibrariesTool,
+    SelectLibraryTool,
+    QueryLibrariesByOrganismTool,
+    ListRepressorsTool,
+    GetDnaPartByNameTool,
+    ListTerminatorsTool,
+    DesignWithCelloTool,
+    CreateCustomUcfTool,
+    CreateCustomInputSensorsFileTool,
+    EvaluateCircuitPerformanceTool,
+    AddPromoterVariantTool,
+    RemovePromoterTool,
+    CommitCustomLibraryTool,
+    GetCelloLibraryStatusTool,
+)

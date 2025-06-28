@@ -19,6 +19,7 @@ from src.llm_module import get_llm_client, run_assistant
 from src.prompt_manager import get_system_prompt
 from src.session_state import SessionState
 from src.functions import ToolIntegration
+from src.design_state import DesignState
 
 from src.examples.agent.design_w_promoter_vars import DesignWithPromoterVarsRunner, PROMPT as PROMPT_VARS
 from src.examples.agent.design_minimal_input_sensors import MinimalInputSensorsRunner, PROMPT as PROMPT_SENSORS
@@ -27,6 +28,7 @@ from src.examples.agent.design_toggle_switch import SimpleNotGateSimulationRunne
 from src.examples.agent.km_simulation import KineticModelingSimulationRunner, PROMPT as PROMPT_KM_SIMULATION
 from src.examples.agent.km_simulation_laci_decay import KMEColiLacIDecayExample, PROMPT as PROMPT_KM_SIMULATION_LACI_DECAY
 from src.examples.agent.km_simulation_aa_starvation import KMAminoAcidStarvationExample, PROMPT as PROMPT_KM_SIMULATION_AA_STARVATION
+from src.examples.agent.design_and_sim_genetic_toggle import GeneticToggleSwitchExample, PROMPT as PROMPT_GENETIC_TOGGLE_SWITCH
 
 # Configure logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
@@ -49,6 +51,7 @@ EXAMPLES: Dict[str, Any] = {
     "Kinetic Modeling: Simple Simulation": (KineticModelingSimulationRunner, PROMPT_KM_SIMULATION),
     "Kinetic Modeling: E. coli LacI Decay": (KMEColiLacIDecayExample, PROMPT_KM_SIMULATION_LACI_DECAY),
     "Kinetic Modeling: Amino Acid Starvation": (KMAminoAcidStarvationExample, PROMPT_KM_SIMULATION_AA_STARVATION),
+    "Genetic Toggle Switch": (GeneticToggleSwitchExample, PROMPT_GENETIC_TOGGLE_SWITCH),
 }
 
 # --- Session State Initialization ---
@@ -201,16 +204,21 @@ def draw_sidebar():
                 unique_name = f"{orig_name.stem}_{uuid.uuid4().hex[:8]}{orig_name.suffix}"
                 save_path = save_dir / unique_name
 
-
-
-                
                 # make sure we can read with tellurium
                 # Persist file bytes
                 with open(save_path, "wb") as fp:
                     fp.write(uploaded_sbml.getbuffer())
 
-                # Update session state
-                sess.set_sbml_file(save_path)
+                # Persist in session
+                from src.simulate.param_template import build_param_template
+                import libsbml
+                sbml_doc = libsbml.readSBMLFromFile(str(save_path))
+                template = build_param_template(sbml_doc)
+                
+                st.session_state.core_session.design_state = DesignState()
+                st.session_state.core_session.design_state.sbml_doc  = sbml_doc
+                st.session_state.core_session.design_state.sbml_file = save_path
+                st.session_state.core_session.design_state.parameter_template = template
 
                 st.success(f"SBML file saved to {save_path}")
 
@@ -237,16 +245,60 @@ def display_chat():
     for message in st.session_state.messages:
         with st.chat_message(message["role"]):
             content = message.get("content")
-            if content:
+
+            # ------------------------------------------------------------------
+            #  Render normal assistant / user content
+            # ------------------------------------------------------------------
+            if content and message["role"] in ("assistant", "user"):
                 st.markdown(content)
-            
-            # Display tool calls if present
+
+            # ------------------------------------------------------------------
+            #  Special handling for tool messages
+            # ------------------------------------------------------------------
+            if message["role"] == "tool":
+                try:
+                    tool_payload = json.loads(content)
+                except Exception:
+                    st.markdown(content)
+                    tool_payload = None
+
+                tool_name = message.get("name", "tool_result")
+
+                if tool_name == "run_kinetic_model_simulation" and tool_payload and tool_payload.get("success"):
+                    import pandas as pd
+                    cols = tool_payload.get("columns") or []
+                    data = tool_payload.get("result", [])
+                    if data:
+                        try:
+                            df = pd.DataFrame(data, columns=cols if cols else None)
+                            if cols:
+                                df.set_index(cols[0], inplace=True)
+                            st.line_chart(df)
+                        except Exception as e:
+                            st.error(f"Failed to render chart: {e}")
+                    # Show PNG if generated
+                    if tool_payload.get("plot_path"):
+                        from pathlib import Path
+                        p = Path(tool_payload["plot_path"])
+                        if p.exists():
+                            st.image(str(p))
+                    else:
+                        st.info("No simulation data.")
+                else:
+                    # Fallback – pretty-print JSON
+                    if tool_payload is not None:
+                        st.json(tool_payload)
+                    else:
+                        st.markdown(content)
+
+            # ------------------------------------------------------------------
+            #  Display tool calls requested by assistant (within assistant msg)
+            # ------------------------------------------------------------------
             if message["role"] == "assistant" and "tool_calls" in message:
                 for tool_call in message["tool_calls"]:
                     tool_name = tool_call.get("name")
                     args = tool_call.get("arguments", {})
                     result = tool_call.get("result")
-                    
                     with st.expander(f"Tool Call: `{tool_name}`", expanded=False):
                         st.write("**Arguments:**")
                         st.json(args)
@@ -476,6 +528,9 @@ def handle_chat_submission(prompt: str):
                         self.handle_requires_action_auto(event.data)
                     else:
                         self.handle_requires_action_manual(event.data)
+                
+                if event.event == 'thread.run.failed':
+                    self.handle_run_failed(event.data)
 
             @override
             def on_text_delta(self, delta, snapshot):
@@ -483,14 +538,47 @@ def handle_chat_submission(prompt: str):
                 full_response += delta.value
                 message_placeholder.markdown(full_response + "▌")
             
+            def handle_run_failed(self, data):
+                """Handle run failure."""
+                # show an error message
+                # st.error(f"Run failed: {data.error.message}") Will not work: "'Run' object has no attribute 'error'"
+                # add a failure message to the chat
+                # st.chat_message("assistant").markdown(f"**Run failed:** {data.last_error.message}")
+                st.session_state.messages.append({"role": "assistant", "content": f"**Run failed:** {data.last_error.message}"})
+                if self.chat_logger:
+                    self.chat_logger.add_message({"role": "assistant", "content": f"**Run failed:** {data.last_error.message}"})  # type: ignore
+
+
             def handle_requires_action_auto(self, data):
                 """Handle tool calls automatically in agent mode."""
+                nonlocal full_response, message_placeholder  # capture outer scope
+
+                # ----------------------------------------------------------
+                #  Finalise assistant text *before* the tool call so that
+                #  chat order is preserved (text → tool → next text).
+                # ----------------------------------------------------------
+                pre_text = full_response.strip()
+                if pre_text:
+                    # Remove the typing cursor and commit to chat history
+                    message_placeholder.markdown(pre_text)
+                    st.session_state.messages.append({"role": "assistant", "content": pre_text})
+                    if self.chat_logger:
+                        self.chat_logger.add_message({"role": "assistant", "content": pre_text})
+
+                # Reset buffer & placeholder for post-tool text
+                full_response = ""
+                message_placeholder = st.empty()
+
                 run_id = data.id
                 thread_id = data.thread_id
                 tool_outputs = []
-                
+
                 with st.expander("Tool Calls", expanded=True):
+                    seen_call_ids: set[str] = set()
                     for tool_call in data.required_action.submit_tool_outputs.tool_calls:
+                        if tool_call.id in seen_call_ids:
+                            continue  # skip duplicates
+                        seen_call_ids.add(tool_call.id)
                         fn_name = tool_call.function.name
                         try:
                             fn_args = json.loads(tool_call.function.arguments)
@@ -506,6 +594,20 @@ def handle_chat_submission(prompt: str):
 
                         try:
                             result = self.tool_integration.call_tool_function(fn_name, fn_args)
+                            # If this is a simulation result, render a chart immediately
+                            if fn_name == "run_kinetic_model_simulation" and result.get("success"):
+                                import pandas as pd
+                                cols = result.get("columns") or []
+                                data = result.get("result", [])
+                                if data:
+                                    try:
+                                        df = pd.DataFrame(data, columns=cols if cols else None)
+                                        if cols:
+                                            df.set_index(cols[0], inplace=True)
+                                        st.line_chart(df)
+                                    except Exception as e:
+                                        st.error(f"Failed to render simulation chart: {e}")
+
                             st.write("Tool Result:")
                             st.json(result)
                             tool_outputs.append({
@@ -533,11 +635,21 @@ def handle_chat_submission(prompt: str):
                                 "output": json.dumps({"error": str(e)})
                             })
                 
+                # Ensure tool_outputs have unique ids (defensive)
+                filtered_outputs = []
+                seen_ids_submit: set[str] = set()
+                for entry in tool_outputs:
+                    tcid = entry["tool_call_id"]
+                    if tcid in seen_ids_submit:
+                        continue
+                    seen_ids_submit.add(tcid)
+                    filtered_outputs.append(entry)
+
                 new_handler = EventHandler(run_id=run_id, thread_id=thread_id)
                 with self.client.beta.threads.runs.submit_tool_outputs_stream(
                     thread_id=thread_id,
                     run_id=run_id,
-                    tool_outputs=tool_outputs,
+                    tool_outputs=filtered_outputs,
                     event_handler=new_handler,
                 ) as stream:
                     stream.until_done()
@@ -568,6 +680,7 @@ def handle_chat_submission(prompt: str):
             if full_response:
                 assistant_msg = {"role": "assistant", "content": full_response}
                 st.session_state.messages.append(assistant_msg)
+                
                 if chat_logger:
                     chat_logger.add_message(assistant_msg)
             
@@ -617,6 +730,33 @@ def _render_session_overview(container):
         if sess.design_state.parameter_template:
             st.write("**Parameter template:**")
             st.json(sess.design_state.parameter_template)
+
+        # ------------------------------------------------------------------
+        #  Generated files section
+        # ------------------------------------------------------------------
+        if sess.generated_files:
+            st.write("**Generated files:**")
+            import uuid as _uuid_dl
+            for f in sess.generated_files:
+                path_obj = Path(f["path"])
+                if not path_obj.exists():
+                    logger.warning("Generated file missing on disk: %s", path_obj)
+                    continue
+
+                label = f.get("label", path_obj.name)
+                unique_key = f"download_{_uuid_dl.uuid4().hex}"
+
+                try:
+                    data_bytes = path_obj.read_bytes()
+                    st.download_button(
+                        label=f"Download {label}",
+                        data=data_bytes,
+                        file_name=path_obj.name,
+                        key=unique_key,
+                    )
+                except Exception as exc:
+                    logger.error("Failed to prepare download button for %s: %s", path_obj, exc)
+                    st.warning(f"Could not load file {path_obj.name} for download.")
 
 def refresh_session_overview():
     """Re-render the overview placeholder if it exists in session_state."""

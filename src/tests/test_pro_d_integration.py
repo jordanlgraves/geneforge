@@ -10,7 +10,7 @@ import random
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../..')))
 
 # Import the modules we want to test
-from src.tools.pro_d_integration import (
+from src.integrations.pro_d_integration import (
     extract_id_ecoli_spacer,
     evaluate_promoter_spacers,
     generate_promoter_library,

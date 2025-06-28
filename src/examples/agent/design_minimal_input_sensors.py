@@ -7,7 +7,7 @@ from src.prompt_manager import get_system_prompt
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 logger = logging.getLogger("MinimalInputSensorsExample")
 
-PROMPT = """Design and simulate in Cello a NOT gate circuit for E. coli that uses only a single input sensor.
+PROMPT = """Design and simulate in Cello a NOR gate circuit for E. coli that uses only a single input sensor.
 Start by selecting a library. List the available input sensors in the library's default input sensors file.
 Choose one input sensor (like the arabinose sensor) and create a custom minimal input sensors file containing just that sensor.
 Use Cello to design the circuit with your custom input sensor file.

@@ -566,10 +566,10 @@ class LibraryManager:
             if not spacer or len(spacer) != 17:
                 continue
 
-            new_promoter_id = f"{parent_promoter}_var{i}"
+            new_promoter_id = f"{parent_promoter}Var{i}"
 
             # Re-create promoter sequence using parent sequence flanks
-            from src.tools.pro_d_integration import extract_id_ecoli_spacer
+            from src.integrations.pro_d_integration import extract_id_ecoli_spacer
             import copy as _copy
 
             parent_part = next(
@@ -592,6 +592,7 @@ class LibraryManager:
             )
             self._draft_ucf.extend(new_items)
             new_items_total += len(new_items)
+            var['name'] = new_promoter_id
             successfully_saved_variants.append(var)
 
         return successfully_saved_variants
@@ -680,3 +681,15 @@ class LibraryManager:
             "context_type": "base"
         }
         logger.info("Reset to base library context") 
+
+    def find_part_by_sequence(self, sequence: str) -> Optional[str]:
+        """Find a part by sequence."""
+        for part in self.current_ucf_data:
+            if part.get("collection") == "parts":
+                if 'dnasequence' in part and part.get("dnasequence") and part.get("dnasequence").lower() == sequence.lower():
+                    return part.get("name")
+                elif 'sequence' in part and part.get("sequence") and part.get("sequence").lower() == sequence.lower():
+                    return part.get("name")
+                
+        return None
+    
