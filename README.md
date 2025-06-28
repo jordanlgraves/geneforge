@@ -19,6 +19,28 @@ Cello:
 - Includes tools to search through and select a specific library (UCF, input and output files). This enables the agent to select appropriate parts for the design.
 - Includes a tool to run the cello program and capture the output.
 - Includes a tool to parse the results of the cello program, returning various metrics and data (e.g. truth tables, circuit scores).
+- Allows the agent to select appropriate files based on the user's request (e.g. "I want a **NOT gate** for **E. coli** with input using **specific sensor X**, **specific sensor Y**. The output shoud be **YFP**")
+
+### SynBioHub Integration
+SynBioHub is a public, SBOL-native repository that hosts millions of standardized genetic parts, designs, and collections. The SynBioHub database is backed-by a graph database, in the form of a Resource Description Framework (RDF) triplestore, and allows uploading, downloading SBOL documents and querying the underlying data using SPARQL. Data can be programmatically accessed by a higher-level API.
+
+The agent can:
+- **Search** the registry (`synbiohub_search`) using the same key–value parameters accepted by the `/search/` web API.
+- **Download** any object or collection by URI in common formats such as SBOL, FASTA, GenBank, or GFF (`synbiohub_download_part`).
+- **Run sequence similarity searches** against the global database (`synbiohub_sequence_search`).
+- **Inspect related content** for provenance or design exploration (`synbiohub_get_related`).
+- **Submit** new parts/collections when credentials are supplied (`synbiohub_submit`).
+
+These helpers return the *raw* server response (JSON, XML, or text) so that downstream code or the LLM can interpret it flexibly.
+
+#### Quick examples
+
+```json
+{"name": "synbiohub_search", "arguments": {"query": "objectType=ComponentDefinition&dcterms:title=pLac", "limit": 10}}
+{"name": "synbiohub_download_part", "arguments": {"uri": "https://synbiohub.org/public/igem/BBa_R0010/1", "format": "gb"}}
+{"name": "synbiohub_sequence_search", "arguments": {"search_params": "globalsequence=ATGCGTACGTAGCTAG&id=0.9&maxaccepts=50"}}
+{"name": "synbiohub_get_related", "arguments": {"uri": "https://synbiohub.org/public/igem/BBa_R0010/1", "relation": "twins"}}
+```
 
 Part Optimization:
 
@@ -37,34 +59,6 @@ UCF Library Manager:
 Retrieval Augmented Generation: [https://arxiv.org/abs/2005.11401]
 A narrow implementation of RAG is implemented through tool use. For example, the agent has the option to query available libraries and parts within those libraries. The responses from these tools calls allow the model to integrate drop-in libraries in the design process. 
 While not yet fully implemented, RAG will be used to provide the agent with access to a wide range of background information. This will give the planning agent the ability to search through scientific literature to find relevant information to assist in the design process.
-
-## Reinforcement learning
-Reinforcement learning with verifiable rewards (RLVF): <https://arxiv.org/html/2503.23829v1>  
-Gene Forge is designed to be trainable because every design run produces artefacts (Cello output files, custom UCFs, etc.) that can be validated **programmatically**.  
-Our proof-of-concept pipeline is split into two complementary stages:
-
-### 1  Outer-loop policy learning (SB3)
-1. **Environment** – Wrap `ExampleRunner` + `SessionState` in a Gymnasium-style env (`GeneCircuitToolEnv`).  
-   • *Observation* = compact numeric vector summarising the current session (flags, counts, last circuit score, etc).  
-   • *Action* = discrete choice of a `ToolIntegration` function and its argument indices.  
-2. **Policy network** – a small MLP trained with PPO/A2C from `stable-baselines3`.  
-   The network learns the best **sequence of tool calls** for a given design specification.  
-3. **Reward** – computed by a standalone `RewardEvaluator` module:  
-   • intermediate bonuses (correct library, valid sensor file, valid Verilog, etc)  
-   • final reward, possibly incorporating a final Cello circuit score.
-4. **Data collection** – all high-reward traces are saved as JSONL; they form the foundation for the next stage.
-
-### 2  In-model fine-tuning (TRL / RLHF)
-1. Export the best trajectories from stage 1 as supervised examples.  
-2. Switch to an open-weights model (e.g. Llama, DeepSeek) and fine-tune with `trl`  (SFT warm-start → PPO/DPO for reward optimisation).  
-3. The language model gradually learns to emit the needed tool calls directly in natural language, reducing reliance on the outer wrapper.
-
-### Implementation roadmap
-- [x] Build `RewardEvaluator` to verify Cello outputs and compute scalar rewards.  
-- [x] Create `GeneCircuitToolEnv` and a minimal PPO training script.  
-- [ ] Collect ≥ 500 high-reward traces with the SB3 policy.  
-- [ ] Fine-tune an open model using `trl`, seeded with the collected traces.  
-- [ ] Iterate: improved model replaces parts of the wrapper; new data refreshes fine-tuning.
 
 ## Examples
 

@@ -41,7 +41,23 @@ class TestLibraryManager(unittest.TestCase):
             
             self.assertTrue(os.path.exists(library_info["ucf"]), f"UCF path for library {library_id}")
             
-    
+    def test_library_filtering(self):
+        """Test filtering libraries by organism"""
+        # Test filtering by organism
+        organism = "Bacteroides thetaiotaomicron VPI-5482"
+        filtered_libraries = self.library_manager.filter_libraries_by_organism(organism)
+        self.assertTrue(len(filtered_libraries) > 0, f"Should be able to filter libraries by organism {organism}")
+        
+        # Test filtering by organism that doesn't exist 
+        organism = "E. coli" # requires exact match
+        filtered_libraries = self.library_manager.filter_libraries_by_organism(organism)
+        self.assertTrue(len(filtered_libraries) == 0, f"Should not be able to filter libraries by organism {organism}")
+
+        organism = "Escherichia coli NEB 10-beta" # requires exact match
+        filtered_libraries = self.library_manager.filter_libraries_by_organism(organism)
+        self.assertTrue(len(filtered_libraries) > 0, f"Should be able to filter libraries by organism {organism}")
+
+
     def test_direct_library_selection(self):
         """Test selecting a library directly by ID"""
         

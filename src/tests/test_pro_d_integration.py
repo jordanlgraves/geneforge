@@ -10,7 +10,7 @@ import random
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../..')))
 
 # Import the modules we want to test
-from src.tools.pro_d_integration import (
+from src.integrations.pro_d_integration import (
     extract_id_ecoli_spacer,
     evaluate_promoter_spacers,
     generate_promoter_library,
@@ -226,7 +226,7 @@ class TestProDIntegration(unittest.TestCase):
         # Test with invalid strength values
         with self.assertRaises(ValueError):
             generate_promoter_library(self.library_blueprint, [11])
-    
+
     def test_integration_extract_and_evaluate(self):
         """
         Test end-to-end workflow: extract spacer, evaluate, and regenerate promoter.

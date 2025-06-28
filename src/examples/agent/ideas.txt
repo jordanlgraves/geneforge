@@ -1,0 +1,5 @@
+ This composite part is a prefix ???lock??? cassette requiring consecutive recombination by Hin and Cre, in that order, to express a gene downstream of the hixC site. The SapI restriction site can be used to insert DNA with ATC sticky ends in order to modify the length of recombination. After Hin recombination, the part becomes: lox66 + rpCons + hixC + HindIII + rHin enhancer + T + T + SapI + lox71 + hixC. When Cre is used after Hin, the part becomes: mloxP + SapI + T + T + Hin enhancer + HindIII + hixC + pCons + loxP + hixC.
+
+ This is a project specific part. This sequence contains an AraC coding gene (BBa_K228032) upstream of a double terminator behind a Red Flourescent Protein and Ribosome Binding Site behind the modified Lambda Prm Promoter(BBa_K1001754). This specific modified Lambda Promoter is induced by the lamda cl repressor (BBa_C0051) instead of repressed by it. When induced, the RFP is expressed.
+
+ 

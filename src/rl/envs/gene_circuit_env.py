@@ -5,7 +5,7 @@ from typing import Tuple, Dict, Any
 
 from src.rl.reward_evaluator import RewardEvaluator
 from src.session_state import SessionState
-from src.tools.functions import ToolIntegration
+from src.functions import ToolIntegration
 
 # ------------------------------------------------------------
 # Helper constants for action ids

@@ -8,12 +8,14 @@ from typing import List, Dict, Optional, Tuple, Union, Any
 from pathlib import Path
 import sys
 import traceback
-# Add ProD to the path
-sys.path.append(os.path.join(os.path.dirname(__file__), '../../ext_repos/ProD'))
-from ProD import run_tool
 
 # Configure logging
 logger = logging.getLogger(__name__)
+import dotenv
+dotenv.load_dotenv()
+PRO_D_ROOT = os.getenv("PRO_D_ROOT")
+# add to PYTHONPATH
+sys.path.append(PRO_D_ROOT)
 
 # Default path to the ProD model
 DEFAULT_MODEL_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), '../../ext_repos/ProD/models/model_RPOD.pt'))
@@ -185,6 +187,7 @@ def extract_id_ecoli_spacer(sequence: str) -> Optional[str]:
 
     # Otherwise fall back to best_config (length 15-19) and adjust to 17 bp
     if best_config:
+        from ProD import run_tool
         spacer = best_config['spacer']
         if len(spacer) == 16:
             # Pad with 1 nt downstream of spacer if available
@@ -222,6 +225,7 @@ def evaluate_promoter_spacers(spacer_sequences: List[str],
     Returns:
         DataFrame with prediction results
     """
+    from ProD import run_tool
     if not spacer_sequences:
         raise ValueError("No spacer sequences provided")
     
@@ -306,6 +310,26 @@ def generate_promoter_library(blueprint: str,
                 len(blueprint),
             )
     
+    # check that it is a valid blueprint
+    SEQ_DICT = {'A': [0], 'T': [1], 'C': [2], 'G': [3], 'R': [0,3],
+            'Y': [1,2], 'S': [2,3], 'W': [0,1], 'K': [1,3],
+            'M': [0,2], 'B': [1,2,3], 'D': [0,1,3], 
+            'H': [0,1,2], 'V': [0,2,3], 'N':[0,1,2,3]}
+
+    valid_chars = set(SEQ_DICT.keys())
+    if not set(blueprint).issubset(valid_chars):
+        invalid_char = next(c for c in blueprint if c not in valid_chars)
+        raise ValueError(
+            f"Blueprint contains invalid character '{invalid_char}'. "
+            f"Valid characters are: {', '.join(sorted(list(valid_chars)))}"
+        )
+
+    if all(c in "ATCG" for c in blueprint):
+        raise ValueError(
+            f"The provided blueprint sequence '{blueprint}' is not degenerate. "
+            "A blueprint must contain at least one IUPAC ambiguity code (e.g., N, R, Y, etc.)."
+        )
+    
     # Set default strengths if not provided
     if desired_strengths is None or len(desired_strengths) == 0:
         desired_strengths = list(range(11))  # 0-10
@@ -324,9 +348,10 @@ def generate_promoter_library(blueprint: str,
     
     # Run ProD tool
     try:
+        from ProD import run_tool
         logger.info(f"Generating promoter library from blueprint {blueprint}")
         result = run_tool(
-            [blueprint],
+            [blueprint] if isinstance(blueprint, str) else blueprint,
             output_path=output_path,
             lib=True,
             lib_size=library_size,
@@ -477,7 +502,7 @@ class ProDIntegration:
         )
         
         if results.empty:
-            return {}
+            return {"error": "Tool returned empty results. It is likely that no variants could be found for the given blueprint and desired strengths. Try again with different parameters such as more `mutable_positions` or with more degenerate characters in the `blueprint` if `blueprint` is a DNA sequence. You can also indicating more strength classes"}
             
         # Convert results to dictionary with detailed information
         # Harmonise column names: ProD (run_tool) gives [ID, spacer, strength, promoter]

@@ -1,0 +1,173 @@
+import unittest
+import sys
+import os
+
+# Ensure project root is on PYTHONPATH
+PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), os.pardir, os.pardir))
+if PROJECT_ROOT not in sys.path:
+    sys.path.append(PROJECT_ROOT)
+
+from src.session_state import SessionState
+from src.functions import (
+    GeneratePromoterLibraryFromSpacerTool,
+    GeneratePromoterLibraryFromPromoterTool,
+)
+
+class TestGeneratePromoterLibraryTool(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        """Set up a session state for the tests."""
+        cls.session_state = SessionState()
+        # Select a library to ensure ProD can be auto-calibrated if necessary
+        cls.session_state.select_library("Eco1C1G1T1")
+
+    def test_generate_variants_from_blueprint(self):
+        """
+        Tests the generation of spacer variants from a simple 17-bp blueprint
+        without a parent promoter.
+        """
+        tool = GeneratePromoterLibraryFromSpacerTool(self.session_state)
+        
+        # A degenerate blueprint for the spacer
+        blueprint = "N" * 17
+        desired_strengths = [3, 7]
+        
+        result = tool.execute(
+            blueprint=blueprint,
+            desired_strengths=desired_strengths,
+            sequences_per_class=2
+        )
+        
+        self.assertTrue(result.get("success"), result.get("error", "Unknown error"))
+        self.assertIn("variants", result)
+        self.assertGreater(len(result["variants"]), 0)
+        
+        # Check the structure of the returned variants
+        for variant in result["variants"]:
+            self.assertIn("spacer", variant)
+            self.assertEqual(len(variant["spacer"]), 17)
+            self.assertIn("class", variant)
+            self.assertIn(variant["class"], desired_strengths)
+            self.assertIn("ymax", variant)
+            # 'promoter_sequence' should not be present as no parent was provided
+            self.assertNotIn("promoter_sequence", variant)
+
+    def test_generate_full_promoters_with_parent(self):
+        """
+        Tests the generation of full-length promoter sequences by providing a
+        parent promoter from the selected library.
+        """
+        tool = GeneratePromoterLibraryFromSpacerTool(self.session_state)
+        
+        blueprint = "TTGACANNNNNNNNNNNNNTATAAT"  # A blueprint matching -35 and -10 boxes
+        # Extract the 17bp spacer part for ProD
+        spacer_blueprint = blueprint[6:23]
+        
+        result = tool.execute(
+            blueprint=spacer_blueprint,
+            desired_strengths=[8],
+            sequences_per_class=1,
+            parent_promoter="pAmtR" 
+        )
+        
+        self.assertTrue(result.get("success"), result.get("error", "Unknown error"))
+        self.assertIn("variants", result)
+        self.assertEqual(len(result["variants"]), 1)
+        
+        # Check that the full promoter sequence has been constructed
+        variant = result["variants"][0]
+        self.assertIn("promoter_sequence", variant)
+        self.assertGreater(len(variant["promoter_sequence"]), 17)
+        # Ensure the generated spacer is part of the full sequence
+        self.assertIn(variant["spacer"], variant["promoter_sequence"])
+
+    def test_generate_promoter_library_case_1(self):    
+        """
+        generate_promoter_library_with_pro_d
+
+        blueprint: CTTGTCCAACCAAATGATTCGTTACCAATTGACAGTTTCTATCGATCTATAGATAATGCTAGC
+        desired_strengths: [1, 2, 3]
+        parent_promoter: pAmtR
+        sequences_per_class: 5
+        """
+        tool = GeneratePromoterLibraryFromSpacerTool(self.session_state)
+        
+        # The blueprint is a full promoter, but the tool expects a 17-bp spacer blueprint.
+        # We need to extract the likely spacer. Based on E. coli consensus, this is often
+        # the 17 bp region between the -35 (TTGACA) and -10 (TATAAT) boxes.
+        full_promoter_blueprint = "CTTGTCCAACCAAATGATTCGTTACCAATTGACAGTTTCTATCGATCTATAGATAATGCTAGC"
+        
+        # A plausible 17-bp spacer from the blueprint to make the test valid
+        spacer_blueprint = "GTTTNNNNNNNTCTATA"
+
+        result = tool.execute(
+            blueprint=spacer_blueprint,
+            desired_strengths=[1, 2, 3],
+            parent_promoter="pAmtR",
+            sequences_per_class=5
+        )
+        
+        self.assertTrue(result.get("success"))
+        self.assertIn("variants", result)
+        # We expect 5 sequences for each of the 3 classes
+        self.assertEqual(len(result["variants"]), 15)
+        
+        # Check that the full promoter sequence has been constructed
+        variant = result["variants"][0]
+        self.assertIn("promoter_sequence", variant)
+        self.assertGreater(len(variant["promoter_sequence"]), 17)
+        # Ensure the generated spacer is part of the full sequence
+        self.assertIn(variant["spacer"], variant["promoter_sequence"])
+
+    def test_generate_library_from_promoter_with_mutations(self):
+        """Tests generating variants by mutating positions of an existing promoter spacer."""
+        tool = GeneratePromoterLibraryFromPromoterTool(self.session_state)
+
+        result = tool.execute(
+            promoter="pAmtR",  # ID from the library
+            mutable_positions={"3": "N", "5": "R"},
+            desired_strengths=[2],
+            sequences_per_class=2,
+            file_type="ucf",
+        )
+
+        self.assertTrue(result.get("success"))
+        self.assertIn("variants", result)
+        self.assertGreater(len(result["variants"]), 0)
+
+        for variant in result["variants"]:
+            self.assertIn("promoter_sequence", variant)
+            self.assertIn(variant["spacer"], variant["promoter_sequence"])
+
+    def test_generate_library_from_promoter_with_mutations_2(self):
+        tool = GeneratePromoterLibraryFromPromoterTool(self.session_state)
+        result = tool.execute(
+            promoter="CTTGTCCAACCAAATGATTCGTTACCAATTGACAGTTTCTATCGATCTATAGATAATGCTAGC",
+            desired_strengths=[6, 7, 8],
+            sequences_per_class=3,
+            file_type="ucf",
+            mutable_positions={str(i):'N' for i in range(5,12)})
+
+        self.assertTrue(result.get("success"))
+        self.assertIn("variants", result)
+        self.assertGreater(len(result["variants"]), 0)
+
+        for variant in result["variants"]:
+            self.assertIn("promoter_sequence", variant)
+            self.assertIn(variant["spacer"], variant["promoter_sequence"])
+
+    def test_generate_library_from_example_promoter(self):
+        """
+        {"promoter":"pAmtR","desired_strengths":[6,7],"sequences_per_class":3,"mutable_positions":{"3":"N","5":"R"}}
+        """
+        tool = GeneratePromoterLibraryFromPromoterTool(self.session_state)
+        result = tool.execute(
+            promoter="pAmtR",
+            desired_strengths=[6,7], # Requested strengths are not met so expect an error
+            sequences_per_class=3,
+            mutable_positions={"3":"N","5":"R"}
+        )
+        self.assertTrue(result.get("error"))
+
+if __name__ == "__main__":
+    unittest.main()

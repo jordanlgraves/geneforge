@@ -1,25 +1,21 @@
 #!/usr/bin/env python3
 import logging
 from src.examples.agent.example_harness import ExampleRunner
+from src.prompt_manager import get_system_prompt
 
 # Set up logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 logger = logging.getLogger("SimpleCircuitExample")
 
-PROMPT = """Design and simulate a genetic toggle switch in E. coli that turns on when two different signals are present (X and Y). 
-It should turn off whenever a third, separate signal (Z) is present. 
-Use the provided tools to simulate the circuit in Cello with exhaustive set to False.
-After the simulation is complete, read the circuit score from the output file and return it as a JSON object with the key 'circuit_score'."""
+PROMPT = """Design and simulate a simple not gate in E. coli. Use the provided tools to create the circuit design with Cello with exhaustive set to False.
+After the Cello design is complete, generate an SBML model using the conversion tool.
+After the SBML is created, use various tools to fill in the parameters for the SBML model.
+After the parameters are filled in, run the simulation with parameters that will demonstrate the not gate functionality.
+"""
 
-class SimpleCircuitRunner(ExampleRunner):
-    """Extension of ExampleRunner to check for both custom input sensors file and Cello results and store the initial design spec."""
+SYSTEM_PROMPT = get_system_prompt()
+class SimpleNotGateSimulationRunner(ExampleRunner):
     def check_success(self) -> bool:
-        """
-        Check if both a custom input sensors file was created and Cello results were obtained.
-        
-        Returns:
-            True if custom input file created and Cello results obtained, False otherwise
-        """
         has_cello_results = self.session_state.get_cello_results() is not None
         
         return has_cello_results
@@ -30,9 +26,10 @@ def run_example():
     Uses the LLM modules with session state to execute the design of a simple circuit.
     """
     # Create and run the example using the reusable harness
-    runner = SimpleCircuitRunner(
-        example_name="Simple Circuit",
+    runner = SimpleNotGateSimulationRunner(
+        example_name="Simple Not Gate Simulation",
         prompt=PROMPT,
+        system_prompt=SYSTEM_PROMPT,
         max_rounds=15,
         max_attempts=2
     )
