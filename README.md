@@ -9,7 +9,7 @@ To core features of the system include a master LLM-agent which plans and orches
 **State Management:** The system uses a `SessionState` object to manage the context (like the currently selected library, custom UCF files, etc.) across multiple tool calls within a single user design request..
 
 ## Examples and use cases:
-Examples of prompts can be found in `examples_and_prompts`. These range from simple to complex to aspirational and are designed to guide the implementation of this project and outline the vision of more sophisticated systems.
+Examples of prompts can be found in `src/examples/`. These range from simple to complex to aspirational and are designed to guide the implementation of this project and outline the vision of more sophisticated systems.
 
 ## Tool Use
 
