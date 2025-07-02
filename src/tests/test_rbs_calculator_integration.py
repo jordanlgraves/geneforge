@@ -7,7 +7,7 @@ PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), os.pardir
 if PROJECT_ROOT not in sys.path:
     sys.path.append(PROJECT_ROOT)
 
-from src.tools.rbs_calculator_integration import RBSCalculatorIntegration
+from src.integrations.rbs_calculator_integration import RBSCalculatorIntegration
 
 
 def test_predict_initiation_rate_empty_sequence():

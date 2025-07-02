@@ -5,7 +5,7 @@ import unittest
 import logging
 from pathlib import Path
 
-from src.tools.cello_integration import CelloIntegration
+from src.integrations.cello_integration import CelloIntegration
 
 class TestCircuitMetricsExtraction(unittest.TestCase):
     """Tests for extracting and evaluating circuit performance metrics from Cello output"""

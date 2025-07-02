@@ -22,7 +22,10 @@ Cello:
 - Allows the agent to select appropriate files based on the user's request (e.g. "I want a **NOT gate** for **E. coli** with input using **specific sensor X**, **specific sensor Y**. The output shoud be **YFP**")
 
 ### SynBioHub Integration
-SynBioHub is a public, SBOL-native repository that hosts millions of standardized genetic parts, designs, and collections. The SynBioHub database is backed-by a graph database, in the form of a Resource Description Framework (RDF) triplestore, and allows uploading, downloading SBOL documents and querying the underlying data using SPARQL. Data can be programmatically accessed by a higher-level API.
+What can SynBioHub be used for?
+
+SynBioHub can be used to publish a library of synthetic parts and designs as a service, to share designs with collaborators, and to store designs of biological systems locally. Data in SynBioHub can be accessed via the HTTP API, Java API, or Python API where it can then be integrated into CAD tools for building genetic designs. SynBioHub contains an interface for users to upload new biological data to the database, to visualize DNA parts, to perform queries to access desired parts, and to download SBOL, GenBank, FASTA, etc.
+
 
 The agent can:
 - **Search** the registry (`synbiohub_search`) using the same key–value parameters accepted by the `/search/` web API.

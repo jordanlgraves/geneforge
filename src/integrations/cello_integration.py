@@ -23,13 +23,13 @@ sys.path.append(CELLO_ROOT)
 from core_algorithm.celloAlgo import CELLO3
 
 
-from src.library.library_manager import LibraryManager
+from src.library.cello import CelloLibrary
 
 class CelloIntegration:
     def __init__(self, 
                 cello_config: Optional[Dict] = None,
                 library_id: Optional[str] = None,
-                library_manager: Optional[LibraryManager] = None):
+                library_manager: Optional[CelloLibrary] = None):
         # Default configuration that can be overridden
 
         self.cello_config = {
@@ -46,7 +46,7 @@ class CelloIntegration:
         self._setup_logging()
         
         # Use provided library_manager or create a new one if necessary
-        self.library_manager = library_manager if library_manager is not None else LibraryManager()
+        self.cello_library = library_manager if library_manager is not None else CelloLibrary()
         self.logger.info("Using %s LibraryManager instance", "provided" if library_manager else "new")
         
         # Select library if specified
@@ -126,7 +126,7 @@ class CelloIntegration:
         Returns:
             True if library was successfully selected, False otherwise
         """
-        return self.library_manager.select_library(library_id)
+        return self.cello_library.select_library(library_id)
         
     def get_available_libraries(self) -> List[str]:
         """
@@ -135,7 +135,7 @@ class CelloIntegration:
         Returns:
             List of library IDs
         """
-        return self.library_manager.get_available_libraries()
+        return self.cello_library.get_available_libraries()
         
     def create_custom_ucf(self, 
                          selected_gates: List[str] = None,
@@ -159,7 +159,7 @@ class CelloIntegration:
             Path to the created UCF file or None if creation failed
         """
         # Create the custom UCF
-        return self.library_manager.create_custom_ucf(
+        return self.cello_library.create_custom_ucf(
             selected_gates=selected_gates,
             selected_parts=selected_parts,
             modified_parts=modified_parts,
@@ -225,7 +225,7 @@ class CelloIntegration:
         self.logger.info("\nverilog: %s", verilog_code)
         self.logger.info("\ncustom_ucf: %s", custom_ucf)
         self.logger.info("\nrun_name: %s", run_name)
-        self.logger.info("\nlibrary_id: %s", self.library_manager.current_library_id)
+        self.logger.info("\nlibrary_id: %s", self.cello_library.current_library_id)
 
         
         # create a run folder for this run
@@ -249,9 +249,9 @@ class CelloIntegration:
         UCF_FILE_NAME = "ucf.json"
 
         # Get file paths from library manager
-        ucf_path = self.library_manager.current_ucf_path
-        input_path = self.library_manager.current_input_path
-        output_path = self.library_manager.current_output_path
+        ucf_path = self.cello_library.get_active_ucf_path()    
+        input_path = self.cello_library.get_active_input_path()
+        output_path = self.cello_library.get_active_output_path()
 
         if not ucf_path:
             return {

@@ -1,6 +1,4 @@
 import unittest
-import os
-import tempfile
 import tellurium as te
 import libsbml
 from src.integrations.kinmod_gpt_integration import KineticModelingGPTIntegration

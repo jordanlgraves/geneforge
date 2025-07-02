@@ -10,11 +10,11 @@ if PROJECT_ROOT not in sys.path:
     sys.path.append(PROJECT_ROOT)
 
 from src.session_state import SessionState
-from src.functions import ToolDocsQueryTool
+from src.tools.utility_tools import ToolDocsQueryTool
 
 
 class TestToolDocsQueryTool(unittest.TestCase):
-    """Tests the behaviour of ToolDocsQueryTool.
+    """Tests the behavior of ToolDocsQueryTool.
 
     These tests perform live queries against the OpenAI assistants API, which
     requires a valid OPENAI_API_KEY to be set in the environment.

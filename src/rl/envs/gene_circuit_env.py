@@ -5,7 +5,7 @@ from typing import Tuple, Dict, Any
 
 from src.rl.reward_evaluator import RewardEvaluator
 from src.session_state import SessionState
-from src.functions import ToolIntegration
+from src.tool_registry import ToolIntegration
 
 # ------------------------------------------------------------
 # Helper constants for action ids
@@ -61,9 +61,9 @@ class GeneCircuitMacroEnv(gym.Env):
         self.describe_bonus = describe_bonus
 
     def _build_obs(self) -> np.ndarray:
-        lib_sel = 1.0 if self.session_state.get_current_library_id() else 0.0
+        lib_sel = 1.0 if self.session_state.cello_library.current_library_id else 0.0
         has_verilog = 1.0 if getattr(self.session_state, "verilog_code", None) else 0.0
-        has_results = 1.0 if self.session_state.get_cello_results() else 0.0
+        has_results = 1.0 if self.session_state.cello_results else 0.0
         self._obs[:] = (lib_sel, has_verilog, has_results)
         return self._obs.copy()
 
@@ -91,7 +91,7 @@ class GeneCircuitMacroEnv(gym.Env):
             self.tool_integration.call_tool_function("describe_available_libraries", {})
 
         elif action == ACT_SELECT_LIB:
-            libs = self.session_state.get_library_manager().get_available_libraries()
+            libs = self.session_state.get_cello_library().get_available_libraries()
             if libs:
                 # select first library that starts with "Eco"
                 first_lib_id = next((lib_id for lib_id in libs if lib_id.startswith("Eco")), list(libs.keys())[0])

@@ -3,19 +3,15 @@ from typing import Optional, Dict, Any, Literal
 from pathlib import Path
 import time
 import os
-from src.library.library_manager import LibraryManager
-from src.library.part_library_customizer import get_promoter_dependencies
+from src.library.cello_library import CelloLibrary
+from src.library.cello_utils import get_promoter_dependencies
+import copy
 
 logger = logging.getLogger(__name__)
 
 # ------------------------------------------------------------------
 #  New design-specific container
 # ------------------------------------------------------------------
-
-try:
-    from src.design_state import DesignState
-except ImportError as exc:  # pragma: no cover – should never happen in production
-    raise ImportError("DesignState module not found – did you forget to add it?") from exc
 
 class SessionState:
     """
@@ -26,11 +22,8 @@ class SessionState:
     """
     def __init__(self):
         logger.info("Initializing new session state.")
-        # Initialize LibraryManager once per session
-        self.library_manager = LibraryManager()
-        self.current_ucf_data: Optional[list] = None
-        self.custom_ucf_path: Optional[str] = None
-        self.custom_input_path: Optional[str] = None
+        # Initialize CelloLibrary once per session
+        self.cello_library = CelloLibrary()
         self.cello_results: Optional[Dict[str, Any]] = None
         
         # For OpenAI Assistants API
@@ -42,14 +35,6 @@ class SessionState:
         self.chat_rounds: int = 0  # Number of LLM-tool interaction rounds in current session
 
         self.output_directory: Optional[Path] = None
-
-        # ------------------------------------------------------------------
-        #  New design artefacts container
-        # ------------------------------------------------------------------
-        self.design_state: DesignState = DesignState()
-
-        # SynBioHub client – lazy init in get_synbiohub_client()
-        self._synbiohub_client = None
 
         # ------------------------------------------------------------------
         #  Chat history logging (optional, depends on env var)
@@ -81,44 +66,66 @@ class SessionState:
         # ------------------------------------------------------------------
         self.generated_files: list[dict[str, str]] = []  # each: {path, label}
 
-    
-    def from_dict(self, **kwargs):
-        """Initialize the session state from a dictionary."""
-        for key, value in kwargs.items():
-            setattr(self, key, value)
-        if "library_manager" in kwargs:
-            self.library_manager = LibraryManager()
-            self.library_manager.select_library(kwargs["library_manager"]["current_library_id"])
+        # ------------------------------------------------------------------
+        #  Design artefacts (previously DesignState)
+        # ------------------------------------------------------------------
 
-        # Restore DesignState if serialised
-        if "design_state" in kwargs and kwargs["design_state"] is not None:
-            self.design_state = DesignState.from_dict(kwargs["design_state"])
-        else:
-            self.design_state = DesignState()
+        self.sbol_file: Optional[Path] = None
+        self.sbml_file: Optional[Path] = None
+        self.sbml_doc = None  # libSBML document – keep type generic to avoid heavy import
+        self.antimony: Optional[str] = None  # textual Antimony representation, if any
+
+        # Kinetic-model parameter template and provenance
+        self.parameter_template: Dict[str, Any] = {}
+        self.last_editor: Optional[Literal["agent", "user"]] = None
+
+        # Initialize _history attribute
+        self._history = []
+
+        # SynBioHub client – lazy init
+        self._synbiohub_client = None
+
+    def from_dict(self, **kwargs):
+        """Restore the session state from a serialised dict representation."""
+        for key, value in kwargs.items():
+            # Special-case nested library_manager info
+            if key == "library_manager" and isinstance(value, dict):
+                self.cello_library = CelloLibrary()
+                if value.get("current_library_id"): 
+                    self.cello_library.select_library(value.get("current_library_id"))
+                continue
+
+            # Normal flat attributes
+            setattr(self, key, value)
 
     def to_dict(self) -> Dict[str, Any]:
         """Convert the session state to a dictionary."""
         return {
-            "library_manager": {"current_library_id": self.library_manager.current_library_id},
-            "current_ucf_data": self.current_ucf_data,
-            "custom_ucf_path": self.custom_ucf_path,
+            "library_manager": {"current_library_id": self.cello_library.current_library_id},
+            "current_ucf_data": self.cello_library.user_constrains,
+            "custom_ucf_path": self.cello_library.user_constraints_path,
+            "custom_input_path": self.cello_library.inputs_path,
+            "custom_output_path": self.cello_library.outputs_path,
             "verilog_code": self.verilog_code,
             "design_spec": self.design_spec,
             "chat_rounds": self.chat_rounds,
             "cello_results": self.cello_results,
-            "custom_input_path": self.custom_input_path,
-            "assistant_id": self.assistant_id,
+            "assistant_id": self.assistant_id,  
             "thread_id": self.thread_id,
-            "design_state": self.design_state.as_dict(),
+            "parameter_template": self.parameter_template,
+            "sbol_file": str(self.sbol_file) if self.sbol_file else None,
+            "sbml_file": str(self.sbml_file) if self.sbml_file else None,
+            "sbml_doc": None,  # not serialisable; omit for now
+            "antimony": self.antimony,
         }
 
     def select_library(self, library_id: str) -> bool:
         """Selects a library and updates the session state."""
         logger.info(f"Session selecting library: {library_id}")
-        success = self.library_manager.select_library(library_id)
+        success = self.cello_library.select_library(library_id)
         if success:
             # Update session state's copy of UCF data if needed
-            self.current_ucf_data = self.library_manager.get_ucf_data()
+            self.cello_library.user_constrains = self.cello_library.get_ucf_data()
             logger.info(f"Session state updated with UCF data for {library_id}")
             
             # Automatically calibrate ProD
@@ -135,28 +142,13 @@ class SessionState:
     def query_libraries_by_organism(self, organism: str) -> bool:
         """Filter the available libraries by organism."""
         logger.info(f"Session filtering libraries by organism: {organism}")
-        success = self.library_manager.filter_libraries_by_organism(organism)
+        success = self.cello_library.filter_libraries_by_organism(organism)
         return success
 
-    def get_library_manager(self) -> LibraryManager:
+    def get_cello_library(self) -> CelloLibrary:
         """Returns the LibraryManager instance for this session."""
-        return self.library_manager
+        return self.cello_library
 
-    def get_current_library_id(self) -> Optional[str]:
-        """Gets the currently selected library ID from the manager."""
-        return self.library_manager.current_library_id
-
-    def get_current_ucf_data(self) -> Optional[list]:
-        """Gets the raw UCF data for the currently selected library."""
-        # Return the session's copy, ensuring it's up-to-date
-        if self.library_manager.current_library_id and self.current_ucf_data is None:
-             # If library selected but data not loaded here, fetch it
-             self.current_ucf_data = self.library_manager.get_ucf_data()
-        elif not self.library_manager.current_library_id:
-            self.current_ucf_data = None # Clear if no library selected
-
-        return self.current_ucf_data
-    
     def get_cello_results(self) -> Optional[Dict[str, Any]]:
         """Gets the Cello results for the current session."""
         return self.cello_results
@@ -171,9 +163,6 @@ class SessionState:
     def set_verilog_code(self, verilog: str):
         """Persist Verilog code generated during this session."""
         self.verilog_code = verilog
-
-        # Keep design_state in sync if user wishes
-        self.design_state.verilog = verilog
 
     def get_verilog_code(self) -> Optional[str]:
         return self.verilog_code
@@ -215,7 +204,7 @@ class SessionState:
         
         import random, math
 
-        ucf_data = self.get_current_ucf_data()
+        ucf_data = self.cello_library.user_constrains
         if not ucf_data:
             return {"success": False, "error": "No UCF loaded"}
 
@@ -279,7 +268,7 @@ class SessionState:
         """Return (and lazily create) a SynBioHubClient bound to this session."""
         if self._synbiohub_client is None:
             try:
-                from src.tools.synbiohub_integration import SynBioHubClient
+                from src.integrations.synbiohub_integration import SynBioHubClient
                 self._synbiohub_client = SynBioHubClient()
             except Exception as exc:
                 logger.error("Failed to initialise SynBioHub client: %s", exc)
@@ -291,9 +280,9 @@ class SessionState:
     # ------------------------------------------------------------------
 
     def initialise_parameter_template(self, template: Dict[str, Any]):
-        """Attach a freshly generated parameter *template* to the DesignState."""
-        self.design_state.parameter_template = template
-        self.design_state.last_editor = None
+        """Attach a freshly generated parameter template (species/parameters)."""
+        self.parameter_template = template or {}
+        self.last_editor = None
 
     def set_parameter_value(
         self,
@@ -321,29 +310,24 @@ class SessionState:
         editor
             Who made the change – used for conflict handling.
         """
-        tmpl = self.design_state.parameter_template.setdefault(section, {})
-        entry = tmpl.setdefault(key, {"value": None, "unit": None, "source": None})
+        template = self.parameter_template.setdefault(section, {})
+        entry = template.setdefault(key, {"value": None, "unit": None, "source": None})
         entry["value"] = value
         if unit is not None:
             entry["unit"] = unit
         if source is not None:
             entry["source"] = source
 
-        self.design_state.last_editor = editor
+        self.last_editor = editor
 
     # ------------------------------------------------------------------
     #  SBML file helper
     # ------------------------------------------------------------------
 
     def set_sbml_file(self, path: str | Path):
-        """Persist the path of the SBML file uploaded by the user.
-
-        The path is stored inside the session-scoped ``DesignState`` so that
-        downstream tools (e.g. parameter extraction, simulations) can access
-        it without needing to pass the filename around explicitly.
-        """
+        """Persist the path of an SBML file uploaded or generated during the session."""
         try:
-            self.design_state.sbml_file = Path(path)
+            self.sbml_file = Path(path)
         except Exception as exc:
             logger.error("Failed to set SBML file path: %s", exc)
             raise
@@ -374,3 +358,25 @@ class SessionState:
 
     # Add methods to update and retrieve other state variables as needed
     # e.g., set_custom_ucf_path, get_cello_results, etc. 
+
+    def record_snapshot(self, msg_index: int | None = None):
+        """Record a snapshot of the current session state.
+
+        Parameters
+        ----------
+        msg_index
+            Index of the chat message this snapshot corresponds to. When every
+            chat message triggers exactly one snapshot this lets downstream
+            scorers map *state n* ⇄ *message n* unambiguously. For snapshots
+            created outside the chat flow (rare) this can be left *None*.
+        """
+        snapshot = {
+            "timestamp": time.time(),
+            "msg_index": msg_index,
+            "state": copy.deepcopy(self.to_dict()),
+        }
+        self._history.append(snapshot)
+
+    def get_history(self):
+        """Get the history of session snapshots."""
+        return self._history 

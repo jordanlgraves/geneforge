@@ -13,7 +13,7 @@ import json
 project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), "../.."))
 sys.path.insert(0, project_root)
 
-from src.library.library_manager import LibraryManager
+from src.library.cello import CelloLibrary
 
 # Configure logging
 logging.basicConfig(level=logging.INFO, 
@@ -34,7 +34,7 @@ def main():
     print_section("LIBRARY MANAGER EXAMPLE")
     
     # Initialize the library manager with the default library
-    manager = LibraryManager()
+    manager = CelloLibrary()
     
     # Display available libraries
     print_section("Available Libraries")
