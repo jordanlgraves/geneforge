@@ -2,8 +2,8 @@ import unittest
 import os
 import tempfile
 import json
-from src.library.library_manager import LibraryManager
-from src.tools.cello_integration import CelloIntegration
+from src.library.cello import CelloLibrary
+from src.integrations.cello_integration import CelloIntegration
 
 class TestLibraryManager(unittest.TestCase):
     """
@@ -18,7 +18,7 @@ class TestLibraryManager(unittest.TestCase):
         cls.test_dir = cls.temp_dir.name
         
         # Create a library manager for testing
-        cls.library_manager = LibraryManager()
+        cls.library_manager = CelloLibrary()
     
     @classmethod
     def tearDownClass(cls):

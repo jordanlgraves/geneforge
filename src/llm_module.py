@@ -4,7 +4,7 @@ import json
 from openai import OpenAI
 from typing import List, Dict, Any, Tuple, Optional
 
-from src.functions import ToolIntegration, tool_functions
+from src.tool_registry import ToolIntegration, tool_functions
 from src.session_state import SessionState
 
 
@@ -142,7 +142,7 @@ def main():
 
     # 2. Create a SessionState for this request
     session_state = SessionState()
-    print(f"Initial Session State: Library Manager ready, {len(session_state.library_manager.get_available_libraries())} libraries found.")
+    print(f"Initial Session State: Library Manager ready, {len(session_state.cello_library.get_available_libraries())} libraries found.")
 
     # 3. Create ToolIntegration linked to this session's state
     tool_integration = ToolIntegration(session_state)

@@ -3,7 +3,7 @@ import logging
 import json
 from src.examples.agent.example_harness import ExampleRunner
 from src.prompt_manager import get_system_prompt
-import src.library.part_library_customizer as part_library_customizer
+import src.library.cello_utils as cello_utils
 
 # Set up logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
@@ -31,19 +31,19 @@ class DesignWithPromoterVarsWResearchRunner(ExampleRunner):
         2. Cello results were obtained.
         3. The custom UCF contains the new variants and not the original.
         """
-        has_custom_ucf = hasattr(self.session_state, 'custom_ucf_path') and self.session_state.custom_ucf_path is not None
-        has_cello_results = self.session_state.get_cello_results() is not None
+        has_custom_ucf = hasattr(self.session_state, 'cello_library.user_constraints_path') and self.session_state.cello_library.user_constraints_path is not None
+        has_cello_results = self.session_state.cello_results is not None
 
         if not (has_custom_ucf and has_cello_results):
             return False
 
         # Extra validation: check the content of the final UCF
         try:
-            with open(self.session_state.custom_ucf_path) as f:
+            with open(self.session_state.cello_library.user_constraints_path) as f:
                 ucf_data = json.load(f)
             
             # Check that the original promoter is gone
-            original_gone = part_library_customizer.get_part_by_name(ucf_data, "pTet") is None
+            original_gone = cello_utils.get_part_by_name(ucf_data, "pTet") is None
             
             # Check that at least one variant exists
             variants_exist = any("pTetvar" in p.get("name", "") for p in ucf_data if p.get("collection") == "parts")

@@ -18,8 +18,7 @@ if PROJECT_ROOT not in sys.path:
 from src.llm_module import get_llm_client, run_assistant
 from src.prompt_manager import get_system_prompt
 from src.session_state import SessionState
-from src.functions import ToolIntegration
-from src.design_state import DesignState
+from src.tool_registry import ToolIntegration
 
 from src.examples.agent.design_w_promoter_vars import DesignWithPromoterVarsRunner, PROMPT as PROMPT_VARS
 from src.examples.agent.design_minimal_input_sensors import MinimalInputSensorsRunner, PROMPT as PROMPT_SENSORS
@@ -195,8 +194,8 @@ def draw_sidebar():
                     return
 
                 # Determine save directory (session-specific if available)
-                sess = st.session_state.core_session
-                save_dir: Path = sess.output_directory if sess.output_directory else Path("uploads")
+                design_session_state = st.session_state.core_session
+                save_dir: Path = design_session_state.output_directory if design_session_state.output_directory else Path("uploads")
                 os.makedirs(save_dir, exist_ok=True)
 
                 # Build unique filename preserving original extension
@@ -215,10 +214,9 @@ def draw_sidebar():
                 sbml_doc = libsbml.readSBMLFromFile(str(save_path))
                 template = build_param_template(sbml_doc)
                 
-                st.session_state.core_session.design_state = DesignState()
-                st.session_state.core_session.design_state.sbml_doc  = sbml_doc
-                st.session_state.core_session.design_state.sbml_file = save_path
-                st.session_state.core_session.design_state.parameter_template = template
+                design_session_state.sbml_doc = sbml_doc
+                design_session_state.sbml_file = save_path
+                design_session_state.parameter_template = template
 
                 st.success(f"SBML file saved to {save_path}")
 
@@ -699,22 +697,22 @@ def handle_chat_submission(prompt: str):
 def _render_session_overview(container):
     """Populate *container* with the current SessionState snapshot."""
     container.empty()  # clear previous content
-    sess = st.session_state.core_session
+    design_session_state: SessionState = st.session_state.core_session
     with container.container():        
-        st.write(f"**Selected library:** {sess.get_current_library_id() or '—'}")
+        st.write(f"**Selected library:** {design_session_state.cello_library.current_library_id or '—'}")
     
         # gather some specs from the selected library
-        if sess.get_current_library_id():
-            lib_manager = sess.get_library_manager()
-            lib_specs = lib_manager.get_library_specs(sess.get_current_library_id())
+        if design_session_state.cello_library.current_library_id:
+            cello_library = design_session_state.cello_library
+            lib_specs = cello_library.get_library_specs(design_session_state.cello_library.current_library_id)
             st.write("**Library specs:**")
             st.json(lib_specs)
 
-        if sess.get_design_spec():
+        if design_session_state.design_spec:
             st.write("**Design spec:**")
-            st.markdown(sess.get_design_spec()[:400] + (" …" if len(sess.get_design_spec()) > 400 else ""))
+            st.markdown(design_session_state.design_spec[:400] + (" …" if len(design_session_state.design_spec) > 400 else ""))
 
-        verilog = sess.get_verilog_code()
+        verilog = design_session_state.verilog_code
         if verilog:
             st.write("**Current Verilog:**")
             st.code("\n".join(verilog.splitlines()), language="verilog")
@@ -723,21 +721,21 @@ def _render_session_overview(container):
 
     with container.container():
         # Display SBML file path if present
-        if sess.design_state.sbml_file:
+        if design_session_state.sbml_file:
             st.write("**SBML file:**")
-            st.code(str(sess.design_state.sbml_file))
+            st.code(str(design_session_state.sbml_file))
         # Show the parameter template if it exists
-        if sess.design_state.parameter_template:
+        if design_session_state.parameter_template:
             st.write("**Parameter template:**")
-            st.json(sess.design_state.parameter_template)
+            st.json(design_session_state.parameter_template)
 
         # ------------------------------------------------------------------
         #  Generated files section
         # ------------------------------------------------------------------
-        if sess.generated_files:
+        if design_session_state.generated_files:
             st.write("**Generated files:**")
             import uuid as _uuid_dl
-            for f in sess.generated_files:
+            for f in design_session_state.generated_files:
                 path_obj = Path(f["path"])
                 if not path_obj.exists():
                     logger.warning("Generated file missing on disk: %s", path_obj)

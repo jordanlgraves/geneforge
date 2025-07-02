@@ -23,7 +23,7 @@ os.chdir(project_root)
 
 # Now we can safely import from the project
 from src.tools.cello_integration import CelloIntegration
-from src.library.library_manager import LibraryManager
+from src.library.cello import CelloLibrary
 
 
 def print_section(title):
@@ -53,7 +53,7 @@ def main():
     
     # First demonstrate the LibraryManager capabilities
     print_section("LIBRARY MANAGER CAPABILITIES")
-    manager = LibraryManager()
+    manager = CelloLibrary()
     
     # Show available libraries
     libraries = manager.get_available_libraries()

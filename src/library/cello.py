@@ -9,7 +9,7 @@ import dotenv
 CELLO_UCF_ROOT = os.getenv("CELLO_UCF_ROOT")
 
 # Import the module functions directly instead of the class
-import src.library.part_library_customizer as part_library_customizer
+import src.library.cello_utils as cello_utils
 
 logger = logging.getLogger("library_manager")
 
@@ -23,7 +23,7 @@ def _read_cello_config_file(config_file_path: str) -> Dict[str, Any]:
     with open(config_file_path, 'r') as f:
         return json.load(f)
 
-class LibraryManager:
+class CelloLibrary:
     """
     Manages the selection, loading, and customization of UCF libraries.
     Provides a unified interface for working with different library types.
@@ -31,7 +31,7 @@ class LibraryManager:
     
     def __init__(self):
         """
-        Initialize the library manager. Scans for available libraries
+        Initialize the CelloLibrary. Scans for available libraries
         but does not load a default one initially.
         """        
         # Scan available libraries
@@ -387,7 +387,7 @@ class LibraryManager:
             output_dir = "outputs/custom_ucf"
         
         # Use the module function directly instead of calling through a class instance
-        custom_ucf_path = part_library_customizer.create_custom_ucf(
+        custom_ucf_path = cello_utils.create_custom_ucf(
             ucf_data=base_data,
             selected_gates=selected_gates,
             selected_parts=processed_parts,
@@ -437,7 +437,7 @@ class LibraryManager:
         
         # Use the module function directly
         try:
-            custom_input_path = part_library_customizer.create_custom_input_sensors_file(
+            custom_input_path = cello_utils.create_custom_input_sensors_file(
                 input_sensor_data=self.current_input_data,
                 selected_sensors=selected_sensors,
                 modified_models=modified_models,
@@ -551,7 +551,7 @@ class LibraryManager:
         -------
         int – number of new items added to the draft UCF.
         """
-        from src.library.part_library_customizer import duplicate_promoter_dependencies
+        from src.library.cello_utils import duplicate_promoter_dependencies
 
         if self.current_ucf_data is None:
             raise RuntimeError("No library selected.")
@@ -569,8 +569,7 @@ class LibraryManager:
             new_promoter_id = f"{parent_promoter}Var{i}"
 
             # Re-create promoter sequence using parent sequence flanks
-            from src.integrations.pro_d_integration import extract_id_ecoli_spacer
-            import copy as _copy
+            from src.utils import extract_id_ecoli_spacer
 
             parent_part = next(
                 (p for p in self.current_ucf_data if p.get("collection") == "parts" and p.get("name") == parent_promoter),

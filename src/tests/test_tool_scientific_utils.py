@@ -7,12 +7,10 @@ if PROJECT_ROOT not in sys.path:
     sys.path.append(PROJECT_ROOT)
 
 from src.session_state import SessionState
-from src.functions import (
+from src.tools.utility_tools import (
     ScientificSearchTool,
     TranslateDnaTool,
-    GcContentTool,
-    SynBioHubSequenceSearchTool,
-    SynBioHubGetRelatedTool,
+    GcContentTool
 )
 
 
@@ -20,8 +18,6 @@ class TestScientificAndUtilityTools(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         cls.session_state = SessionState()
-        cls.sequence_tool = SynBioHubSequenceSearchTool(cls.session_state)
-        cls.related_tool = SynBioHubGetRelatedTool(cls.session_state)
 
     # ---------------------------------------------------------------
     # Scientific search
@@ -53,19 +49,6 @@ class TestScientificAndUtilityTools(unittest.TestCase):
         self.assertTrue(out.get("success"))
         self.assertAlmostEqual(out["gc_percent"], 50.0, delta=0.1)
 
-    # --------------------------------------------------------------
-    # SynBioHub sequence search / related
-    # --------------------------------------------------------------
-    def test_sequence_search_tool(self):
-        # Use exact sequence search for a short motif, expect JSON/text result
-        out = self.sequence_tool.execute(search_params="sequence=atgc")
-        self.assertTrue(out.get("success") or "error" in out)
-
-    def test_get_related_tool(self):
-        uri = "https://synbiohub.org/public/igem/BBa_J23100/1"
-        out = self.related_tool.execute(uri=uri, relation="twins")
-        # service may return 404 if none; just ensure request processed
-        self.assertTrue(out.get("success"))
 
 
 if __name__ == "__main__":

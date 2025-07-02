@@ -8,7 +8,7 @@ from pathlib import Path
 import dotenv
 dotenv.load_dotenv()
 
-from src.tools.promoter_calculator_integration import PromoterCalculatorIntegration
+from src.integrations.promoter_calculator_integration import PromoterCalculatorIntegration
 
 # Remove the skipUnless decorator to always run the tests
 class TestPromoterCalculatorIntegration(unittest.TestCase):

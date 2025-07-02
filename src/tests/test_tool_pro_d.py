@@ -8,7 +8,7 @@ if PROJECT_ROOT not in sys.path:
     sys.path.append(PROJECT_ROOT)
 
 from src.session_state import SessionState
-from src.functions import (
+from src.tools.promoter_tools import (
     EstimatePromoterStrengthWithProDTool,
     GetSpacerFromPromoterTool,
     GeneratePromoterLibraryFromSpacerTool,

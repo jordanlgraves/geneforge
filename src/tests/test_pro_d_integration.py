@@ -6,18 +6,15 @@ import pandas as pd
 from typing import List, Dict, Any
 import random
 
-# Add project root to path to import modules
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../..')))
-
 # Import the modules we want to test
 from src.integrations.pro_d_integration import (
-    extract_id_ecoli_spacer,
     evaluate_promoter_spacers,
     generate_promoter_library,
     get_strength_band,
     ProDIntegration,
     DEFAULT_MODEL_PATH
 )
+from src.utils import extract_id_ecoli_spacer
 
 class TestProDIntegration(unittest.TestCase):
     """

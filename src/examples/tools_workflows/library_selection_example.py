@@ -23,7 +23,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent))
 
 from src.library.llm_library_selector import RuleBasedLibrarySelector, LLMBasedLibrarySelector
 from src.tools.cello_integration import CelloIntegration
-from src.functions import ToolIntegration
+from src.tool_registry import ToolIntegration
 
 # Configure logging
 logging.basicConfig(level=logging.INFO, 

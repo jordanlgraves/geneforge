@@ -27,7 +27,7 @@ sys.path.insert(0, project_root)
 # Now import from src
 from src.tools.cello_integration import CelloIntegration
 from src.tools.gpro_integration import PromoterOptimizer
-from src.library.part_library_customizer import PartLibraryCustomizer
+from src.library.cello_utils import PartLibraryCustomizer
 from src.library.ucf_retrieval import list_promoters
 
 # Set up logging

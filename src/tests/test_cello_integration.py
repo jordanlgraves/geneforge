@@ -14,10 +14,8 @@ if os.path.exists(cello_core_path):
     print(f"Added {cello_core_path} to Python path")
     os.environ["PYTHONPATH"] = f"{cello_core_path}:{os.environ.get('PYTHONPATH', '')}"
 
-from src.tools.cello_integration import CelloIntegration
-from src.library.library_manager import LibraryManager
-
-from core_algorithm.celloAlgo import CELLO3
+from src.integrations.cello_integration import CelloIntegration
+from src.library.cello import CelloLibrary
 
 class TestCelloIntegration(unittest.TestCase):
     """
@@ -36,7 +34,7 @@ class TestCelloIntegration(unittest.TestCase):
         cls.project_root = Path(__file__).resolve().parent.parent.parent
         
         # Create a library manager for testing
-        cls.library_manager = LibraryManager()
+        cls.library_manager = CelloLibrary()
         
         # Get available libraries for testing
         cls.available_libraries = cls.library_manager.get_available_libraries()

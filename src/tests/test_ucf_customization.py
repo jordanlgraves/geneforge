@@ -12,8 +12,8 @@ import tempfile
 from typing import List, Dict, Optional
 
 from jsonschema import ValidationError
-from src.library.part_library_customizer import *
-from src.library.library_manager import LibraryManager
+from src.library.cello_utils import *
+from src.library.cello import CelloLibrary
 
 def get_by_name(data: List[Dict], name: str) -> Optional[Dict]:
     for item in data:
@@ -26,7 +26,7 @@ class TestUCFCustomization(unittest.TestCase):
     def setUpClass(cls):
         """Load base UCF and create temp directory"""
         # Use the library manager to find a suitable library
-        cls.library_manager = LibraryManager()
+        cls.library_manager = CelloLibrary()
         
         # Try to select an E. coli library
         success = cls.library_manager.select_library("Eco1C1G1T1")
@@ -56,7 +56,7 @@ class TestUCFCustomization(unittest.TestCase):
         This test checks that when a promoter is selected, all the other promoters are removed.
         It also checks that the structures and gates that reference the removed parts are also removed.
         """
-        library_manager = LibraryManager()
+        library_manager = CelloLibrary()
         library_manager.select_library("Eco1C1G1T1")
         ucf_path = library_manager.create_custom_ucf(
             selected_parts=["pBM3R1"],
@@ -168,7 +168,7 @@ class TestUCFCustomization(unittest.TestCase):
         
         
         # Create the customized UCF
-        library_manager = LibraryManager()
+        library_manager = CelloLibrary()
         library_manager.select_library("Eco1C1G1T1")
         ucf_path = library_manager.create_custom_ucf(
             modified_parts=[model, modified_ribozyme],

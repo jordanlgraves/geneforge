@@ -7,7 +7,7 @@ PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), os.pardir
 if PROJECT_ROOT not in sys.path:
     sys.path.append(PROJECT_ROOT)
 
-from src.tools.synbiohub_integration import SynBioHubClient
+from src.integrations.synbiohub_integration import SynBioHubClient
 
 
 class TestSynBioHubIntegration(unittest.TestCase):

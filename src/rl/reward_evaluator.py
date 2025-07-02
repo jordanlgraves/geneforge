@@ -70,7 +70,7 @@ class RewardEvaluator:
         # Basic success criteria: Cello ran and produced a score
         success_flag = 1.0 if circuit_score is not None else 0.0
 
-        has_library = session_state.get_current_library_id() is not None
+        has_library = session_state.cello_library.current_library_id is not None
 
         # Examples of scenario-specific reward calculation
         if self.scenario == "single_sensor":
@@ -99,8 +99,9 @@ class RewardEvaluator:
             "total": total_reward,
             "details": {
                 "circuit_score": circuit_score, # effectively a ratio of the transcription in the ON and OFF states for every output of the circuit
-                "library": session_state.get_current_library_id(),
-                "custom_input_path": getattr(session_state, "custom_input_path", None),
+                "library": session_state.cello_library.current_library_id,
+                "custom_input_path": session_state.cello_library.inputs_path,
+                "custom_output_path": session_state.cello_library.outputs_path,
                 # TODO: Add design spec, verilog code, etc...probably just save the session state
                 # probably just save the Cello results in total
             },

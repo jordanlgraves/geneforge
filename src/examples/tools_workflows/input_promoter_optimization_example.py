@@ -37,7 +37,7 @@ os.chdir(project_root)
 # Import required modules
 from src.tools.cello_integration import CelloIntegration
 from src.tools.promoter_calculator_integration import PromoterCalculatorIntegration
-from src.library.library_manager import LibraryManager
+from src.library.cello import CelloLibrary
 # from src.library.part_library_customizer import PartLibraryCustomizer
 # from src.library.ucf_retrieval import get_dna_part_by_name, list_promoters
 from src.llm_module import chat_with_tool
@@ -84,7 +84,7 @@ def generate_custom_ucf(client, promoter_name, output_dir):
     print_section(f"Generating Custom UCF with Promoter: {promoter_name}")
     
     # Initialize the library manager and select the correct library
-    library_manager = LibraryManager()
+    library_manager = CelloLibrary()
     library_manager.select_library("Eco1C1G1T1")
     
     # Get the raw UCF data

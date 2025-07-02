@@ -110,8 +110,16 @@ class SynBioHubClient:
 
     # --------------------------- SEQUENCE SEARCH ----------------------
     def sequence_search(self, search_params: str) -> str:
-        """Run a sequence-based search (search/... endpoint) and return raw JSON/text."""
-        # Endpoint identical to generic search; expose for clarity
+        """
+        globalsequence=value	Sequence to globally search. Must be the first key/value pair. Corresponds to the --usearch_global option in VSEARCH. (globalsequence=cctagatcgctag)
+        sequence=value	Search only for exact matches of the sequence. Must be the first key/value pair.Corresponds to the --search_exact option in VSEARCH. (sequence=cctagatcgctag)
+        file_search=value	Specify a file path for sequence searching. Must be URL encoded, and must be the first key/value pair. Default search method is global. (file_search=%2Fpath%2Fto%2Ffile)
+        maxaccepts=value	Maximum number of hits to accept before stopping the search. Note that the higher the value, the longer the runtime. Corresponds to the --maxaccepts flag in VSEARCH. (maxaccepts=100)
+        maxrejects=value	Maximum number of non-matching target sequences to consider before stopping the search. Corresponds to the --maxrejects flag in VSEARCH. (maxrejects=100)
+        id=value	Reject the sequence match if the pairwise identity is lower than the number specified. Value between 0 and 1. Corresponds to the --id flag in VSEARCH (id=0.8)
+        iddef=value	Changes the pairwise identity definition used by the id option. Values accepted are: 0. CD-HIT definition: (matching columns) / (shortest sequence length). 1. edit distance: (matching columns) / (alignment length). 2. edit distance excluding terminal gaps (default definition for --id). 3. Marine Biological Lab definition counting each gap opening (internal or terminal) as a single mismatch, whether or not the gap was extended: 1.
+
+        """
         return self.search(search_params)
 
     # --------------------------- DOWNLOAD ------------------------------

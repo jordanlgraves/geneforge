@@ -7,7 +7,7 @@ from dotenv import load_dotenv
 from src.llm_module import get_llm_client, run_assistant
 from src.prompt_manager import get_system_prompt
 from src.session_state import SessionState
-from src.functions import ToolIntegration
+from src.tool_registry import ToolIntegration
 
 # NEW: import event handler base from OpenAI
 from openai import AssistantEventHandler
@@ -58,14 +58,12 @@ class ExampleRunner:
         self.client, self.model = get_llm_client(client_type="openai", reasoning=True)
         self.logger.info(f"Using LLM Client: {type(self.client).__name__}, Model: {self.model}")
         
-        # Prepare initial messages
+        # Initialise messages list and record snapshots for each
+        self.messages = []
         if self.system_prompt is None:
             self.system_prompt = get_system_prompt()
-        self.messages = [
-            {"role": "system", "content": self.system_prompt},
-            {"role": "user", "content": self.prompt}
-        ]
-        self.logger.info(f"Initial User Prompt: {self.prompt}")
+        self._add_message("system", self.system_prompt)
+        self._add_message("user", self.prompt)
         
     def run(self) -> Optional[str]:
         """
@@ -115,7 +113,7 @@ class ExampleRunner:
             def _finalise_buffer(self):
                 text = self._buffer.strip()
                 if text:
-                    self.runner.messages.append({"role": "assistant", "content": text})
+                    self.runner._add_message("assistant", text)
                 self._buffer = ""
 
             def _handle_requires_action(self, data):
@@ -134,8 +132,8 @@ class ExampleRunner:
                         continue
                     try:
                         result = self.tool_integration.call_tool_function(fn_name, fn_args)
-                        # Record tool call in messages for export
-                        self.runner.messages.append({"role": "tool", "name": fn_name, "content": json.dumps(result)})
+                        # Record tool call in messages and snapshot state
+                        self.runner._add_message("tool", json.dumps(result), name=fn_name)
                         tool_outputs.append({"tool_call_id": tool_call.id, "output": json.dumps(result)})
                     except Exception as e:
                         self.runner.logger.error(f"Error executing tool {fn_name}: {e}")
@@ -161,7 +159,7 @@ class ExampleRunner:
             while attempt < self.max_attempts:
                 user_prompt = self.prompt if attempt == 0 else "Please use the tools to complete the task."
                 if attempt > 0:
-                    self.messages.append({"role": "user", "content": user_prompt})
+                    self._add_message("user", user_prompt)
 
                 handler = _RunnerEventHandler(self)
                 run_assistant(
@@ -186,7 +184,8 @@ class ExampleRunner:
             else:
                 self.logger.warning("Failed to complete task after maximum attempts")
 
-            # Persist chat rounds count
+            # Persist chat rounds count and ensure final snapshot (already taken
+            # when the last assistant message was appended)
             self.session_state.chat_rounds = len(self.messages)
             return final_response
 
@@ -229,9 +228,37 @@ class ExampleRunner:
 
         # Log final session state for inspection
         self.logger.info("--- Final Session State ---")
-        self.logger.info(f"Selected Library: {self.session_state.get_current_library_id()}")
-        self.logger.info(f"Custom UCF Path: {getattr(self.session_state, 'custom_ucf_path', None)}")
-        if hasattr(self.session_state, 'custom_input_path'):
-            self.logger.info(f"Custom Input Sensors Path: {getattr(self.session_state, 'custom_input_path', None)}")
-        if self.session_state.get_cello_results():
-            self.logger.info(f"Cello Results: {json.dumps(self.session_state.cello_results, indent=2)}")
+        self.logger.info(f"Selected Library: {self.session_state.cello_library.current_library_id}")
+        self.logger.info(f"Custom UCF Path: {self.session_state.cello_library.user_constraints_path}")
+        self.logger.info(f"Custom Input Sensors Path: {self.session_state.cello_library.inputs_path}")
+        self.logger.info(f"Custom Output Sensors Path: {self.session_state.cello_library.outputs_path}")
+        self.logger.info(f"Cello Results: {self.session_state.cello_results}")
+        
+    def session_state_history(self):
+        """Return the SessionState history wrapped in a lightweight proxy.
+
+        The proxy exposes a ``to_dict()`` helper for ease of JSON serialisation
+        (maintaining compatibility with existing notebooks that may do
+        ``runner.session_state_history().to_dict()``).
+        """
+
+        class _HistoryProxy(list):
+            def __init__(self, history):
+                super().__init__(history)
+
+            def to_dict(self):  # type: ignore[override]
+                return {"history": list(self)}
+
+        return _HistoryProxy(self.session_state.get_history())
+
+    # ------------------------------------------------------------------
+    #  Internal helper – keeps chat ↔ snapshot alignment
+    # ------------------------------------------------------------------
+
+    def _add_message(self, role: str, content: str, name: str | None = None):
+        """Append *content* as a new chat message and snapshot the state."""
+        msg = {"role": role, "content": content}
+        if name:
+            msg["name"] = name
+        self.messages.append(msg)
+        self.session_state.record_snapshot(msg_index=len(self.messages) - 1)
