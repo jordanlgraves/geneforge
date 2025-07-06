@@ -3,6 +3,9 @@ import json
 import logging
 from typing import Dict, List, Optional, Union, Any
 from pathlib import Path
+from datetime import datetime
+import shutil
+import tempfile
 
 import dotenv
 
@@ -39,13 +42,20 @@ class CelloLibrary:
         
         # Set initial state - no library selected by default
         self.current_library_id: Optional[str] = None
-        self.user_constrains: Optional[List[Dict]] = None
+        self.user_constraints: Optional[List[Dict]] = None
         self.user_constraints_path: Optional[str] = None
         self.inputs_path: Optional[str] = None
         self.outputs_path: Optional[str] = None
 
-        # In-memory draft copy for incremental modifications
-        self._draft_ucf: Optional[List[Dict]] = None  # set via begin_draft()
+        self.current_input_data: Optional[List[Dict]] = None
+        self.current_output_data: Optional[List[Dict]] = None
+        self.current_ucf_data: Optional[List[Dict]] = None
+        
+        # NOTE: Draft behaviour removed – we now always operate on a **working
+        # copy** of the selected library (see `select_library`).  The attribute
+        # is kept (always None) for backwards-compatibility with callers that
+        # may still check `has_draft`.
+        self._draft_ucf: Optional[List[Dict]] = None
 
         # Active library context - tracks which files are currently "active"
         self._active_context: Dict[str, str] = {
@@ -196,7 +206,7 @@ class CelloLibrary:
             logger.error(f"Library {library_id} not found in available libraries: {list(self.available_libraries.keys())}")
             # Clear current state if selection fails
             self.current_library_id = None
-            self.user_constrains = None
+            self.user_constraints = None
             self.user_constraints_path = None
             self.current_input_data = None
             self.inputs_path = None
@@ -207,13 +217,28 @@ class CelloLibrary:
         # Get the library info
         library_info = self.available_libraries[library_id]
         
-        # Check if the UCF file exists
-        ucf_path = library_info.get("ucf")
+        # --------------------------------------------------------------
+        #  Create isolated working copies inside a timestamped temp dir
+        # --------------------------------------------------------------
+        temp_root = os.getenv("CELLO_LIB_TEMP") or tempfile.gettempdir()
+        ts = datetime.now().strftime("%Y%m%d_%H%M%S")
+        work_dir = Path(temp_root) / "cello_lib_temp" / library_id / ts
+        work_dir.mkdir(parents=True, exist_ok=True)
+
+        def _copy(src: str) -> Optional[str]:
+            if src and os.path.exists(src):
+                dst = work_dir / Path(src).name
+                shutil.copy(src, dst)
+                return str(dst)
+            return None
+
+        ucf_path_original = library_info.get("ucf")
+        ucf_path = _copy(ucf_path_original)
         if not ucf_path or not os.path.exists(ucf_path):
             logger.error(f"UCF file path not found or file does not exist for library {library_id}: {ucf_path}")
             # Clear current state if essential file missing
             self.current_library_id = None
-            self.user_constrains = None
+            self.user_constraints = None
             self.user_constraints_path = None
             self.current_input_data = None
             self.inputs_path = None
@@ -226,17 +251,19 @@ class CelloLibrary:
         
         # Load the UCF file - store raw UCF data
         try:
-            self.user_constrains = _read_cello_config_file(self.user_constraints_path)
+            self.user_constraints = _read_cello_config_file(self.user_constraints_path)
             logger.info(f"Loaded raw UCF data from {self.user_constraints_path}")
             
             # Load the input file - store raw input data
-            input_path = library_info.get("input")
+            input_path_original = library_info.get("input")
+            input_path = _copy(input_path_original)
             if input_path and os.path.exists(input_path):
                 self.current_input_data = _read_cello_config_file(input_path)
                 logger.info(f"Loaded raw input data from {input_path}")
 
             # Load the output file - store raw output data
-            output_path = library_info.get("output")
+            output_path_original = library_info.get("output")
+            output_path = _copy(output_path_original)
             if output_path and os.path.exists(output_path):
                 self.current_output_data = _read_cello_config_file(output_path)
                 logger.info(f"Loaded raw output data from {output_path}")
@@ -246,7 +273,7 @@ class CelloLibrary:
             logger.error(f"Failed to load or parse UCF library '{library_id}' from {self.user_constraints_path}: {e}")
             # Clear current state on load failure
             self.current_library_id = None
-            self.user_constrains = None
+            self.user_constraints = None
             self.user_constraints_path = None
             self.inputs_path = None
             self.outputs_path = None
@@ -255,13 +282,13 @@ class CelloLibrary:
             return False
         
         # Store input and output file paths if available
-        self.inputs_path = library_info.get("input")
+        self.inputs_path = input_path
         if self.inputs_path:
              logger.info(f"Registered input file: {self.inputs_path}")
         else:
              logger.info(f"No input file found for library {library_id}")
         
-        self.outputs_path = library_info.get("output")
+        self.outputs_path = output_path
         if self.outputs_path:
             logger.info(f"Registered output file: {self.outputs_path}")
         else:
@@ -271,12 +298,12 @@ class CelloLibrary:
         self.current_library_id = library_id
         logger.info(f"Successfully selected library: {library_id}")
         
-        # Update active context to use base library files
+        # Update active context to use working copy
         self._active_context = {
             "ucf_path": self.user_constraints_path,
             "input_path": self.inputs_path,
             "output_path": self.outputs_path,
-            "context_type": "base"
+            "context_type": "working_copy"
         }
         
         return True
@@ -299,10 +326,10 @@ class CelloLibrary:
             except Exception as e:
                 logger.error(f"Failed to load custom UCF: {e}")
                 # Fall back to base library
-                return self.user_constrains
+                return self.user_constraints
         
         # Default to base library data
-        return self.user_constrains
+        return self.user_constraints
     
     def get_input_sensor_data(self) -> Optional[List[Dict]]:
         """
@@ -357,7 +384,7 @@ class CelloLibrary:
         Returns:
             Path to the created UCF file or None if creation failed
         """
-        base_data = ucf_data if ucf_data is not None else self.user_constrains
+        base_data = ucf_data if ucf_data is not None else self.user_constraints
         if not base_data:
             logger.error("No UCF data available, cannot create custom UCF")
             return None
@@ -475,14 +502,14 @@ class CelloLibrary:
             "ucf_path": self.user_constraints_path,
             "input_path": self.inputs_path,
             "output_path": self.outputs_path,
-            "has_ucf_data": self.user_constrains is not None
+            "has_ucf_data": self.user_constraints is not None
         }
         
         # Add some statistics about the UCF if data is available
-        if self.user_constrains:
+        if self.user_constraints:
             # Count parts and gates in the raw UCF
-            parts_count = sum(1 for item in self.user_constrains if item.get("collection") == "parts")
-            gates_count = sum(1 for item in self.user_constrains if item.get("collection") == "gates")
+            parts_count = sum(1 for item in self.user_constraints if item.get("collection") == "parts")
+            gates_count = sum(1 for item in self.user_constraints if item.get("collection") == "gates")
             
             info["num_parts"] = parts_count
             info["num_gates"] = gates_count
@@ -500,7 +527,7 @@ class CelloLibrary:
         
         try:
             self.user_constraints_path = ucf_path
-            self.user_constrains = _read_cello_config_file(ucf_path)
+            self.user_constraints = _read_cello_config_file(ucf_path)
             # Mark the library ID to show it's a custom version
             if self.current_library_id and not self.current_library_id.startswith("custom_"):
                 self.current_library_id = f"custom_{self.current_library_id}"
@@ -512,26 +539,6 @@ class CelloLibrary:
         except Exception as e:
             logger.error(f"Failed to load or parse custom UCF from {ucf_path}: {e}")
             return False 
-
-    # ------------------------------------------------------------------
-    #  Draft-UCF transaction helpers
-    # ------------------------------------------------------------------
-
-    def begin_draft(self) -> None:
-        """Start a draft UCF if none exists.
-
-        All subsequent modification helpers operate on *self._draft_ucf* until
-        it is committed or rolled back.
-        """
-        if self.user_constrains is None:
-            raise RuntimeError("No library selected – cannot start draft.")
-        if self._draft_ucf is None:
-            import copy
-            self._draft_ucf = copy.deepcopy(self.user_constrains)
-
-    def discard_draft(self) -> None:
-        """Throw away any uncommitted draft changes."""
-        self._draft_ucf = None
 
     # ------------------------------------------------------------------
     #  High-level modification helpers
@@ -554,11 +561,9 @@ class CelloLibrary:
         """
         from src.library.cello_utils import duplicate_promoter_dependencies
 
-        if self.user_constrains is None:
+        if self.user_constraints is None:
             raise RuntimeError("No library selected.")
 
-        # Ensure a draft exists
-        self.begin_draft()
         successfully_saved_variants = []
         new_items_total: int = 0
         for i, var in enumerate(variants, start=1):
@@ -573,7 +578,7 @@ class CelloLibrary:
             from src.utils import extract_id_ecoli_spacer
 
             parent_part = next(
-                (p for p in self.user_constrains if p.get("collection") == "parts" and p.get("name") == parent_promoter),
+                (p for p in self.user_constraints if p.get("collection") == "parts" and p.get("name") == parent_promoter),
                 None,
             )
             if not parent_part:
@@ -588,12 +593,21 @@ class CelloLibrary:
 
             # Use helper to duplicate deps into *new_items*
             new_items, _gate_map = duplicate_promoter_dependencies(
-                self._draft_ucf, parent_promoter, new_promoter_id, new_seq, ymax
+                self.user_constraints, parent_promoter, new_promoter_id, new_seq, ymax
             )
-            self._draft_ucf.extend(new_items)
+            self.user_constraints.extend(new_items)
             new_items_total += len(new_items)
             var['name'] = new_promoter_id
             successfully_saved_variants.append(var)
+
+        # Persist the updated UCF to disk immediately (no draft stage)
+        if self.user_constraints_path:
+            try:
+                with open(self.user_constraints_path, "w") as fh:
+                    json.dump(self.user_constraints, fh, indent=2)
+                logger.info("Saved %s new promoter variants to %s", new_items_total, self.user_constraints_path)
+            except Exception as exc:
+                logger.error("Failed to write updated UCF: %s", exc)
 
         return successfully_saved_variants
 
@@ -601,36 +615,8 @@ class CelloLibrary:
     #  Commit draft
     # ------------------------------------------------------------------
 
-    def commit_draft_ucf(self, ucf_name: str | None = None) -> str:
-        """Write the draft UCF to disk and load it as the current library.
-
-        Returns the path of the written file.
-        """
-        if self._draft_ucf is None:
-            raise RuntimeError("No draft UCF to commit.")
-
-        path = self.create_custom_ucf(
-            selected_gates=None,
-            selected_parts=None,
-            modified_parts=None,
-            new_parts=None,
-            ucf_name=ucf_name,
-            output_dir="outputs/custom_ucf",
-            ucf_data=self._draft_ucf,  # type: ignore[arg-type]
-        )
-
-        self.load_custom_ucf(path)
-        self._draft_ucf = None
-        
-        # Update active context to use the committed custom UCF
-        self._active_context = {
-            "ucf_path": path,
-            "input_path": self.inputs_path,  # Keep base input/output for now
-            "output_path": self.outputs_path,
-            "context_type": "custom"
-        }
-        
-        return path
+    # (commit_draft_ucf removed – working copy is always saved immediately via
+    #  create_custom_ucf / load_custom_ucf workflows. No draft stage.)
 
     def get_active_ucf_path(self) -> Optional[str]:
         """Get the path to the currently active UCF file."""
@@ -649,7 +635,7 @@ class CelloLibrary:
         return {
             **self._active_context,
             "library_id": self.current_library_id,
-            "has_draft": self._draft_ucf is not None
+            "has_draft": False
         }
 
     def switch_to_custom_context(self, ucf_path: str, input_path: str = None, output_path: str = None) -> bool:
@@ -684,7 +670,7 @@ class CelloLibrary:
 
     def find_part_by_sequence(self, sequence: str) -> Optional[str]:
         """Find a part by sequence."""
-        for part in self.user_constrains:
+        for part in self.user_constraints:
             if part.get("collection") == "parts":
                 if 'dnasequence' in part and part.get("dnasequence") and part.get("dnasequence").lower() == sequence.lower():
                     return part.get("name")
@@ -693,3 +679,12 @@ class CelloLibrary:
                 
         return None
     
+    def to_dict(self) -> Dict[str, Any]:
+        """Convert the library to a dictionary."""
+        return {
+            "current_library_id": self.current_library_id,
+            "user_constraints": self.get_ucf_data(),
+            "inputs": self.get_input_sensor_data(),
+            "outputs": self.get_output_device_data(),
+            "current_library_id": self.current_library_id,
+        }

@@ -219,3 +219,31 @@ class SearchBioNumbersTool(Tool):
         from src.integrations.bionumbers_integration import search_bionumbers   
         results = search_bionumbers(query)
         return {"success": True, "results": results}
+    
+
+class ArxivSearchTool(Tool):
+    name = "arxiv_search"
+    description = "Search the Arxiv database for scientific papers."
+    parameters = {
+        "type": "object",
+        "properties": {
+            "query": {"type": "string", "description": "The query to search for."}
+        },
+        "required": ["query"]
+    }
+
+    def execute(self, query: str):
+        from src.tools.li import ArxivToolSpec
+        import openai
+
+        openai.api_key = os.environ.get("OPENAI_API_KEY")
+        from llama_index.agent import OpenAIAgent
+        arxiv_tool = ArxivToolSpec()
+
+        agent = OpenAIAgent.from_tools(
+            arxiv_tool.to_tool_list(),
+            verbose=True,
+        )
+
+        results = agent.chat(query)
+        return {"success": True, "results": results}

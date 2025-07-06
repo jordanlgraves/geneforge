@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 import logging
 import json
-from src.examples.agent.example_harness import ExampleRunner
+from src.examples.agent.workflow_harness import WorkflowRunner
 from src.prompt_manager import get_system_prompt
 import src.library.cello_utils as cello_utils
 
@@ -21,7 +21,7 @@ Report the name of the final DNA sequence design if successful."""
 SYSTEM_PROMPT = get_system_prompt()
 
 
-class DesignWithPromoterVarsRunner(ExampleRunner):
+class DesignWithPromoterVarsRunner(WorkflowRunner):
     """
     Extension of ExampleRunner to check for a custom UCF file where the original
     promoter has been replaced by variants, and Cello results are present.
@@ -33,30 +33,158 @@ class DesignWithPromoterVarsRunner(ExampleRunner):
         2. Cello results were obtained.
         3. The custom UCF contains the new variants and not the original.
         """
-        has_custom_ucf = hasattr(self.session_state, 'cello_library.user_constraints_path') and self.session_state.cello_library.user_constraints_path is not None
         has_cello_results = self.session_state.cello_results is not None
 
-        if not (has_custom_ucf and has_cello_results):
-            return False
+        return has_cello_results
 
-        # Extra validation: check the content of the final UCF
-        try:
-            with open(self.session_state.cello_library.user_constraints_path) as f:
-                ucf_data = json.load(f)
+        
+    @staticmethod
+    def score_run(messages, session_state_history):
+        # The different criteria that are scored and the points for each
+        HAS_3_UNIQUE_PROMOTERS, POINTS_FOR_3_UNIQUE_PROMOTERS = False, 5
+        HAS_3_NEW_PROMOTERS, POINTS_FOR_3_NEW_PROMOTERS = False, 5
+        HAS_3_NEW_PROMOTER_SEQUENCES, POINTS_FOR_3_NEW_PROMOTER_SEQUENCES = False, 5
+        HAS_CORRECT_ORDER, POINTS_FOR_CORRECT_ORDER = False, 2
+        NUM_TOOL_FAILURES, POINTS_FOR_NO_TOOL_FAILURES = 0, 2
+        HAS_CORRECT_TRUTH_TABLE, POINTS_FOR_CORRECT_TRUTH_TABLE = False, 5
+        
+        from src.library.cello_library import CelloLibrary
+        base_cello_library = CelloLibrary()
+        base_cello_library.select_library("Eco1C1G1T1")
+        original_promoters = [p for p in base_cello_library.get_ucf_data() if p.get('collection') == 'parts' and p.get('type') == 'promoter']
+        original_promoters_names = [p.get('name') for p in original_promoters]
+        original_promoters_sequences = [p.get('sequence') for p in original_promoters]
+
+        score = 0
+        
+        last_session_state = session_state_history[-1]['state']
+        cello_results = last_session_state.get("cello_results")
+        if cello_results:
+            cello_library = last_session_state.get("cello_library")
+            if cello_library:
+                ucf_data = cello_library.get('user_constraints')
+                if ucf_data:
+                    """
+                    Check there are three unique promoters in the ucf_data
+                    """
+                    promoters = [p for p in ucf_data if p.get('collection') == 'parts' and p.get('type') == 'promoter']
+                    final_promoter_names = [p.get('name') for p in promoters]
+                    final_promoter_sequences = [p.get('dnasequence') for p in promoters]
+                    num_promoters = len(set([p.get('name') for p in promoters]))
+                    if num_promoters == 3:
+                        HAS_3_UNIQUE_PROMOTERS = True
+                    
+                    """
+                    Check that the new promoters are novel in name
+                    """
+                    new_promoter_names = set(final_promoter_names) - set(original_promoters_names)
+                    if len(new_promoter_names) == 3:
+                        HAS_3_NEW_PROMOTERS = True
+
+                    """
+                    Check that the sequences are different
+                    """
+                    new_promoter_sequences = set(final_promoter_sequences) - set(original_promoters_sequences)
+                    if len(new_promoter_sequences) == 3:
+                        HAS_3_NEW_PROMOTER_SEQUENCES = True
+                    
+            """
+            Check that the truth table is correct
+            """
+            activity_table = cello_results.get('dna_design', dict()).get('activity_table', '')
+            if activity_table:
+                from src.library.cello_utils import parse_activity_table
+                df_scores, df_binary = parse_activity_table(activity_table)                
+                input_1_col = df_binary.iloc[:, 0]
+                input_2_col = df_binary.iloc[:, 1]
+                output_col = df_binary.iloc[:, 2]
+                for in1, in2, out in zip(input_1_col, input_2_col, output_col):
+                    # check that matches a NOR gate truth table
+                    if in1 == 1 and in2 == 1:
+                        if out != 0:
+                            HAS_CORRECT_TRUTH_TABLE = False
+                    else: # all other cases should have output 0
+                        if out != 1:
+                            HAS_CORRECT_TRUTH_TABLE = False
+
+        
+        """
+        ADD POINTS for calling the correct functions
+        """
+        fn_order = ['select_library', 
+                    'list_promoters',
+                    'generate_verilog',
+                    'design_w_cello']
+        assistant_messages = [m for m in messages if m.get('role') == 'assistant']
+        agent_tool_calls = []
+        for message in assistant_messages:
+            tool_calls = message.get('tool_calls', [])
+            for tool_call in tool_calls:
+                tool_name = tool_call.get('function', dict()).get('name', None)
+                if tool_name in fn_order:
+                    agent_tool_calls.append(tool_name)
+                        
+        """
+        CHECK TOOL CALL ORDER
+        Validate that the agent invoked the critical tools in the required *relative* order.
+        We treat the expected list as an *ordered subsequence* of the actual calls list;
+        other calls may appear in-between and are ignored.
+        """
+        expected_idx = 0
+        for tool_name in agent_tool_calls:
+            if tool_name == fn_order[expected_idx]:
+                expected_idx += 1
+                if expected_idx == len(fn_order):
+                    break
+
+        if expected_idx == len(fn_order):
+            HAS_CORRECT_ORDER = True
             
-            # Check that the original promoter is gone
-            original_gone = cello_utils.get_part_by_name(ucf_data, "pTet") is None
-            
-            # Check that at least one variant exists
-            variants_exist = any("pTetvar" in p.get("name", "") for p in ucf_data if p.get("collection") == "parts")
+        """
+        COUNT TOOL FAILURES
+        """
+        tool_failures = []
+        tool_results = [m for m in messages if m.get('role') == 'tool']
+        for tr in tool_results:
+            content = json.loads(tr.get('content', ''))
+            if isinstance(content, str):
+                continue
+            if content.get('success', False) is False:
+                tool_failures.append(tr)
+        NUM_TOOL_FAILURES = len(tool_failures)
+        
+        """
+        ADD POINTS FOR THE CRITERIA THAT WERE MET
+        """
+        if HAS_3_UNIQUE_PROMOTERS:
+            score += POINTS_FOR_3_UNIQUE_PROMOTERS
+        if HAS_3_NEW_PROMOTERS:
+            score += POINTS_FOR_3_NEW_PROMOTERS
+        if HAS_3_NEW_PROMOTER_SEQUENCES:
+            score += POINTS_FOR_3_NEW_PROMOTER_SEQUENCES
+        if HAS_CORRECT_ORDER:   
+            score += POINTS_FOR_CORRECT_ORDER
+        if NUM_TOOL_FAILURES == 0:
+            score += POINTS_FOR_NO_TOOL_FAILURES
+        if HAS_CORRECT_TRUTH_TABLE:
+            score += POINTS_FOR_CORRECT_TRUTH_TABLE
 
-            if not (original_gone and variants_exist):
-                self.logger.warning(f"Final UCF validation failed: original_gone={original_gone}, variants_exist={variants_exist}")
+        # small penalty based on number of messages
+        num_messages = len(messages)
+        score -= num_messages * 0.05
 
-            return original_gone and variants_exist
-        except Exception as e:
-            self.logger.error(f"Failed to validate final UCF content: {e}")
-            return False
+        score = float(score) / 24
+
+        return {'score': score, 
+                'num_tool_failures': NUM_TOOL_FAILURES, 
+                'num_messages': num_messages,
+                'num_tool_calls': len(agent_tool_calls),
+                'num_agent_messages': len(assistant_messages),
+                'has_3_unique_promoters': HAS_3_UNIQUE_PROMOTERS,
+                'has_3_new_promoters': HAS_3_NEW_PROMOTERS,
+                'has_3_new_promoter_sequences': HAS_3_NEW_PROMOTER_SEQUENCES,
+                'has_correct_order': HAS_CORRECT_ORDER,
+                'has_correct_truth_table': HAS_CORRECT_TRUTH_TABLE}
 
 
 def run_example():
@@ -75,7 +203,8 @@ def run_example():
     
     final_result = runner.run()
     runner.log_results(final_result)
-
+    
+    return runner
 
 if __name__ == "__main__":
     run_example()

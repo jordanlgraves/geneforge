@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 import logging
 import json
-from src.examples.agent.example_harness import ExampleRunner
+from src.examples.agent.workflow_harness import WorkflowRunner
 from src.prompt_manager import get_system_prompt
 import src.library.cello_utils as cello_utils
 
@@ -19,7 +19,7 @@ Report the name of the final DNA sequence design if successful."""
 SYSTEM_PROMPT = get_system_prompt()
 
 
-class DesignWithPromoterVarsWResearchRunner(ExampleRunner):
+class DesignWithPromoterVarsWResearchRunner(WorkflowRunner):
     """
     Extension of ExampleRunner to check for a custom UCF file where the original
     promoter has been replaced by variants, and Cello results are present.

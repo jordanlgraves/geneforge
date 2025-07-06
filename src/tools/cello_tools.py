@@ -463,10 +463,10 @@ class DesignWithCelloTool(Tool):
         # Pass the library_manager from the session state
         cello = CelloIntegration(
             cello_config=config or {},
-            library_manager=cello_library
+            library_manager=cello_library,
+            output_root=str(self.session_state.output_directory) if self.session_state.output_directory else None
         )
 
-        output_dir = f"outputs/cello_run_{cello_library.current_library_id}"
     
         self.session_state.set_verilog_code(verilog_code) # let's update the sessions state's verilog_code with the new verilog code
         results = cello.run_cello(run_name=run_name, verilog_code=verilog_code, custom_ucf=os.path.basename(ucf_path))
@@ -523,7 +523,10 @@ class CreateCustomUcfTool(Tool):
         is_dna = set(part).issubset(dna_chars)
         return is_dna
     
-    def execute(self, selected_gates: List[str] = None, selected_parts: List[str] = None, modified_parts: Dict[str, Dict] = None, ucf_name: str = None) -> Dict[str, Any]:
+    def execute(self, selected_gates: List[str] = None, 
+                selected_parts: List[str] = None, 
+                modified_parts: Dict[str, Dict] = None, 
+                ucf_name: str = None) -> Dict[str, Any]:
         """Create a customized UCF file based on the currently selected library."""
         cello_library = self.session_state.cello_library
         from src.library.cello_utils import get_part_by_name
@@ -534,7 +537,6 @@ class CreateCustomUcfTool(Tool):
         if not base_ucf_data:
              return {"error": f"Could not retrieve base UCF data for library {cello_library.current_library_id}."}
 
-        output_dir = "outputs/custom_ucf"
         custom_ucf_name = ucf_name or f"custom_{cello_library.current_library_id}.UCF.json"
 
         try:
@@ -555,6 +557,7 @@ class CreateCustomUcfTool(Tool):
                                 promoter_seq = col.get("dnasequence")
                                 if promoter_seq and part_id_or_sequence.lower() in promoter_seq.lower():
                                     # Could be this one
+                                    from src.utils import extract_id_ecoli_spacer
                                     spacer = extract_id_ecoli_spacer(part_id_or_sequence)
                                     if spacer:
                                         part_id = col.get("name")
@@ -575,7 +578,7 @@ class CreateCustomUcfTool(Tool):
                 selected_parts=part_ids,
                 modified_parts=modified_parts,
                 ucf_name=custom_ucf_name,
-                output_dir=output_dir
+                output_dir=self.session_state.output_directory
             )
 
             if custom_ucf_path:
@@ -760,39 +763,8 @@ class GenerateVerilogToolLLM(Tool):
 
 
 # ---------------------------------------------------------------------------
-#  CommitCustomLibraryTool – finalises draft UCF
+#  GetCelloLibraryStatusTool
 # ---------------------------------------------------------------------------
-
-
-class CommitCustomLibraryTool(Tool):
-    name = "commit_custom_library"
-    description = "Write the current draft UCF (if any) to disk, load it, and set it as the active library. Optionally specify the filename."
-    parameters = {
-        "type": "object",
-        "properties": {
-            "ucf_name": {"type": "string", "description": "Filename for the custom UCF (must end with .UCF.json)", "default": None},
-        },
-        "required": [],
-    }
-
-    def execute(self, ucf_name: str | None = None):
-        cello_library = self.session_state.cello_library
-        try:
-            path = cello_library.commit_draft_ucf(ucf_name)
-            self.session_state.custom_ucf_path = path
-            
-            # Get updated context info
-            context_info = cello_library.get_active_context_info()
-            
-            return {
-                "success": True, 
-                # "custom_ucf_path": path,
-                "active_context": context_info,
-                "message": f"Custom library committed and activated. Context: {context_info['context_type']}"
-            }
-        except Exception as exc:
-            return {"error": str(exc)}
-
 
 class GetCelloLibraryStatusTool(Tool):
     name = "get_cello_library_status"

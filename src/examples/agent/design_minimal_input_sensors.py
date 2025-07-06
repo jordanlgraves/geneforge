@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 import logging
-from src.examples.agent.example_harness import ExampleRunner
+from src.examples.agent.workflow_harness import WorkflowRunner
 from src.prompt_manager import get_system_prompt
 
 # Set up logging
@@ -14,7 +14,7 @@ Use Cello to design the circuit with your custom input sensor file.
 After the simulation is complete, read the circuit score from the output file and return it as a JSON object with the key 'circuit_score'."""
 
 SYSTEM_PROMPT = get_system_prompt()
-class MinimalInputSensorsRunner(ExampleRunner):
+class MinimalInputSensorsRunner(WorkflowRunner):
     """Extension of ExampleRunner to check for both custom input sensors file and Cello results."""
 
     def check_success(self) -> bool:

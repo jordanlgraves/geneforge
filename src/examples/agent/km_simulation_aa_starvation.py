@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 import logging
-from src.examples.agent.example_harness import ExampleRunner
+from src.examples.agent.workflow_harness import WorkflowRunner
 
 # Set up logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
@@ -23,7 +23,7 @@ Please create the model, use bionumbers or scientific search to find appropriate
 # | Basal GTP turnover                      | Growth-rate-dependent production/consumption rates |
 # | ppGpp degradation by NudG (if modelled) | kcat, Km                                           |
 
-class KMAminoAcidStarvationExample(ExampleRunner):
+class KMAminoAcidStarvationExample(WorkflowRunner):
     """Extension of ExampleRunner to check for both custom input sensors file and Cello results."""
 
     def check_success(self) -> bool:

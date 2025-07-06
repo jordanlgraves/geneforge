@@ -1,5 +1,6 @@
 import json
 import os
+import io
 import uuid
 import copy
 import logging
@@ -7,6 +8,8 @@ import tempfile
 from typing import Dict, List, Optional, Tuple, Union, Any, Set
 from pathlib import Path
 import dotenv
+import pandas as pd
+import functools
 
 dotenv.load_dotenv()
 
@@ -17,7 +20,7 @@ from jsonschema import ValidationError
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger("part_library_customizer")
+logger = logging.getLogger("cello_utils")
 
 VERBOSE = True
 
@@ -27,7 +30,19 @@ SCHEMA_DIR = os.path.dirname(UCF_SCHEMA_PATH)
 INPUT_SENSOR_SCHEMA_PATH = os.path.join(CELLO_UCF_ROOT, "schemas", "v2", "input_sensor_file.schema.json")
 OUTPUT_DEVICE_SCHEMA_PATH = os.path.join(CELLO_UCF_ROOT, "schemas", "v2", "output_device_file.schema.json")
 
-# Initialize validators
+# ---------------------------------------------------------------------------
+#  Schema / validator utilities (lazy-loaded, no globals)
+# ---------------------------------------------------------------------------
+
+# NOTE: We keep the heavy work (reading JSON schema files, building JSONSchema
+# validators, scanning the schema directory) behind a lazily-evaluated cache so
+# that importing this module incurs zero overhead unless validation is actually
+# requested.  In addition, we avoid mutable module-level state – everything is
+# created once and cached via ``functools.lru_cache``.
+
+# Internal helper that *creates* the validators (no caching!).  Do **NOT** call
+# this directly – use :pyfunc:`_get_validators` instead.
+
 def _initialize_validators():
     """Initialize and return schema validators"""
     # Check schema path
@@ -71,14 +86,30 @@ def _initialize_validators():
     
     return ucf_validator, input_sensor_validator, output_device_validator, ucf_schema
 
-# Initialize validators once
-ucf_validator, input_sensor_validator, output_device_validator, ucf_schema = _initialize_validators()
-missing_schemas = []
+# ---------------------------------------------------------------------------
+#  Public accessor – returns cached validators
+# ---------------------------------------------------------------------------
 
-def _find_schema_references(schema, found_schemas):
-    """Recursively find schema references in a schema object"""
-    global missing_schemas
-    
+@functools.lru_cache(maxsize=1)
+def _get_validators():
+    """Return *(ucf_validator, input_sensor_validator, output_device_validator)*.
+
+    The heavy lifting is performed only on the *first* call thanks to the
+    ``lru_cache`` decorator.  Subsequent calls reuse the cached objects.
+    """
+
+    ucf_validator, input_sensor_validator, output_device_validator, ucf_schema = _initialize_validators()
+
+    # Perform a one-off sanity check that all referenced schemas are available
+    # inside the schema directory.  This is *informational* – we only log the
+    # outcome so that validation can still proceed even when some ancillary
+    # schemas are missing.
+    _scan_schema_directory(ucf_schema)
+
+    return ucf_validator, input_sensor_validator, output_device_validator
+
+def _find_schema_references(schema, found_schemas, missing_schemas):
+    """Recursively collect external schema references found in *schema*."""
     if not isinstance(schema, dict):
         return
         
@@ -91,22 +122,22 @@ def _find_schema_references(schema, found_schemas):
         elif ref.startswith("file:"):
             # External file reference
             ref_filename = os.path.basename(ref.replace("file:", ""))
-            if ref_filename not in found_schemas and ref_filename not in missing_schemas:
-                missing_schemas.append(ref_filename)
+            if ref_filename not in found_schemas:
+                missing_schemas.add(ref_filename)
     
     # Recursively check all objects and arrays
     for key, value in schema.items():
         if isinstance(value, dict):
-            _find_schema_references(value, found_schemas)
+            _find_schema_references(value, found_schemas, missing_schemas)
         elif isinstance(value, list):
             for item in value:
                 if isinstance(item, dict):
-                    _find_schema_references(item, found_schemas)
+                    _find_schema_references(item, found_schemas, missing_schemas)
 
-def _scan_schema_directory():
-    """Scan the schema directory structure and report missing schemas"""
-    global missing_schemas
-    
+def _scan_schema_directory(ucf_schema) -> None:
+    """Scan *SCHEMA_DIR* and log any schema files referenced from *ucf_schema*
+    that are missing on disk.
+    """
     if not SCHEMA_DIR or not os.path.exists(SCHEMA_DIR):
         raise ValueError(f"Schema directory not found: {SCHEMA_DIR}")
         
@@ -118,7 +149,7 @@ def _scan_schema_directory():
     
     # List all schema files present
     schema_files = []
-    missing_schemas = []
+    missing_schemas: Set[str] = set()
     
     # Check schema directory
     try:
@@ -130,7 +161,7 @@ def _scan_schema_directory():
     
     # Look for required schemas from schema references
     if ucf_schema:
-        _find_schema_references(ucf_schema, schema_files)
+        _find_schema_references(ucf_schema, schema_files, missing_schemas)
         
     # Log the results
     if schema_files:
@@ -139,8 +170,13 @@ def _scan_schema_directory():
     else:
         raise ValueError(f"No schema files found in {SCHEMA_DIR}")
 
-# Scan schema directory on module initialization
-_scan_schema_directory()
+    # Report any missing external schemas – purely informational.
+    if missing_schemas and VERBOSE:
+        logger.warning(
+            "Missing {n} referenced schema file(s): {lst}".format(
+                n=len(missing_schemas), lst=", ".join(sorted(missing_schemas))
+            )
+        )
 
 def validate_ucf(ucf_data: List[Dict]) -> Dict[str, Any]:
     """
@@ -165,7 +201,8 @@ def validate_ucf(ucf_data: List[Dict]) -> Dict[str, Any]:
     }
     
     try:
-        # Validate the whole UCF
+        # Validate the whole UCF – grab the cached validator on demand.
+        ucf_validator, _, _ = _get_validators()
         ucf_validator.validate(ucf_data)
     except ValidationError as e:
         result["valid"] = False
@@ -1188,3 +1225,23 @@ def customize_existing_input_sensors_file(
         output_filename=os.path.basename(output_file_path),
         output_dir=os.path.dirname(output_file_path)
     )
+    
+
+def parse_activity_table(table_str_or_path: str) -> Tuple[pd.DataFrame, pd.DataFrame]:
+    if os.path.exists(table_str_or_path):
+        table_str = open(table_str_or_path, 'r').read()
+    
+    # skip the first line
+    table_lines = table_str.split('\n')[1:]
+
+    # split into the two tables. 
+    # Table 1 is all lines before the first occurrence of '""'
+    split_idx = table_lines.index('""')
+
+    table_str_scores = '\n'.join(table_lines[:split_idx])
+    table_str_binary = '\n'.join(table_lines[split_idx + 2:]) # skip the '""' line and the 'Binary' line
+
+    df_scores = pd.read_csv(io.StringIO(table_str_scores), index_col=None)
+    df_binary = pd.read_csv(io.StringIO(table_str_binary), index_col=None)
+
+    return df_scores, df_binary

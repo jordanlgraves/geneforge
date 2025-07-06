@@ -32,6 +32,8 @@ def get_llm_client(client_type: str = None, reasoning: bool = False) -> Optional
     openai_api_key = os.getenv("OPENAI_API_KEY", "")
     deepseek_api_key = os.getenv("DEEPSEEK_API_KEY", "")
     deepseek_base_url = os.getenv("DEEPSEEK_BASE_URL", "")
+    openai_model = os.getenv("OPENAI_MODEL", "")
+    openai_model_reasoning = os.getenv("OPENAI_MODEL_REASONING", "")
 
     client: Optional[OpenAI] = None
     model: Optional[str] = None
@@ -40,7 +42,7 @@ def get_llm_client(client_type: str = None, reasoning: bool = False) -> Optional
         logger.info("Using OpenAI API")
         try:
             client = OpenAI(api_key=openai_api_key)
-            model = "gpt-4o-mini"  if not reasoning else "o3-mini"
+            model = openai_model if not reasoning else openai_model_reasoning
             # Test connection (optional but recommended)
             client.models.list()
             logger.info(f"Successfully connected to OpenAI with model {model}")
@@ -76,10 +78,14 @@ def get_or_create_assistant(client: OpenAI, session_state: SessionState, system_
         return session_state.assistant_id
 
     logger.info("Creating new assistant...")
+    import dotenv
+    dotenv.load_dotenv()
+    openai_model = os.getenv("OPENAI_MODEL", "")
+    
     assistant = client.beta.assistants.create(
         name="GeneForge Assistant",
         instructions=system_prompt,
-        model="gpt-4o-mini",
+        model=openai_model,
         tools=tool_functions,
         temperature=0.0
     )

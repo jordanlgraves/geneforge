@@ -49,15 +49,31 @@ class SessionState:
             self.chat_logger = None
 
         try:
-            # try setting the output directory from the env vars
+            #  Determine a unique output directory for *this* session.  If the
+            #  environment variable ``SESSION_STATE_OUTDIR`` is set we treat it
+            #  as the *root* folder; otherwise we default to
+            #  ``outputs/session_runs``.  A timestamp sub-directory guarantees
+            #  that concurrent or subsequent sessions never overwrite each
+            #  other.
+
             import dotenv
-            
+
             dotenv.load_dotenv()
-            out_folder_name = time.strftime("%Y%m%d_%H%M%S")
-            self.output_directory = Path(os.getenv("SESSION_STATE_OUTDIR")) / out_folder_name
+
+            # Root folder can be customised via env-var; fall back to project
+            # relative path.
+            root_dir = os.getenv("SESSION_STATE_OUTDIR") or "outputs/session_runs"
+
+            # Use YYYYMMDD_HHMMSS so lexical order matches chronological order
+            timestamp = time.strftime("%Y%m%d_%H%M%S")
+
+            self.output_directory = Path(root_dir) / timestamp
+
+            # Ensure the directory exists
             os.makedirs(self.output_directory, exist_ok=True)
         except Exception as exc:
-            logger.warning("Output directory not set – %s", exc)
+            # Should rarely happen but keep the previous behaviour as a safety
+            logger.warning("Output directory not initialised – %s", exc)
             self.output_directory = None
 
         # ------------------------------------------------------------------
@@ -101,15 +117,11 @@ class SessionState:
     def to_dict(self) -> Dict[str, Any]:
         """Convert the session state to a dictionary."""
         return {
-            "library_manager": {"current_library_id": self.cello_library.current_library_id},
-            "current_ucf_data": self.cello_library.user_constrains,
-            "custom_ucf_path": self.cello_library.user_constraints_path,
-            "custom_input_path": self.cello_library.inputs_path,
-            "custom_output_path": self.cello_library.outputs_path,
+            "cello_library": self.cello_library.to_dict(),
+            "cello_results": self.cello_results,
             "verilog_code": self.verilog_code,
             "design_spec": self.design_spec,
             "chat_rounds": self.chat_rounds,
-            "cello_results": self.cello_results,
             "assistant_id": self.assistant_id,  
             "thread_id": self.thread_id,
             "parameter_template": self.parameter_template,
@@ -125,7 +137,7 @@ class SessionState:
         success = self.cello_library.select_library(library_id)
         if success:
             # Update session state's copy of UCF data if needed
-            self.cello_library.user_constrains = self.cello_library.get_ucf_data()
+            self.cello_library.user_constraints = self.cello_library.get_ucf_data()
             logger.info(f"Session state updated with UCF data for {library_id}")
             
             # Automatically calibrate ProD
@@ -204,7 +216,7 @@ class SessionState:
         
         import random, math
 
-        ucf_data = self.cello_library.user_constrains
+        ucf_data = self.cello_library.user_constraints
         if not ucf_data:
             return {"success": False, "error": "No UCF loaded"}
 
@@ -356,8 +368,6 @@ class SessionState:
                 return  # already tracked
         self.generated_files.append({"path": str(p), "label": label or p.name})
 
-    # Add methods to update and retrieve other state variables as needed
-    # e.g., set_custom_ucf_path, get_cello_results, etc. 
 
     def record_snapshot(self, msg_index: int | None = None):
         """Record a snapshot of the current session state.
