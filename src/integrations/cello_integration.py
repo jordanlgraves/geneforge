@@ -1,4 +1,5 @@
 # cello_integration.py
+from datetime import datetime
 import subprocess
 import os
 import time
@@ -23,13 +24,14 @@ sys.path.append(CELLO_ROOT)
 from core_algorithm.celloAlgo import CELLO3
 
 
-from src.library.cello import CelloLibrary
+from src.library.cello_library import CelloLibrary
 
 class CelloIntegration:
     def __init__(self, 
                 cello_config: Optional[Dict] = None,
                 library_id: Optional[str] = None,
-                library_manager: Optional[CelloLibrary] = None):
+                library_manager: Optional[CelloLibrary] = None,
+                output_root: Optional[str | Path] = None):
         # Default configuration that can be overridden
 
         self.cello_config = {
@@ -43,6 +45,19 @@ class CelloIntegration:
 
         self.java_process = None
         self.log_buffer = []
+
+        # ------------------------------------------------------------------
+        #  Output folder management
+        # ------------------------------------------------------------------
+        # If *output_root* is provided (e.g. SessionState.output_directory) we
+        # keep all Cello artefacts inside that folder.  Otherwise fall back to
+        # the historical default ``outputs/cello_run``.
+        self.outputs_root = Path(output_root) if output_root else Path("outputs/cello_run")
+        # Ensure the root exists so downstream helpers can create children
+        self.outputs_root.mkdir(parents=True, exist_ok=True)
+
+        # Now that *self.outputs_root* exists, configure logging so the log file
+        # also lives inside the same hierarchy.
         self._setup_logging()
         
         # Use provided library_manager or create a new one if necessary
@@ -69,9 +84,12 @@ class CelloIntegration:
             def emit(self, record):
                 self.log_buffer.append(self.format(record))
 
-        # Add handlers for both file and memory capture
-        os.makedirs('outputs/cello_outputs', exist_ok=True)
-        file_handler = logging.FileHandler('outputs/cello_outputs/cello_run.log')
+        # Add handlers for both file and memory capture – keep log within
+        # the chosen *outputs_root* so sessions remain self-contained.
+        log_dir = self.outputs_root / "cello_outputs"
+        log_dir.mkdir(parents=True, exist_ok=True)
+
+        file_handler = logging.FileHandler(log_dir / "cello_run.log")
         capture_handler = LogCaptureHandler(self.log_buffer)
         
         formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
@@ -204,6 +222,7 @@ class CelloIntegration:
             Dict containing:
             - success: bool
             - log: str (captured log output)
+            - output_dir: str (path to the run folder)
             - results: Dict (Cello results including DNA design)
         """
         # try:
@@ -228,18 +247,24 @@ class CelloIntegration:
         self.logger.info("\nlibrary_id: %s", self.cello_library.current_library_id)
 
         
-        # create a run folder for this run
-        run_folder = os.path.join("outputs", "cello_run", run_name)
-        os.makedirs(run_folder, exist_ok=True)
-        verilogs_path = os.path.join(run_folder, "verilogs") # folder to hold verilog files
-        constraints_path = os.path.join(run_folder, "constraints") # folder to hold input, output and custom UCF files 
+        # ------------------------------------------------------------------
+        #  Create a session-scoped run folder (timestamped) so that multiple
+        #  Cello invocations within the same session remain grouped while still
+        #  avoiding name clashes between *run_name*s.
+        # ------------------------------------------------------------------
 
-        os.makedirs(verilogs_path, exist_ok=True)
-        os.makedirs(constraints_path, exist_ok=True)
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        run_folder = self.outputs_root / str(timestamp) / str(run_name)
+
+        verilogs_path = run_folder / "verilogs"  # Verilog files
+        constraints_path = run_folder / "constraints"  # input/output/UCF files
+
+        verilogs_path.mkdir(parents=True, exist_ok=True)
+        constraints_path.mkdir(parents=True, exist_ok=True)
 
         # Process Verilog code if provided
         VERILOG_FILE_NAME = "main.v"
-        verilog_path = os.path.join(verilogs_path, VERILOG_FILE_NAME)
+        verilog_path = verilogs_path / VERILOG_FILE_NAME
         with open(verilog_path, 'w') as f:
             f.write(verilog_code)
 
@@ -295,8 +320,8 @@ class CelloIntegration:
 
         cello_args = {
             "v_name": VERILOG_FILE_NAME,
-            "verilogs_path": verilogs_path,
-            "constraints_path": constraints_path,
+            "verilogs_path": str(verilogs_path),
+            "constraints_path": str(constraints_path),
             "ucf_name": UCF_FILE_NAME,
             "in_name": INPUT_SENSOR_FILE_NAME,
             "out_name": OUTPUT_DEVICES_FILE_NAME,
@@ -310,6 +335,7 @@ class CelloIntegration:
         return {
             'success': True,
             'log': '\n'.join(self.log_buffer),
+            'output_dir': str(run_folder),
             'results': {
                 'output_path': os.path.join(output_path, VERILOG_FILE_NAME),
                 'dna_design': self._parse_cello_output(os.path.join(output_path, VERILOG_FILE_NAME))

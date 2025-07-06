@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 import logging
-from src.examples.agent.example_harness import ExampleRunner
+from src.examples.agent.workflow_harness import WorkflowRunner
 
 # Set up logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
@@ -13,7 +13,7 @@ In E. coli, the repressor LacI decays in the cytoplasm at 37 °C, pH 7.0.
 Please create the model, use bionumbers or scientific search to find appropriate parameters, then run the simulation."""
 
 
-class KMEColiLacIDecayExample(ExampleRunner):
+class KMEColiLacIDecayExample(WorkflowRunner):
     """Extension of ExampleRunner to check for both custom input sensors file and Cello results."""
 
     def check_success(self) -> bool:

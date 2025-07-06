@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 import logging
-from src.examples.agent.example_harness import ExampleRunner
+from src.examples.agent.workflow_harness import WorkflowRunner
 from src.prompt_manager import get_system_prompt
 
 # Set up logging
@@ -14,7 +14,7 @@ After the parameters are filled in, run the simulation with parameters that will
 """
 
 SYSTEM_PROMPT = get_system_prompt()
-class SimpleNotGateSimulationRunner(ExampleRunner):
+class SimpleNotGateSimulationRunner(WorkflowRunner):
     def check_success(self) -> bool:
         has_cello_results = self.session_state.get_cello_results() is not None
         

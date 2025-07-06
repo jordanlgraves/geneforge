@@ -45,7 +45,6 @@ TOOL_REGISTRY[GetDnaPartByNameTool.name] = GetDnaPartByNameTool
 TOOL_REGISTRY[ListTerminatorsTool.name] = ListTerminatorsTool
 TOOL_REGISTRY[AddPromoterVariantTool.name] = AddPromoterVariantTool
 TOOL_REGISTRY[RemovePromoterTool.name] = RemovePromoterTool
-TOOL_REGISTRY[CommitCustomLibraryTool.name] = CommitCustomLibraryTool
 TOOL_REGISTRY[GetCelloLibraryStatusTool.name] = GetCelloLibraryStatusTool
 TOOL_REGISTRY[CreateCustomUcfTool.name] = CreateCustomUcfTool
 TOOL_REGISTRY[CreateCustomInputSensorsFileTool.name] = CreateCustomInputSensorsFileTool

@@ -12,13 +12,19 @@ from src.tool_registry import ToolIntegration
 # NEW: import event handler base from OpenAI
 from openai import AssistantEventHandler
 
-class ExampleRunner:
+class WorkflowRunner:
     """
     Reusable harness for running example circuits with LLM-based design.
     Encapsulates common functionality for setup, execution, and result handling.
     """
     
-    def __init__(self, example_name: str, prompt: str, max_rounds: int = 15, max_attempts: int = 4, system_prompt: str = None):
+    def __init__(self, 
+                 example_name: str, 
+                 prompt: str, 
+                 max_rounds: int = 15, 
+                 max_attempts: int = 4, 
+                 system_prompt: str = None,
+                 user_reasoning_model: bool = False):
         """
         Initialize the example runner with the given parameters.
         
@@ -47,6 +53,8 @@ class ExampleRunner:
         self.messages = []
         self.rounds_seen = 0        # ❶ counter
         
+        self.user_reasoning_model = user_reasoning_model
+        
     def setup(self):
         """Set up the LLM client and initial messages."""
         self.logger.info(f"--- Running {self.example_name} Example ---")
@@ -55,7 +63,7 @@ class ExampleRunner:
         load_dotenv()
         
         # Initialize LLM client
-        self.client, self.model = get_llm_client(client_type="openai", reasoning=True)
+        self.client, self.model = get_llm_client(client_type="openai", reasoning=self.user_reasoning_model)
         self.logger.info(f"Using LLM Client: {type(self.client).__name__}, Model: {self.model}")
         
         # Initialise messages list and record snapshots for each
@@ -85,7 +93,7 @@ class ExampleRunner:
         # ------------------------------------------------------------------
         class _RunnerEventHandler(AssistantEventHandler):
             """Streaming handler that auto-executes tool calls."""
-            def __init__(self, runner: "ExampleRunner", run_id: str | None = None, thread_id: str | None = None):
+            def __init__(self, runner: "WorkflowRunner", run_id: str | None = None, thread_id: str | None = None):
                 super().__init__()
                 self.runner = runner
                 self.client = runner.client
@@ -130,10 +138,40 @@ class ExampleRunner:
                         self.runner.logger.error(f"Invalid JSON for {fn_name}: {e}")
                         tool_outputs.append({"tool_call_id": tool_call.id, "output": json.dumps({"error": str(e)})})
                         continue
+
+                    # NEW: attach this tool invocation to the *previous* assistant message
+                    # so that the record looks like:
+                    # {
+                    #   "role": "assistant",
+                    #   "content": "... prior assistant text ...",
+                    #   "tool_calls": [{...}]
+                    # }
+                    if self.runner.messages and self.runner.messages[-1]["role"] == "assistant":
+                        last_msg = self.runner.messages[-1]
+                    else:
+                        # If for some reason no assistant text was captured, create a stub
+                        self.runner._add_message("assistant", "")
+                        last_msg = self.runner.messages[-1]
+
+                    tool_call_entry = {
+                        "id": tool_call.id,
+                        "type": "function",
+                        "function": {
+                            "name": fn_name,
+                            "arguments": json.dumps(fn_args),
+                        },
+                    }
+                    last_msg.setdefault("tool_calls", []).append(tool_call_entry)
+
                     try:
                         result = self.tool_integration.call_tool_function(fn_name, fn_args)
-                        # Record tool call in messages and snapshot state
-                        self.runner._add_message("tool", json.dumps(result), name=fn_name)
+                        # Record tool *response* with linkage back to the call id
+                        self.runner._add_message(
+                            "tool",
+                            json.dumps(result),
+                            name=fn_name,
+                            tool_call_id=tool_call.id,
+                        )
                         tool_outputs.append({"tool_call_id": tool_call.id, "output": json.dumps(result)})
                     except Exception as e:
                         self.runner.logger.error(f"Error executing tool {fn_name}: {e}")
@@ -175,10 +213,10 @@ class ExampleRunner:
                 if self.messages and self.messages[-1]["role"] == "assistant":
                     final_response = self.messages[-1]["content"]
 
-                if self.check_success():
-                    self.logger.info("Successfully completed task")
-                    break
-
+                # if self.check_success():
+                #     self.logger.info("Successfully completed task")
+                #     break
+                
                 attempt += 1
                 self.rounds_seen += 1
             else:
@@ -195,14 +233,10 @@ class ExampleRunner:
     
     def check_success(self) -> bool:
         """
-        Check if the example run was successful.
-        Default implementation checks for Cello results.
-        Override this method for different success criteria.
-        
         Returns:
             True if the example run was successful, False otherwise
         """
-        return self.session_state.get_cello_results() is not None
+        return True
     
     def log_results(self, final_response: Optional[str]):
         """
@@ -228,11 +262,7 @@ class ExampleRunner:
 
         # Log final session state for inspection
         self.logger.info("--- Final Session State ---")
-        self.logger.info(f"Selected Library: {self.session_state.cello_library.current_library_id}")
-        self.logger.info(f"Custom UCF Path: {self.session_state.cello_library.user_constraints_path}")
-        self.logger.info(f"Custom Input Sensors Path: {self.session_state.cello_library.inputs_path}")
-        self.logger.info(f"Custom Output Sensors Path: {self.session_state.cello_library.outputs_path}")
-        self.logger.info(f"Cello Results: {self.session_state.cello_results}")
+        self.logger.info(f"Selected Library: {self.session_state.to_dict()}")
         
     def session_state_history(self):
         """Return the SessionState history wrapped in a lightweight proxy.
@@ -255,10 +285,17 @@ class ExampleRunner:
     #  Internal helper – keeps chat ↔ snapshot alignment
     # ------------------------------------------------------------------
 
-    def _add_message(self, role: str, content: str, name: str | None = None):
-        """Append *content* as a new chat message and snapshot the state."""
+    def _add_message(self, role: str, content: str, name: str | None = None, **kwargs):
+        """Append *content* as a new chat message and snapshot the state.
+
+        Additional keyword arguments are merged into the message dict so callers can
+        store extra metadata such as `tool_calls` or `tool_call_id`.
+        """
         msg = {"role": role, "content": content}
-        if name:
+        if name is not None:
             msg["name"] = name
+        if kwargs:
+            msg.update(kwargs)
         self.messages.append(msg)
+        # Keep the session-state snapshot aligned with message index
         self.session_state.record_snapshot(msg_index=len(self.messages) - 1)

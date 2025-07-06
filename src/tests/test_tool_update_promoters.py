@@ -59,7 +59,7 @@ class TestPromoterVariantTools(unittest.TestCase):
         cls.cello_library = cello_library
 
     def test_add_promoter_variant(self):
-        ucf_before = self.cello_library.user_constrains
+        ucf_before = self.cello_library.user_constraints
         parent_promoter = cello_utils.get_parts_by_type(ucf_before, "promoter")[0]
         parent_id = parent_promoter["name"]
 
@@ -100,11 +100,11 @@ class TestPromoterVariantTools(unittest.TestCase):
         assert custom_ucf_path, "Previous step should have produced custom UCF"
         # Load custom library in manager
         self.cello_library.user_constraints_path = custom_ucf_path
-        self.cello_library.user_constrains = json.loads(Path(custom_ucf_path).read_text())
+        self.cello_library.user_constraints = json.loads(Path(custom_ucf_path).read_text())
 
         # Remove the variant promoter
         promoters = cello_utils.get_parts_by_type(
-            self.cello_library.user_constrains, "promoter"
+            self.cello_library.user_constraints, "promoter"
         )
         variant_promoters = [p for p in promoters if p["name"].endswith("var1")]
         assert variant_promoters, "No promoter variant ending with 'var1' found"

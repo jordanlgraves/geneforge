@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 import logging
-from src.examples.agent.example_harness import ExampleRunner
+from src.examples.agent.workflow_harness import WorkflowRunner
 
 # Set up logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
@@ -8,7 +8,7 @@ logger = logging.getLogger("SimpleCircuitExample")
 
 PROMPT = """Design and simulate in Cello a NOT gate circuit for E. coli that produces GFP when arabinose is absent. Use the provided tools to simulate the circuit in Cello. After the simulation is complete, read the circuit score from the output file and return it as a JSON object with the key 'circuit_score'."""
 
-class SimpleCircuitRunner(ExampleRunner):
+class SimpleCircuitRunner(WorkflowRunner):
     """Extension of ExampleRunner to check for both custom input sensors file and Cello results."""
 
     def check_success(self) -> bool:

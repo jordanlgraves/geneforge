@@ -445,14 +445,13 @@ class PatchUcfWithPromotersTool(Tool):
 
         # Call LibraryManager to write custom UCF
         try:
-            path = cello_library.create_custom_ucf(
+            cello_library.create_custom_ucf(
                 selected_gates=None,
                 selected_parts=list(modified_parts.keys()),
                 modified_parts=list(modified_parts.values()),
                 ucf_name=f"custom_{cello_library.current_library_id}_{parent_promoter_id}_variants.UCF.json",
             )
-            self.session_state.custom_ucf_path = path
-            return {"success": True, "custom_ucf_path": path, "n_variants": len(modified_parts)}
+            return {"success": True, "n_variants": len(modified_parts)}
         except Exception as e:
             if DEBUG_MODE:
                 traceback.print_exc()
