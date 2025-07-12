@@ -207,6 +207,19 @@ def run_example():
     
     return runner
 
+def get_runner(max_rounds=25, max_attempts=3):
+    """
+    Get a runner for the DesignWithPromoterVars example.
+    """
+    runner = DesignWithPromoterVarsRunner(
+        example_name="DesignWithPromoterVars",
+        prompt=PROMPT,
+        system_prompt=SYSTEM_PROMPT,
+        max_rounds=max_rounds,
+        max_attempts=max_attempts
+    )
+    return runner
+
 def generate_chat_histories(output_dir, num_attempts, start_index=0):
     for attempt_index in range(start_index, start_index + num_attempts):
         run_id = f"design_w_promoter_vars_dataset_{attempt_index}"
