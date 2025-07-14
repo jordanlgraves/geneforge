@@ -4,10 +4,12 @@ __pycache__/
 *.pyc
 *.log
 .env
+.venv/
 venv/
 .DS_Store
 logs/
-outputs/
+
+wandb/
 
 # External repositories
 ext_repos/
@@ -15,6 +17,7 @@ ext_repos/
 # Outputs and artifacts
 outputs/
 artifacts/
+datasets/
 
 # vs code
 .vscode/

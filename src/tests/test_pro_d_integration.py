@@ -95,6 +95,23 @@ class TestProDIntegration(unittest.TestCase):
         # Remove the temporary directory
         os.rmdir(cls.temp_dir)
 
+    def test_generate_promoter_library_2(self):
+        """
+        Test generation of promoter library using the real ProD tool.
+        """
+        from ProD import run_tool
+        results = run_tool(
+            ["GTNTNTNTCGATCTATA"],
+            strengths=[6,7,8],  # All strengths
+            lib_size=5,
+            lib=True,
+            output_path=self.output_path,
+            cuda=False,
+        )
+        
+        self.assertIsInstance(results, pd.DataFrame)
+        self.assertGreater(len(results), 0, "Should return results for valid blueprint")
+
     def test_extract_id_ecoli_spacer(self):
         """
         Test extraction of spacer from promoter sequence.

@@ -7,7 +7,8 @@ from dotenv import load_dotenv
 from src.llm_module import get_llm_client, run_assistant
 from src.prompt_manager import get_system_prompt
 from src.session_state import SessionState
-from src.tool_registry import ToolIntegration
+# Import tool registry elements, including function schemas for ChatCompletion
+from src.tool_registry import ToolIntegration, tool_functions
 
 # NEW: import event handler base from OpenAI
 from openai import AssistantEventHandler
@@ -299,3 +300,214 @@ class WorkflowRunner:
         self.messages.append(msg)
         # Keep the session-state snapshot aligned with message index
         self.session_state.record_snapshot(msg_index=len(self.messages) - 1)
+
+    # ------------------------------------------------------------------
+    #  New functionality – generate (preferred, rejected) pairs for DPO
+    # ------------------------------------------------------------------
+
+    def run_collect_dpo_pairs(
+        self,
+        *,
+        max_tool_retry: int = 5,
+        stop_on_first_failure: bool = False,
+    ) -> List[Dict[str, Any]]:
+        """Run the workflow and collect (preferred, rejected) response pairs.
+
+        The algorithm is similar to :py:meth:`run` but **synchronous** and uses
+        the Chat Completions API so we can intercept each assistant turn and
+        inspect tool-call results.  Whenever a tool invocation reports
+        ``{"success": False}`` we:
+
+        1.   Record the assistant *failure* message as the *rejected* output.
+        2.   Roll back the conversation context to *before* this assistant
+             turn and re-query the model up to ``max_tool_retry`` times until a
+             tool call succeeds.  The first successful assistant message is
+             captured as the *preferred* output.
+        3.   We emit a DPO training sample::
+
+                {"input": {"messages": context},
+                 "preferred_output": [preferred_msg],
+                 "non_preferred_output": [rejected_msg]}
+
+        The conversation then continues **with** the successful assistant and
+        its tool response so the overall workflow can still complete.
+
+        Args:
+            max_tool_retry:   Maximum attempts to obtain a successful tool
+                              call after a failure.
+            stop_on_first_failure:  If *True* the run stops after generating
+                              the first pair (useful for debugging).
+
+        Returns:
+            List of dataset rows suitable for OpenAI DPO fine-tuning.
+        """
+
+        # ----------- Initialise client, state and starting messages ----------
+        self.setup()
+
+        dpo_samples: List[Dict[str, Any]] = []
+
+        # ChatCompletion parameters (deterministic behaviour)
+        chat_kwargs = {
+            "model": self.model,
+            "tools": tool_functions,
+            "tool_choice": "auto",
+            "temperature": 0.0,
+        }
+
+        rounds = 0
+        while rounds < self.max_rounds:
+            # ----------------------------------------------------------------
+            #  Ask the model for the next assistant turn
+            # ----------------------------------------------------------------
+            response = self.client.chat.completions.create(
+                messages=self.messages,
+                **chat_kwargs,  # type: ignore[arg-type]
+            )
+
+            raw_assistant = response.choices[0].message  # OpenAI object
+
+            assistant_msg = {
+                "role": "assistant",
+                "content": raw_assistant.content or "",
+            }
+
+            # Convert any tool calls to the familiar chat-history structure
+            if getattr(raw_assistant, "tool_calls", None):
+                tc_list = []
+                for tc in raw_assistant.tool_calls:
+                    tc_list.append({
+                        "id": tc.id,
+                        "type": "function",
+                        "function": {
+                            "name": tc.function.name,
+                            "arguments": tc.function.arguments,
+                        },
+                    })
+                assistant_msg["tool_calls"] = tc_list
+
+            # Append assistant message to the conversation
+            self._add_message(**assistant_msg)
+
+            # ----------------------------------------------------------------
+            #  If the assistant requested tool calls, execute them
+            # ----------------------------------------------------------------
+            if "tool_calls" in assistant_msg:
+                any_failure = False
+                tool_results_messages: List[Dict[str, Any]] = []
+
+                for tc in assistant_msg["tool_calls"]:
+                    fn_name = tc["function"]["name"]
+                    try:
+                        fn_args = json.loads(tc["function"]["arguments"])
+                    except json.JSONDecodeError as e:
+                        fn_args = {}
+                        self.logger.error(f"Invalid JSON for tool '{fn_name}': {e}")
+
+                    result = self.tool_integration.call_tool_function(fn_name, fn_args)
+
+                    tool_msg = {
+                        "role": "tool",
+                        "content": json.dumps(result),
+                        # "name": fn_name,
+                        "tool_call_id": tc["id"],
+                    }
+                    tool_results_messages.append(tool_msg)
+                    self._add_message(**tool_msg)
+
+                    if result.get("error", False):
+                        any_failure = True
+
+                # ---------------- Handle failures with retries ----------------
+                if any_failure:
+                    # Roll back context to *before* the failing assistant turn
+                    #     messages[:-len(tool_results_messages)-1]
+                    rollback_count = len(tool_results_messages) + 1
+                    context_messages = self.messages[:-rollback_count]
+
+                    rejected_assistant = assistant_msg
+
+                    preferred_assistant: Dict[str, Any] | None = None
+                    preferred_tool_msg: Dict[str, Any] | None = None
+
+                    retry = 0
+                    while retry < max_tool_retry and preferred_assistant is None:
+                        retry += 1
+                        retry_response = self.client.chat.completions.create(
+                            messages=context_messages, **chat_kwargs  # type: ignore[arg-type]
+                        )
+                        raw_retry_asst = retry_response.choices[0].message
+
+                        retry_asst_msg = {
+                            "role": "assistant",
+                            "content": raw_retry_asst.content or "",
+                        }
+
+                        if getattr(raw_retry_asst, "tool_calls", None):
+                            tc_retry_list = []
+                            for tc in raw_retry_asst.tool_calls:
+                                tc_retry_list.append({
+                                    "id": tc.id,
+                                    "type": "function",
+                                    "function": {
+                                        "name": tc.function.name,
+                                        "arguments": tc.function.arguments,
+                                    },
+                                })
+                            retry_asst_msg["tool_calls"] = tc_retry_list
+
+                            # Execute tool(s)
+                            first_call = tc_retry_list[0]
+                            fn_name_r = first_call["function"]["name"]
+                            try:
+                                fn_args_r = json.loads(first_call["function"]["arguments"])
+                            except json.JSONDecodeError:
+                                fn_args_r = {}
+
+                            result_r = self.tool_integration.call_tool_function(fn_name_r, fn_args_r)
+
+                            tool_msg_r = {
+                                "role": "tool",
+                                "content": json.dumps(result_r),
+                                # "name": fn_name_r,
+                                "tool_call_id": first_call["id"],
+                            }
+
+                            if result_r.get("error", False):
+                                preferred_assistant = retry_asst_msg
+                                preferred_tool_msg = tool_msg_r
+                            else:
+                                # Add failing attempt to context for subsequent retry
+                                context_messages = context_messages + [retry_asst_msg, tool_msg_r]
+                        else:
+                            # Retry assistant produced no tool call – give up
+                            context_messages = context_messages + [retry_asst_msg]
+
+                    if preferred_assistant is not None and preferred_tool_msg is not None:
+                        # Record DPO sample
+                        dpo_samples.append({
+                            "input": {"messages": list(context_messages)},
+                            "preferred_output": [preferred_assistant],
+                            "non_preferred_output": [rejected_assistant],
+                        })
+
+                        # Merge preferred path into main conversation while keeping
+                        # SessionState ↔ chat history alignment.
+                        self.messages = list(context_messages)  # reset to rolled-back context
+                        # Re-append the assistant & tool messages so that the
+                        # internal snapshot mechanism records them correctly.
+                        self._add_message(**preferred_assistant)
+                        self._add_message(**preferred_tool_msg)
+
+                        if stop_on_first_failure:
+                            break
+                    else:
+                        self.logger.warning("Failed to recover from tool call failure after retries.")
+
+            rounds += 1
+
+            # Optional early exit: stop when workflow signals success
+            if self.check_success():
+                break
+
+        return dpo_samples

@@ -1,46 +1,7 @@
-#!/usr/bin/env python3
-import logging
+from typing import Any
 import json
-import os
-from src.examples.agent.workflow_harness import WorkflowRunner
-from src.prompt_manager import get_system_prompt
-import src.library.cello_utils as cello_utils
-from glob import glob
 
-# Set up logging
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-logger = logging.getLogger("DesignWithPromoterVarsExample")
-
-PROMPT = """Your task is to design a simple genetic circuit, a NOR gate, for E. coli. 
-
-However, you must use custom promoters. 
-Please start by selecting the 'Eco1C1G1T1' library. 
-Then, take a random promoter from the library and generate three new promoter variants that are stronger than the original. 
-Then, create a new, minimal genetic library that contains *only* these three new variants and their necessary dependencies. 
-Finally, use this new custom library to design the NOR gate with Cello. 
-Report the name of the final DNA sequence design if successful."""
-
-SYSTEM_PROMPT = get_system_prompt()
-
-
-class DesignWithPromoterVarsRunner(WorkflowRunner):
-    """
-    Extension of ExampleRunner to check for a custom UCF file where the original
-    promoter has been replaced by variants, and Cello results are present.
-    """
-    def check_success(self) -> bool:
-        """
-        Check if:
-        1. A custom UCF file was created.
-        2. Cello results were obtained.
-        3. The custom UCF contains the new variants and not the original.
-        """
-        has_cello_results = self.session_state.cello_results is not None
-
-        return has_cello_results
-
-
-def score_run(messages, session_state_history):
+def grade(sample: dict[str, Any], item: dict[str, Any]) -> float:
     # The different criteria that are scored and the points for each
     HAS_3_UNIQUE_PROMOTERS, POINTS_FOR_3_UNIQUE_PROMOTERS = False, 5
     HAS_3_NEW_PROMOTERS, POINTS_FOR_3_NEW_PROMOTERS = False, 5
@@ -58,6 +19,7 @@ def score_run(messages, session_state_history):
 
     score = 0
     
+    session_state_history = item.get('session_state_history', [])
     last_session_state = session_state_history[-1]['state']
     cello_results = last_session_state.get("cello_results")
     if cello_results:
@@ -176,73 +138,4 @@ def score_run(messages, session_state_history):
 
     score = float(score) / 24
 
-    return {'score': score, 
-            'num_tool_failures': NUM_TOOL_FAILURES, 
-            'num_messages': num_messages,
-            'num_tool_calls': len(agent_tool_calls),
-            'num_agent_messages': len(assistant_messages),
-            'has_3_unique_promoters': HAS_3_UNIQUE_PROMOTERS,
-            'has_3_new_promoters': HAS_3_NEW_PROMOTERS,
-            'has_3_new_promoter_sequences': HAS_3_NEW_PROMOTER_SEQUENCES,
-            'has_correct_order': HAS_CORRECT_ORDER,
-            'has_correct_truth_table': HAS_CORRECT_TRUTH_TABLE}
-
-
-def run_example():
-    """
-    Uses the LLM modules with session state to execute a design workflow
-    that involves creating and using promoter variants.
-    """
-    # Create and run the example using the customized runner
-    runner = DesignWithPromoterVarsRunner(
-        example_name="DesignWithPromoterVars",
-        prompt=PROMPT,
-        system_prompt=SYSTEM_PROMPT,
-        max_rounds=25,
-        max_attempts=3
-    )
-    
-    final_result = runner.run()
-    runner.log_results(final_result)
-    
-    return runner
-
-def get_runner(max_rounds=25, max_attempts=3):
-    """
-    Get a runner for the DesignWithPromoterVars example.
-    """
-    runner = DesignWithPromoterVarsRunner(
-        example_name="DesignWithPromoterVars",
-        prompt=PROMPT,
-        system_prompt=SYSTEM_PROMPT,
-        max_rounds=max_rounds,
-        max_attempts=max_attempts
-    )
-    return runner
-
-def generate_chat_histories(output_dir, num_attempts, start_index=0):
-    for attempt_index in range(start_index, start_index + num_attempts):
-        run_id = f"design_w_promoter_vars_dataset_{attempt_index}"
-
-        runner = run_example()
-        messages, session_state_history = runner.messages, runner.session_state_history().to_dict()
-        
-        os.makedirs(f"{output_dir}/{run_id}", exist_ok=True)
-        with open(f"{output_dir}/{runner.model}/{run_id}/chat_history.json", "w") as f:
-            json.dump(messages, f)
-        with open(f"{output_dir}/{runner.model}/{run_id}/session_state.json", "w") as f:
-            json.dump(session_state_history, f)
-
-def scores_for_runs_from_directory(directory):
-    scores = {}
-    for chat_history_file in glob(f"{directory}/*/chat_history.json"):
-        with open(chat_history_file, "r") as f:
-            messages = json.load(f)
-        with open(chat_history_file.replace("chat_history.json", "session_state.json"), "r") as f:
-            session_state = json.load(f)
-        score = score_run(messages, session_state['history'])
-        scores[chat_history_file] = score
-    return scores
-
-if __name__ == "__main__":
-    run_example()
+    return score

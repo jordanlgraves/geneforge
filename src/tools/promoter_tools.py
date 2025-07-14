@@ -254,6 +254,33 @@ class GeneratePromoterLibraryFromSpacerTool(_ProDPromoterToolBase):
                 desired_strengths=desired_strengths,
                 library_size=sequences_per_class,
             )
+        except IndexError as exc:
+            # ------------------------------------------------------------------
+            #  Guidance for LLM agents (and human users) on how to resolve the
+            #  typical IndexError raised inside ProD when the sampled variant
+            #  pool is missing one or more requested strength classes.
+            #
+            #  We surface a **single, explanatory** error string so that agent
+            #  frameworks that rely on a unified {"error": str} contract can
+            #  present the hint verbatim to the end-user.
+            # ------------------------------------------------------------------
+            return {
+                "error": (
+                    "ProD could not generate a complete spacer library: the 100 k-variant "
+                    "sample evaluated did not contain at least one spacer for every "
+                    "requested promoter strength class.\n\n"
+                    "How to fix: \n"
+                    "  • Reduce `sequences_per_class` (e.g. from 5 to 3).\n"
+                    "  • Restrict `desired_strengths` to a subset (e.g. [2,3,4] instead of 0-10).\n"
+                    "  • Make the blueprint more degenerate (add N/R/Y/S/K/M/W/B/D/H/V codes) so "
+                    "    that more unique spacers are possible.\n"
+                    "  • Re-run the tool: each invocation samples a different 100 k subset and may "
+                    "    succeed by chance if the search space is large enough.\n\n"
+                    "Background: The ProD algorithm samples up to 1e5 random spacers from the "
+                    "blueprint. If none fall into a required class, the downstream consensus "
+                    "builder receives an empty set and triggers an IndexError."
+                )
+            }
         except Exception as exc:
             return {"error": f"Error generating promoter library: {exc}"}
 
@@ -341,6 +368,7 @@ class GeneratePromoterLibraryFromPromoterTool(_ProDPromoterToolBase):
             )
             if "error" in variants_dict:
                 return {"error": variants_dict["error"]}
+
         except Exception as exc:
             return {"error": f"Error generating promoter library: {exc}"}
 

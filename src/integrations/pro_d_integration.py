@@ -221,12 +221,22 @@ def generate_promoter_library(blueprint: str,
             return pd.DataFrame()
             
         return result
-        
-    except Exception as e:
-        
-        traceback.print_exc()
-        logger.error(f"Error generating promoter library: {str(e)}")
-        return pd.DataFrame()
+    except IndexError as exc:
+        raise Exception(
+            "ProD could not generate a complete spacer library: the 100 k-variant "
+            "sample evaluated did not contain at least one spacer for every "
+            "requested promoter strength class.\n\n"
+            "How to fix: \n"
+            "  • Reduce `sequences_per_class` (e.g. from 5 to 3).\n"
+            "  • Restrict `desired_strengths` to a subset (e.g. [2,3,4] instead of 0-10).\n"
+            "  • Make the blueprint more degenerate (add N/R/Y/S/K/M/W/B/D/H/V codes) so "
+            "    that more unique spacers are possible.\n"
+            "  • Re-run the tool: each invocation samples a different subset and may "
+            "    succeed by chance if the search space is large enough.\n\n"
+            "Background: The ProD algorithm samples up to 1e5 random spacers from the "
+            "blueprint. If none fall into a required class, the downstream consensus "
+            "builder receives an empty set and triggers an IndexError."
+        )
 
 def get_strength_band(strength: int) -> str:
     """

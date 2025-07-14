@@ -2,10 +2,15 @@
 numpy==2.2.5
 pandas==2.2.3
 scipy==1.15.2
+dotenv
+
+# OpenAI
+openai==1.65.0
 
 # File handling and data processing
 Cython<3
-celloapi2
+# docker pull cidarlab/cello-dnacompiler:latest
+# celloapi2
 jsonschema==4.23.0
 pyyaml==5.4.1
 
@@ -22,7 +27,7 @@ sbol3==1.2
 # Needed for SBOL-2 support (conversion + legacy designs)
 sbol2>=1.0
 # High-level utilities that perform SBOL-3 ↔ SBOL-2 graph conversion
-sbol_utilities>=1.1
+# sbol_utilities>=1.1
 
 # Type checking
 mypy>=1.0.0
@@ -51,3 +56,5 @@ matplotlib==3.10.1
 dnaplotlib
 stable-baselines3==2.6.0
 beautifulsoup4>=4.12.0
+
+py4j
