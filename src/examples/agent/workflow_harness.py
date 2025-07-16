@@ -3,6 +3,7 @@ import logging
 import json
 from typing import Optional, List, Dict, Any, Union
 from dotenv import load_dotenv
+import os
 
 from src.llm_module import get_llm_client, run_assistant
 from src.prompt_manager import get_system_prompt
@@ -58,10 +59,15 @@ class WorkflowRunner:
         
     def setup(self):
         """Set up the LLM client and initial messages."""
-        self.logger.info(f"--- Running {self.example_name} Example ---")
-        
         # Load environment variables
         load_dotenv()
+        
+        # Initialize session state and tool integration
+        self.session_state = SessionState()
+        self.session_state.set_design_spec(self.prompt)
+
+        self.tool_integration = ToolIntegration(self.session_state)
+        self.rounds_seen = 0
         
         # Initialize LLM client
         self.client, self.model = get_llm_client(client_type="openai", reasoning=self.user_reasoning_model)
@@ -74,7 +80,12 @@ class WorkflowRunner:
         self._add_message("system", self.system_prompt)
         self._add_message("user", self.prompt)
         
-    def run(self) -> Optional[str]:
+    def run(
+        self,
+        *,
+        preexecuted_tool_calls: Optional[List[Dict[str, Any]]] = None,
+        include_pre_calls_in_chat: bool = True,
+    ) -> Optional[str]:
         """
         Run the example conversation with the LLM using the streaming assistant API.
 
@@ -87,6 +98,47 @@ class WorkflowRunner:
         """
         # Prepare LLM client and initial state
         self.setup()
+
+        # --------------------------------------------------------------
+        #  Optionally replay pre-executed tool calls to prime session state
+        # --------------------------------------------------------------
+        if preexecuted_tool_calls:
+            for msg in preexecuted_tool_calls:
+                role = msg.get("role")
+                # Handle assistant messages that request tool calls
+                if role == "assistant" and msg.get("tool_calls"):
+                    # Optionally add assistant message to chat history
+                    if include_pre_calls_in_chat:
+                        # Shallow copy to avoid later mutation
+                        asst_stub = {
+                            "role": "assistant",
+                            "content": msg.get("content", ""),
+                            "tool_calls": msg["tool_calls"],
+                        }
+                        self._add_message(**asst_stub)
+
+                    # Execute each tool call
+                    for tc in msg["tool_calls"]:
+                        fn_name = tc["function"]["name"]
+                        try:
+                            fn_args = json.loads(tc["function"]["arguments"])
+                        except json.JSONDecodeError:
+                            fn_args = {}
+
+                        result = self.tool_integration.call_tool_function(fn_name, fn_args)
+
+                        if include_pre_calls_in_chat:
+                            tool_msg = {
+                                "role": "tool",
+                                "content": json.dumps(result),
+                                "tool_call_id": tc["id"],
+                            }
+                            self._add_message(**tool_msg)
+                else:
+                    # For non-assistant messages, optionally record them
+                    if include_pre_calls_in_chat:
+                        self._add_message(msg.get("role", "user"), msg.get("content", ""))
+        
         self.logger.info("Starting LLM interaction...")
 
         # ------------------------------------------------------------------
@@ -305,7 +357,7 @@ class WorkflowRunner:
     #  New functionality – generate (preferred, rejected) pairs for DPO
     # ------------------------------------------------------------------
 
-    def run_collect_dpo_pairs(
+    def run_generate_preference_pair_on_tool_failures(
         self,
         *,
         max_tool_retry: int = 5,
@@ -473,7 +525,7 @@ class WorkflowRunner:
                                 "tool_call_id": first_call["id"],
                             }
 
-                            if result_r.get("error", False):
+                            if not result_r.get("error", False):
                                 preferred_assistant = retry_asst_msg
                                 preferred_tool_msg = tool_msg_r
                             else:
@@ -484,12 +536,43 @@ class WorkflowRunner:
                             context_messages = context_messages + [retry_asst_msg]
 
                     if preferred_assistant is not None and preferred_tool_msg is not None:
-                        # Record DPO sample
-                        dpo_samples.append({
-                            "input": {"messages": list(context_messages)},
-                            "preferred_output": [preferred_assistant],
-                            "non_preferred_output": [rejected_assistant],
-                        })
+                        # Make sure that the tool function as well as the arguments are actually different. 
+                        # across the two assistant messages. Some tools may be internally stochastic, 
+                        # returning different results for the same arguments. 
+                        # We need to make sure that the tool function is different, and the arguments are different.
+                        # If the tool function is the same, and the arguments are different, we can skip the DPO sample.
+                        
+                        
+                        # ---------------- Deduplicate stochastic calls ----------------
+                        # Skip if the preferred & rejected assistant messages invoke
+                        # *the same* tool *or* use identical arguments (simple string
+                        # equality on the JSON blob).  This guards against tools that
+                        # exhibit internal randomness even when called with the same
+                        # parameters, which would yield poor training signals.
+
+                        def _first_tool_call(msg: Dict[str, Any]):
+                            tc_list = msg.get("tool_calls", [])
+                            return tc_list[0] if tc_list else None
+
+                        rej_tc = _first_tool_call(rejected_assistant)
+                        pref_tc = _first_tool_call(preferred_assistant)
+
+                        skip_pair = False
+                        if rej_tc and pref_tc:
+                            same_fn = rej_tc["function"]["name"] == pref_tc["function"]["name"]
+                            same_args = rej_tc["function"]["arguments"] == pref_tc["function"]["arguments"]
+                            # If either the function name is the same AND the arguments
+                            # are identical, we consider this pair uninformative (some tools 
+                            # are stochastic and return different results for the same arguments).
+                            if same_fn and same_args:
+                                skip_pair = True
+
+                        if not skip_pair:
+                            dpo_samples.append({
+                                "input": {"messages": list(context_messages)},
+                                "preferred_output": [preferred_assistant],
+                                "non_preferred_output": [rejected_assistant],
+                            })
 
                         # Merge preferred path into main conversation while keeping
                         # SessionState ↔ chat history alignment.
@@ -511,3 +594,15 @@ class WorkflowRunner:
                 break
 
         return dpo_samples
+
+    def generate_chat_histories(self, output_dir, num_runs, base_run_name, start_index=0):
+        for run_index in range(start_index, start_index + num_runs):
+            run_id = f"{base_run_name}_{run_index}"
+            self.run()
+            messages, session_state_history = self.messages, self.session_state_history().to_dict()
+            
+            os.makedirs(f"{output_dir}/{self.model}/{run_id}", exist_ok=True)
+            with open(f"{output_dir}/{self.model}/{run_id}/chat_history.json", "w") as f:
+                json.dump(messages, f)
+            with open(f"{output_dir}/{self.model}/{run_id}/session_state.json", "w") as f:
+                json.dump(session_state_history, f)

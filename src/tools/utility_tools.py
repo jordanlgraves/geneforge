@@ -247,3 +247,14 @@ class ArxivSearchTool(Tool):
 
         results = agent.chat(query)
         return {"success": True, "results": results}
+    
+class GetSessionStateTool(Tool):
+    name = "get_session_state"
+    description = "Get the state of the active session including which library is currently active, if there are design results attached, parameter values for simulations, etc."
+    parameters = {
+        "type": "object",
+        "properties": {},
+        "required": []
+    }
+    def execute(self):
+        return {"success": True, "session_state": self.session_state.to_dict()}

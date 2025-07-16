@@ -6,6 +6,8 @@ from src.examples.agent.workflow_harness import WorkflowRunner
 from src.prompt_manager import get_system_prompt
 import src.library.cello_utils as cello_utils
 from glob import glob
+import pandas as pd
+import io
 
 # Set up logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
@@ -94,8 +96,20 @@ def score_run(messages, session_state_history):
         """
         activity_table = cello_results.get('dna_design', dict()).get('activity_table', '')
         if activity_table:
-            from src.library.cello_utils import parse_activity_table
-            df_scores, df_binary = parse_activity_table(activity_table)                
+            # skip the first line
+            table_lines = activity_table.split('\n')[1:]
+
+            # split into the two tables. 
+            # Table 1 is all lines before the first occurrence of '""'
+            split_idx = table_lines.index('""')
+
+            table_str_scores = '\n'.join(table_lines[:split_idx])
+            table_str_binary = '\n'.join(table_lines[split_idx + 2:]) # skip the '""' line and the 'Binary' line
+
+            df_scores = pd.read_csv(io.StringIO(table_str_scores), index_col=None)
+            df_binary = pd.read_csv(io.StringIO(table_str_binary), index_col=None)
+
+    
             input_1_col = df_binary.iloc[:, 0]
             input_2_col = df_binary.iloc[:, 1]
             output_col = df_binary.iloc[:, 2]
@@ -107,8 +121,7 @@ def score_run(messages, session_state_history):
                 else: # all other cases should have output 0
                     if out != 1:
                         HAS_CORRECT_TRUTH_TABLE = False
-
-    
+                            
     """
     ADD POINTS for calling the correct functions
     """
@@ -171,10 +184,16 @@ def score_run(messages, session_state_history):
         score += POINTS_FOR_CORRECT_TRUTH_TABLE
 
     # small penalty based on number of messages
+    MAX_SCORE = sum([POINTS_FOR_3_UNIQUE_PROMOTERS, 
+                     POINTS_FOR_3_NEW_PROMOTERS, 
+                     POINTS_FOR_3_NEW_PROMOTER_SEQUENCES, 
+                     POINTS_FOR_CORRECT_ORDER, 
+                     POINTS_FOR_NO_TOOL_FAILURES, 
+                     POINTS_FOR_CORRECT_TRUTH_TABLE])
+    # small penalty based on number of messages
     num_messages = len(messages)
     score -= num_messages * 0.05
-
-    score = float(score) / 24
+    score = float(score) / MAX_SCORE
 
     return {'score': score, 
             'num_tool_failures': NUM_TOOL_FAILURES, 
@@ -220,29 +239,14 @@ def get_runner(max_rounds=25, max_attempts=3):
     )
     return runner
 
-def generate_chat_histories(output_dir, num_attempts, start_index=0):
-    for attempt_index in range(start_index, start_index + num_attempts):
-        run_id = f"design_w_promoter_vars_dataset_{attempt_index}"
 
-        runner = run_example()
-        messages, session_state_history = runner.messages, runner.session_state_history().to_dict()
-        
-        os.makedirs(f"{output_dir}/{run_id}", exist_ok=True)
-        with open(f"{output_dir}/{runner.model}/{run_id}/chat_history.json", "w") as f:
-            json.dump(messages, f)
-        with open(f"{output_dir}/{runner.model}/{run_id}/session_state.json", "w") as f:
-            json.dump(session_state_history, f)
-
-def scores_for_runs_from_directory(directory):
-    scores = {}
-    for chat_history_file in glob(f"{directory}/*/chat_history.json"):
-        with open(chat_history_file, "r") as f:
-            messages = json.load(f)
-        with open(chat_history_file.replace("chat_history.json", "session_state.json"), "r") as f:
-            session_state = json.load(f)
-        score = score_run(messages, session_state['history'])
-        scores[chat_history_file] = score
-    return scores
+def score_run_from_directory(directory):
+    with open(f"{directory}/chat_history.json", "r") as f:
+        messages = json.load(f)
+    with open(f"{directory}/session_state.json", "r") as f:
+        session_state = json.load(f)
+    score = score_run(messages, session_state['history'])
+    return score
 
 if __name__ == "__main__":
     run_example()
