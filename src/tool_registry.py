@@ -83,6 +83,8 @@ TOOL_REGISTRY[ToolDocsQueryTool.name] = ToolDocsQueryTool
 TOOL_REGISTRY[TranslateDnaTool.name] = TranslateDnaTool
 TOOL_REGISTRY[GcContentTool.name] = GcContentTool
 TOOL_REGISTRY[SearchBioNumbersTool.name] = SearchBioNumbersTool
+TOOL_REGISTRY[ReportAnswerTool.name] = ReportAnswerTool
+TOOL_REGISTRY[SequenceSimilarityTool.name] = SequenceSimilarityTool
 
 # Generate OpenAI function schemas from tools
 _tool_schemas = [

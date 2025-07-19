@@ -4,15 +4,15 @@ import json
 from typing import Optional, List, Dict, Any, Union
 from dotenv import load_dotenv
 import os
+from glob import glob
 
-from src.llm_module import get_llm_client, run_assistant
+from src.llm_module import get_llm_client
 from src.prompt_manager import get_system_prompt
 from src.session_state import SessionState
-# Import tool registry elements, including function schemas for ChatCompletion
+
 from src.tool_registry import ToolIntegration, tool_functions
 
-# NEW: import event handler base from OpenAI
-from openai import AssistantEventHandler
+SYSTEM_PROMPT = get_system_prompt()
 
 class WorkflowRunner:
     """
@@ -22,11 +22,9 @@ class WorkflowRunner:
     
     def __init__(self, 
                  example_name: str, 
-                 prompt: str, 
-                 max_rounds: int = 15, 
-                 max_attempts: int = 4, 
+                 prompt: str = None, 
                  system_prompt: str = None,
-                 user_reasoning_model: bool = False):
+                 use_reasoning_model: bool = False):
         """
         Initialize the example runner with the given parameters.
         
@@ -37,10 +35,8 @@ class WorkflowRunner:
             max_attempts: Maximum number of attempts to run the example
         """
         self.example_name = example_name
-        self.prompt = prompt
-        self.max_rounds = max_rounds
-        self.max_attempts = max_attempts
-        self.system_prompt = system_prompt
+        self.prompt = self._process_prompt(prompt)
+        self.system_prompt = self._process_system_prompt(system_prompt)
         # Configure logging
         logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
         self.logger = logging.getLogger(f"Example-{example_name}")
@@ -55,10 +51,23 @@ class WorkflowRunner:
         self.messages = []
         self.rounds_seen = 0        # ❶ counter
         
-        self.user_reasoning_model = user_reasoning_model
+        self.use_reasoning_model = use_reasoning_model
         
-    def setup(self):
-        """Set up the LLM client and initial messages."""
+    
+    def _process_prompt(self, prompt: str):  
+        """
+        Get the prompt for the example.
+        """
+        return prompt
+    
+    def _process_system_prompt(self, system_prompt: str):
+        """
+        Get the system prompt for the example.
+        """
+        return system_prompt or SYSTEM_PROMPT
+    
+    def _reset(self):
+        """Set up the LLM client and initial messages (Chat Completions)."""
         # Load environment variables
         load_dotenv()
         
@@ -70,18 +79,20 @@ class WorkflowRunner:
         self.rounds_seen = 0
         
         # Initialize LLM client
-        self.client, self.model = get_llm_client(client_type="openai", reasoning=self.user_reasoning_model)
+        self.client, self.model = get_llm_client(client_type="openai", reasoning=self.use_reasoning_model)
         self.logger.info(f"Using LLM Client: {type(self.client).__name__}, Model: {self.model}")
         
         # Initialise messages list and record snapshots for each
         self.messages = []
-        if self.system_prompt is None:
-            self.system_prompt = get_system_prompt()
-        self._add_message("system", self.system_prompt)
+        if self.system_prompt is not None:
+            self._add_message("system", self.system_prompt)
         self._add_message("user", self.prompt)
         
     def run(
         self,
+        max_rounds: int = 15, 
+        num_retries: int = 1,
+        temperature: float = None,
         *,
         preexecuted_tool_calls: Optional[List[Dict[str, Any]]] = None,
         include_pre_calls_in_chat: bool = True,
@@ -90,14 +101,17 @@ class WorkflowRunner:
         Run the example conversation with the LLM using the streaming assistant API.
 
         The method automatically executes any required tool calls and will retry
-        up to `self.max_attempts` times until `check_success()` returns True.
+        up to `max_attempts` times until `check_success()` returns True.
 
         Returns:
             The final assistant response text (last assistant message) or None
             if an unrecoverable error occurred.
         """
+        if temperature is None and self.use_reasoning_model:
+            temperature = 1.0
+        
         # Prepare LLM client and initial state
-        self.setup()
+        self._reset()
 
         # --------------------------------------------------------------
         #  Optionally replay pre-executed tool calls to prime session state
@@ -139,155 +153,108 @@ class WorkflowRunner:
                     if include_pre_calls_in_chat:
                         self._add_message(msg.get("role", "user"), msg.get("content", ""))
         
-        self.logger.info("Starting LLM interaction...")
+        self.logger.info("Starting LLM interaction via Chat Completions API…")
 
-        # ------------------------------------------------------------------
-        #  Nested event-handler class definition (uses closure over `self`)
-        # ------------------------------------------------------------------
-        class _RunnerEventHandler(AssistantEventHandler):
-            """Streaming handler that auto-executes tool calls."""
-            def __init__(self, runner: "WorkflowRunner", run_id: str | None = None, thread_id: str | None = None):
-                super().__init__()
-                self.runner = runner
-                self.client = runner.client
-                self.tool_integration = runner.tool_integration
-                self.run_id = run_id
-                self.thread_id = thread_id
-                self._buffer: str = ""
-
-            # ------------- OpenAI streaming callbacks ----------------------
-            def on_event(self, event):  # type: ignore[override]
-                if event.event == "thread.run.created":
-                    self.run_id = event.data.id
-                    self.thread_id = event.data.thread_id
-                elif event.event == "thread.run.requires_action":
-                    self._finalise_buffer()
-                    self._handle_requires_action(event.data)
-                elif event.event == "thread.run.failed":
-                    err = getattr(event.data, "last_error", None)
-                    self.runner.logger.error(f"Run failed: {err}")
-
-            def on_text_delta(self, delta, snapshot):  # type: ignore[override]
-                self._buffer += delta.value
-
-            # ----------------- helper functions ----------------------------
-            def _finalise_buffer(self):
-                text = self._buffer.strip()
-                if text:
-                    self.runner._add_message("assistant", text)
-                self._buffer = ""
-
-            def _handle_requires_action(self, data):
-                tool_outputs = []
-                seen_call_ids: set[str] = set()
-                for tool_call in data.required_action.submit_tool_outputs.tool_calls:
-                    if tool_call.id in seen_call_ids:
-                        continue
-                    seen_call_ids.add(tool_call.id)
-                    fn_name = tool_call.function.name
-                    try:
-                        fn_args = json.loads(tool_call.function.arguments)
-                    except json.JSONDecodeError as e:
-                        self.runner.logger.error(f"Invalid JSON for {fn_name}: {e}")
-                        tool_outputs.append({"tool_call_id": tool_call.id, "output": json.dumps({"error": str(e)})})
-                        continue
-
-                    # NEW: attach this tool invocation to the *previous* assistant message
-                    # so that the record looks like:
-                    # {
-                    #   "role": "assistant",
-                    #   "content": "... prior assistant text ...",
-                    #   "tool_calls": [{...}]
-                    # }
-                    if self.runner.messages and self.runner.messages[-1]["role"] == "assistant":
-                        last_msg = self.runner.messages[-1]
-                    else:
-                        # If for some reason no assistant text was captured, create a stub
-                        self.runner._add_message("assistant", "")
-                        last_msg = self.runner.messages[-1]
-
-                    tool_call_entry = {
-                        "id": tool_call.id,
-                        "type": "function",
-                        "function": {
-                            "name": fn_name,
-                            "arguments": json.dumps(fn_args),
-                        },
-                    }
-                    last_msg.setdefault("tool_calls", []).append(tool_call_entry)
-
-                    try:
-                        result = self.tool_integration.call_tool_function(fn_name, fn_args)
-                        # Record tool *response* with linkage back to the call id
-                        self.runner._add_message(
-                            "tool",
-                            json.dumps(result),
-                            name=fn_name,
-                            tool_call_id=tool_call.id,
-                        )
-                        tool_outputs.append({"tool_call_id": tool_call.id, "output": json.dumps(result)})
-                    except Exception as e:
-                        self.runner.logger.error(f"Error executing tool {fn_name}: {e}")
-                        tool_outputs.append({"tool_call_id": tool_call.id, "output": json.dumps({"error": str(e)})})
-
-                continuation_handler = _RunnerEventHandler(self.runner)
-                with self.client.beta.threads.runs.submit_tool_outputs_stream(
-                    thread_id=data.thread_id,
-                    run_id=data.id,
-                    tool_outputs=tool_outputs,
-                    event_handler=continuation_handler,
-                ) as stream:
-                    stream.until_done()
-                # After continuation completes, capture any trailing assistant text
-                continuation_handler._finalise_buffer()
-
-        # ------------------------------------------------------------------
-        #  Conversation loop – retry until success or attempts exhausted
-        # ------------------------------------------------------------------
         final_response: Optional[str] = None
+
         attempt = 0
         try:
-            while attempt < self.max_attempts:
-                user_prompt = self.prompt if attempt == 0 else "Please use the tools to complete the task."
+            while attempt < num_retries:
+                # ------------------------------------------------------------------
+                #  Prepare user prompt (first attempt vs retry)
+                # ------------------------------------------------------------------
+                user_prompt = self.prompt if attempt == 0 else self.get_retry_message()
                 if attempt > 0:
                     self._add_message("user", user_prompt)
 
-                handler = _RunnerEventHandler(self)
-                run_assistant(
-                    client=self.client,
-                    session_state=self.session_state,
-                    user_prompt=user_prompt,
-                    system_prompt=self.system_prompt,
-                    event_handler=handler,
-                )
-                handler._finalise_buffer()
+                rounds = 0
+                while rounds < max_rounds:
+                    response = self.client.chat.completions.create(
+                        model=self.model,
+                        messages=self.messages,
+                        tools=tool_functions,
+                        tool_choice="auto",
+                        temperature=temperature,
+                    )
 
-                # Capture the latest assistant message as the final_response
-                if self.messages and self.messages[-1]["role"] == "assistant":
-                    final_response = self.messages[-1]["content"]
+                    raw_assistant = response.choices[0].message
 
-                # if self.check_success():
-                #     self.logger.info("Successfully completed task")
-                #     break
+                    assistant_msg: Dict[str, Any] = {
+                        "role": "assistant",
+                        "content": raw_assistant.content or "",
+                    }
+
+                    # ---------------- Convert any tool calls --------------------
+                    if getattr(raw_assistant, "tool_calls", None):
+                        tc_list = []
+                        for tc in raw_assistant.tool_calls:
+                            tc_list.append({
+                                "id": tc.id,
+                                "type": "function",
+                                "function": {
+                                    "name": tc.function.name,
+                                    "arguments": tc.function.arguments,
+                                },
+                            })
+                        assistant_msg["tool_calls"] = tc_list
+
+                    self._add_message(**assistant_msg)
+
+                    # ---------------- Execute tool calls if any ---------------
+                    if "tool_calls" in assistant_msg:
+                        for tc in assistant_msg["tool_calls"]:
+                            fn_name = tc["function"]["name"]
+                            try:
+                                fn_args = json.loads(tc["function"]["arguments"])
+                            except json.JSONDecodeError:
+                                fn_args = {}
+
+                            try:
+                                result = self.tool_integration.call_tool_function(fn_name, fn_args)
+                            except Exception as e:
+                                result = {"error": str(e)}
+                                self.logger.error("Error executing tool %s: %s", fn_name, e)
+
+                            # Record tool response
+                            self._add_message(
+                                "tool",
+                                json.dumps(result),
+                                name=fn_name,
+                                tool_call_id=tc["id"],
+                            )
+
+                        # After executing tools, continue to next assistant round
+                        rounds += 1
+                        
+                        continue  # inner while – ask model again with updated context
+
+                    # ---------------- No tool call – final assistant text -----
+                    final_response = assistant_msg["content"]
+                    # Stop if the conversation is finished
+                    if self.check_finished():
+                        return final_response
+                    break  # exit inner rounds loop – no further tool calls
                 
+                    
+                # End of conversation for this attempt
                 attempt += 1
                 self.rounds_seen += 1
-            else:
-                self.logger.warning("Failed to complete task after maximum attempts")
 
-            # Persist chat rounds count and ensure final snapshot (already taken
-            # when the last assistant message was appended)
+            # outside attempts loop
             self.session_state.chat_rounds = len(self.messages)
             return final_response
 
         except Exception as e:
             self.logger.error(f"Conversation failed: {e}", exc_info=True)
             return None
+
+    def get_retry_message(self):
+        return "Please use the tools to complete the task."
     
-    def check_success(self) -> bool:
+    def check_finished(self) -> bool:
         """
         Returns:
-            True if the example run was successful, False otherwise
+            True if the example is finished, False otherwise. Useful for stopping the workflow when a condition is met.
         """
         return True
     
@@ -359,6 +326,7 @@ class WorkflowRunner:
 
     def run_generate_preference_pair_on_tool_failures(
         self,
+        max_rounds: int = 15, 
         *,
         max_tool_retry: int = 5,
         stop_on_first_failure: bool = False,
@@ -395,7 +363,7 @@ class WorkflowRunner:
         """
 
         # ----------- Initialise client, state and starting messages ----------
-        self.setup()
+        self._reset()
 
         dpo_samples: List[Dict[str, Any]] = []
 
@@ -408,7 +376,7 @@ class WorkflowRunner:
         }
 
         rounds = 0
-        while rounds < self.max_rounds:
+        while rounds < max_rounds:
             # ----------------------------------------------------------------
             #  Ask the model for the next assistant turn
             # ----------------------------------------------------------------
@@ -540,7 +508,7 @@ class WorkflowRunner:
                         # across the two assistant messages. Some tools may be internally stochastic, 
                         # returning different results for the same arguments. 
                         # We need to make sure that the tool function is different, and the arguments are different.
-                        # If the tool function is the same, and the arguments are different, we can skip the DPO sample.
+                        # If the tool function is the same, and the arguments are identical, we can skip the DPO sample.
                         
                         
                         # ---------------- Deduplicate stochastic calls ----------------
@@ -590,7 +558,7 @@ class WorkflowRunner:
             rounds += 1
 
             # Optional early exit: stop when workflow signals success
-            if self.check_success():
+            if self.check_finished():
                 break
 
         return dpo_samples
@@ -606,3 +574,22 @@ class WorkflowRunner:
                 json.dump(messages, f)
             with open(f"{output_dir}/{self.model}/{run_id}/session_state.json", "w") as f:
                 json.dump(session_state_history, f)
+            
+    def score_run_from_directory(self, directory):
+        with open(f"{directory}/chat_history.json", "r") as f:
+            messages = json.load(f)
+        with open(f"{directory}/session_state.json", "r") as f:
+            session_state = json.load(f)
+        score = self.score_run(messages, session_state['history'])
+        return score
+
+    def score_runs_from_directory(self, directory):
+        scores = {}
+        for chat_history_file in glob(f"{directory}/*/chat_history.json"):
+            with open(chat_history_file, "r") as f:
+                messages = json.load(f)
+            with open(chat_history_file.replace("chat_history.json", "session_state.json"), "r") as f:
+                session_state = json.load(f)
+            score = self.score_run(messages, session_state['history'])
+            scores[chat_history_file] = score
+        return scores

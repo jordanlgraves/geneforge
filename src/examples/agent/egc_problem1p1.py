@@ -1,0 +1,86 @@
+from src.examples.agent.workflows import WorkflowRunner
+
+
+PROMPT = """Consider the first part of the enzymatic reaction:
+
+E + S \\overset{k_1}{\\underset{k_2}{\\rightleftharpoons}} ES
+
+Assume the following parameters for an enzymatic reaction:
+	•	k_1 = 0.01 \\,\\text{s}^{-1}\\,\\text{nM}^{-1}
+	•	k_{-1} = 0.1 \\,\\text{s}^{-1}
+	•	[E] = 35 \\,\\text{nM}
+	•	[S] = 100 \\,\\text{nM}
+	•	[ES] = 50 \\,\\text{nM}
+	•	RT = 0.5961 \\,\\text{kcal mol}^{-1} (i.e., T = 300\\,\\text{K})
+
+Task:
+Determine the change in Gibbs Free Energy (\\Delta G) for the forward reaction.
+Is the forward or reverse reaction favored?
+Then, using trial-and-error, find the concentrations of [E], [S], and [ES] that result in steady state (i.e., \\Delta G = 0).
+Note: Every nM added to [ES] must be subtracted equally from both [E] and [S].
+
+Use the `report_answer` tool to output your answer as a json string in the following format:
+
+{
+    "dG": (float), # the change in Gibbs Free Energy (kcal/mol) for the forward reaction	
+    "reaction_favored": (string), # either "forward" or "reverse"
+    "explanation": (string), # a short explanation of your answer
+    "ES": (float), # the concentration of [ES] that results in steady state (i.e., \\Delta G = 0)
+    "S": (float), # the concentration of [S] that results in steady state (i.e., \\Delta G = 0)
+    "E": (float), # the concentration of [E] that results in steady state (i.e., \\Delta G = 0)
+}
+"""
+
+reference_answer = {
+    "dG": -1.16,
+    "reaction_favored": "forward",
+    "explanation": "We use the standard thermodynamic equation: \\Delta G = RT \\ln\\left(\\frac{k_{-1} [ES]}{k_1 [E][S]}\\right). Substituting values: \\Delta G = 0.5961 \\cdot \\ln\\left(\\frac{0.1 \\cdot 50}{0.01 \\cdot 35 \\cdot 100}\\right). \\Delta G = 0.5961 \\cdot \\ln\\left(\\frac{5}{35}\\right) = 0.5961 \\cdot \\ln(0.142857). \\Delta G \\approx 0.5961 \\cdot (-1.9459) = -1.16 \\,\\text{kcal/mol}. Since \\Delta G < 0, the forward reaction is favored. At steady state (\\Delta G = 0), trial-and-error shows that: \\\\[ES] = 75 \\,\\text{nM}\\\\ [S] = 75 \\,\\text{nM}\\\\ [E] = 10 \\,\\text{nM}\\\\ This satisfies the condition that the total amount of enzyme and substrate is conserved, and results in \\Delta G = 0.",
+    "ES": 75,
+    "S": 75,
+    "E": 10
+}
+
+class EGCProblem1p1Workflow(WorkflowRunner):
+    def __init__(self, *args, **kwargs):
+        self.reference_answer = reference_answer
+        super().__init__(*args, **kwargs)
+    
+    def _process_prompt(self, prompt: str):
+        return PROMPT
+    
+    def check_finished(self) -> bool:
+        """
+        Returns:
+            True if the example is finished, False otherwise. Useful for stopping the workflow when a condition is met.
+        """
+        last_message = self.messages[-1]
+        if last_message["role"] == "tool" and last_message["name"] == "report_answer":
+            return True
+        return super().check_finished()
+
+if __name__ == "__main__":
+    workflow = EGCProblem1p1Workflow(
+        example_name="EGCProblem1p1",
+        prompt=PROMPT,
+        use_reasoning_model=True,
+    )
+    workflow.run()
+    
+    # get the report_answer tool call
+    for message in workflow.messages:
+        if message["role"] == "tool" and message["name"] == "report_answer":
+            answer_message = message
+            break
+    
+    sample = {
+        "output_text": workflow.messages[-1]["content"], 
+        "reference_answer": reference_answer,
+    }
+    item = {
+        "reference_answer": reference_answer,
+    }
+    from src.rl.graders.grade_egc_promblem1p1 import grade
+    score = grade(sample, item)
+    print(score)
+    
+    

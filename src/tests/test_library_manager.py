@@ -2,7 +2,7 @@ import unittest
 import os
 import tempfile
 import json
-from src.library.cello import CelloLibrary
+from src.library.cello_library import CelloLibrary
 from src.integrations.cello_integration import CelloIntegration
 
 class TestLibraryManager(unittest.TestCase):
@@ -18,7 +18,7 @@ class TestLibraryManager(unittest.TestCase):
         cls.test_dir = cls.temp_dir.name
         
         # Create a library manager for testing
-        cls.library_manager = CelloLibrary()
+        cls.cello_lib = CelloLibrary()
     
     @classmethod
     def tearDownClass(cls):
@@ -28,11 +28,11 @@ class TestLibraryManager(unittest.TestCase):
     def test_library_scanning(self):
         """Test that the library manager can scan and find libraries"""
         # Verify that we found at least one library
-        self.assertTrue(len(self.library_manager.get_available_libraries()) > 0, 
+        self.assertTrue(len(self.cello_lib.get_available_libraries()) > 0, 
                        "Library manager should find at least one library")
         
         # Check that each library has a valid path
-        available_libraries = self.library_manager.get_available_libraries()
+        available_libraries = self.cello_lib.get_available_libraries()
         for library_id in available_libraries:
             library_info = available_libraries[library_id]
             
@@ -45,16 +45,16 @@ class TestLibraryManager(unittest.TestCase):
         """Test filtering libraries by organism"""
         # Test filtering by organism
         organism = "Bacteroides thetaiotaomicron VPI-5482"
-        filtered_libraries = self.library_manager.filter_libraries_by_organism(organism)
+        filtered_libraries = self.cello_lib.filter_libraries_by_organism(organism)
         self.assertTrue(len(filtered_libraries) > 0, f"Should be able to filter libraries by organism {organism}")
         
         # Test filtering by organism that doesn't exist 
         organism = "E. coli" # requires exact match
-        filtered_libraries = self.library_manager.filter_libraries_by_organism(organism)
+        filtered_libraries = self.cello_lib.filter_libraries_by_organism(organism)
         self.assertTrue(len(filtered_libraries) == 0, f"Should not be able to filter libraries by organism {organism}")
 
         organism = "Escherichia coli NEB 10-beta" # requires exact match
-        filtered_libraries = self.library_manager.filter_libraries_by_organism(organism)
+        filtered_libraries = self.cello_lib.filter_libraries_by_organism(organism)
         self.assertTrue(len(filtered_libraries) > 0, f"Should be able to filter libraries by organism {organism}")
 
 
@@ -62,14 +62,14 @@ class TestLibraryManager(unittest.TestCase):
         """Test selecting a library directly by ID"""
         
         # Select the first available library
-        library_id = list(self.library_manager.get_available_libraries().keys())[0]
-        success = self.library_manager.select_library(library_id)
+        library_id = list(self.cello_lib.get_available_libraries().keys())[0]
+        success = self.cello_lib.select_library(library_id)
         
         # Verify selection was successful
         self.assertTrue(success, f"Should be able to select library {library_id}")
         
         # Verify library info
-        library_info = self.library_manager.get_current_library_info()
+        library_info = self.cello_lib.get_current_library_info()
         self.assertEqual(library_info["library_id"], library_id,
                         f"Current library ID should be {library_id}")
         
@@ -82,7 +82,7 @@ class TestLibraryManager(unittest.TestCase):
     def test_library_metadata_retrieval(self):
         """Test retrieving library metadata"""
         
-        library_metadata = self.library_manager.describe_available_libraries()
+        library_metadata = self.cello_lib.describe_available_libraries()
         self.assertIsNotNone(library_metadata, "Should be able to retrieve library metadata")
 
         # Verify the metadata is a list
@@ -99,7 +99,7 @@ class TestLibraryManager(unittest.TestCase):
     def test_invalid_library_selection(self):
         """Test selecting an invalid library"""
         # Try to select a non-existent library
-        success = self.library_manager.select_library("NonExistentLibrary")
+        success = self.cello_lib.select_library("NonExistentLibrary")
         
         # This should fail
         self.assertFalse(success, "Should not be able to select a non-existent library")
@@ -110,20 +110,20 @@ class TestLibraryManager(unittest.TestCase):
         
         
         # Create a Cello integration with a specific library
-        library_id = list(self.library_manager.get_available_libraries().keys())[0]
+        library_id = list(self.cello_lib.get_available_libraries().keys())[0]
         cello = CelloIntegration(library_id=library_id)
         
         # Verify that the library was selected
-        self.assertEqual(cello.library_manager.current_library_id, library_id,
+        self.assertEqual(cello.cello_library.current_library_id, library_id,
                         f"Cello integration should select library {library_id}")
         
         # Try selecting a different library
-        if len(self.library_manager.get_available_libraries()) > 1:
-            library_id = list(self.library_manager.get_available_libraries().keys())[1]
+        if len(self.cello_lib.get_available_libraries()) > 1:
+            library_id = list(self.cello_lib.get_available_libraries().keys())[1]
             success = cello.select_library(library_id)
             
             self.assertTrue(success, f"Should be able to select library {library_id}")
-            self.assertEqual(cello.library_manager.current_library_id, library_id,
+            self.assertEqual(cello.cello_library.current_library_id, library_id,
                             f"Cello integration should select library {library_id}")
     
     
@@ -131,11 +131,11 @@ class TestLibraryManager(unittest.TestCase):
         """Test creating a custom UCF with the library manager"""
         
         # Select a library
-        library_id = list(self.library_manager.get_available_libraries().keys())[0]
-        success = self.library_manager.select_library(library_id)
+        library_id = list(self.cello_lib.get_available_libraries().keys())[0]
+        success = self.cello_lib.select_library(library_id)
         
         # Create a simple custom UCF
-        ucf_path = self.library_manager.create_custom_ucf(
+        ucf_path = self.cello_lib.create_custom_ucf(
             ucf_name="test_custom.UCF.json",
             output_dir=self.test_dir
         )
@@ -156,7 +156,7 @@ class TestLibraryManager(unittest.TestCase):
         """Test creating a custom UCF with Cello integration"""
         
         # Create a Cello integration with a specific library
-        library_id = list(self.library_manager.get_available_libraries().keys())[0]
+        library_id = list(self.cello_lib.get_available_libraries().keys())[0]
         cello = CelloIntegration(library_id=library_id)
         
         # Create a custom UCF

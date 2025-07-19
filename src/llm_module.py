@@ -41,7 +41,7 @@ def get_llm_client(client_type: str = None, reasoning: bool = False) -> Optional
     if client_type == "openai":
         logger.info("Using OpenAI API")
         try:
-            client = OpenAI(api_key=openai_api_key)
+            client = OpenAI(api_key=openai_api_key, webhook_secret=None)
             model = openai_model if not reasoning else openai_model_reasoning
             # Test connection (optional but recommended)
             client.models.list()
@@ -70,69 +70,6 @@ def get_llm_client(client_type: str = None, reasoning: bool = False) -> Optional
     else:
         logger.error("LLM Client initialization failed.")
         return None
-
-def get_or_create_assistant(client: OpenAI, session_state: SessionState, system_prompt: str) -> str:
-    """Get existing assistant or create a new one."""
-    if session_state.assistant_id:
-        logger.info(f"Using existing assistant: {session_state.assistant_id}")
-        return session_state.assistant_id
-
-    logger.info("Creating new assistant...")
-    import dotenv
-    dotenv.load_dotenv()
-    openai_model = os.getenv("OPENAI_MODEL", "")
-    
-    assistant = client.beta.assistants.create(
-        name="GeneForge Assistant",
-        instructions=system_prompt,
-        model=openai_model,
-        tools=tool_functions,
-        temperature=0.0
-    )
-    session_state.assistant_id = assistant.id
-    logger.info(f"Created new assistant: {assistant.id}")
-    return assistant.id
-
-def get_or_create_thread(client: OpenAI, session_state: SessionState) -> str:
-    """Get existing thread or create a new one."""
-    if session_state.thread_id:
-        logger.info(f"Using existing thread: {session_state.thread_id}")
-        return session_state.thread_id
-
-    logger.info("Creating new thread...")
-    thread = client.beta.threads.create()
-    session_state.thread_id = thread.id
-    logger.info(f"Created new thread: {thread.id}")
-    return thread.id
-        
-def run_assistant(
-    client: OpenAI,
-    session_state: SessionState,
-    user_prompt: str,
-    system_prompt: str,
-    event_handler: "AssistantEventHandler"
-):
-    """
-    Streams an assistant run and delegates event handling to the provided handler.
-    """
-    assistant_id = get_or_create_assistant(client, session_state, system_prompt)
-    thread_id = get_or_create_thread(client, session_state)
-
-    # Add the user's message to the thread
-    client.beta.threads.messages.create(
-        thread_id=thread_id,
-        role="user",
-        content=user_prompt
-    )
-    logger.info(f"Added user message to thread {thread_id}")
-
-    # Stream the run
-    with client.beta.threads.runs.stream(
-        thread_id=thread_id,
-        assistant_id=assistant_id,
-        event_handler=event_handler
-    ) as stream:
-        stream.until_done()
 
 def main():
     """Example demonstrating the session-based workflow."""
