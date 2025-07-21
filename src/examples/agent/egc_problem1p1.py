@@ -1,3 +1,4 @@
+import json
 from src.examples.agent.workflows import WorkflowRunner
 
 
@@ -40,6 +41,7 @@ reference_answer = {
     "E": 10
 }
 
+RUBRIC = None
 class EGCProblem1p1Workflow(WorkflowRunner):
     def __init__(self, *args, **kwargs):
         self.reference_answer = reference_answer
@@ -53,10 +55,30 @@ class EGCProblem1p1Workflow(WorkflowRunner):
         Returns:
             True if the example is finished, False otherwise. Useful for stopping the workflow when a condition is met.
         """
-        last_message = self.messages[-1]
-        if last_message["role"] == "tool" and last_message["name"] == "report_answer":
-            return True
+        answer_tool_id = None
+        for message in self.messages:
+            if message["role"] == "assistant" and message.get("tool_calls", []) != []:
+                for tool_call in message["tool_calls"]:
+                    if tool_call.get("function", {}).get("name", None) == "report_answer": # Why would this ever be None?
+                        answer_tool_id = tool_call["id"]
+                        break
+            if message['role'] == 'tool' and message['tool_call_id'] == answer_tool_id:
+                return True
         return super().check_finished()
+    
+    def get_metrics(self):
+        last_message = self.messages[-1]
+        if last_message["role"] == "tool" and last_message.get("function", {}).get("name", None) == "report_answer": # Why would this ever be None?
+            answer = json.loads(last_message["content"])
+            return {
+                "num_rounds": len(self.messages),
+                "dg_correct": abs(answer["dG"] - self.reference_answer["dG"]) < 0.01,
+                "reaction_direction_correct": int(answer.get("reaction_favored", "").lower() == self.reference_answer["reaction_favored"].lower()),
+                "ES_correct": abs(answer.get("ES", 0) - self.reference_answer["ES"]) < 0.01,
+                "S_correct": abs(answer.get("S", 0) - self.reference_answer["S"]) < 0.01,
+                "E_correct": abs(answer.get("E", 0) - self.reference_answer["E"]) < 0.01,
+            }
+        return {}
 
 if __name__ == "__main__":
     workflow = EGCProblem1p1Workflow(
@@ -68,7 +90,7 @@ if __name__ == "__main__":
     
     # get the report_answer tool call
     for message in workflow.messages:
-        if message["role"] == "tool" and message["name"] == "report_answer":
+        if message["role"] == "tool" and message.get("function", {}).get("name", None) == "report_answer": # Why would this ever be None?
             answer_message = message
             break
     

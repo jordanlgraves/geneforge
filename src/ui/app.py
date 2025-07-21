@@ -111,8 +111,14 @@ def draw_sidebar():
         with st.expander("⚙️ Settings", expanded=False):
             client_type = st.radio(
                 "Select LLM Provider",
-                ("openai", "deepseek"),
-                index=0 if (st.session_state.llm_client_type in (None, "openai")) else 1,
+                ("openai", "deepseek", "art"),
+                index=(
+                    0
+                    if st.session_state.llm_client_type in (None, "openai")
+                    else 1
+                    if st.session_state.llm_client_type == "deepseek"
+                    else 2
+                ),
                 key="llm_provider_radio"
             )
 
@@ -133,7 +139,7 @@ def draw_sidebar():
                     if "client" in st.session_state: del st.session_state["client"]
                     if "model" in st.session_state: del st.session_state["model"]
                     st.rerun()
-            else:
+            elif client_type == "deepseek":
                 deepseek_key = st.text_input("DeepSeek API Key", value=st.session_state.deepseek_api_key, type="password")
                 deepseek_url = st.text_input("DeepSeek Base URL", value=st.session_state.deepseek_base_url)
 
@@ -150,6 +156,9 @@ def draw_sidebar():
                     if "client" in st.session_state: del st.session_state["client"]
                     if "model" in st.session_state: del st.session_state["model"]
                     st.rerun()
+            else:
+                # 'art' backend currently requires no additional credentials.
+                st.info("Using local *art* model – no API keys required.")
 
             agent_mode = st.toggle(
                 "🤖 Agent Mode",

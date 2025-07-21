@@ -131,7 +131,7 @@ class CelloLibrary:
         if not libraries:
             logger.warning("No libraries found in any of the configured paths")
         else:
-            logger.info(f"Found {len(libraries)} libraries")
+            logger.debug(f"Found {len(libraries)} libraries")
             for lib_id in libraries:
                 components = []
                 if "ucf" in libraries[lib_id]:
@@ -140,7 +140,7 @@ class CelloLibrary:
                     components.append("input")
                 if "output" in libraries[lib_id]:
                     components.append("output")
-                logger.info(f"Library {lib_id}: {', '.join(components)}")
+                logger.debug(f"Library {lib_id}: {', '.join(components)}")
         
         return libraries
     
@@ -157,6 +157,7 @@ class CelloLibrary:
         parent_dir = os.path.dirname(current_dir)
         # Go up one more level to the project root
         project_root = os.path.dirname(parent_dir)
+        
         return project_root
     
     def get_available_libraries(self) -> Dict[str, Dict[str, str]]:
@@ -252,21 +253,21 @@ class CelloLibrary:
         # Load the UCF file - store raw UCF data
         try:
             self.user_constraints = _read_cello_config_file(self.user_constraints_path)
-            logger.info(f"Loaded raw UCF data from {self.user_constraints_path}")
+            logger.debug(f"Loaded raw UCF data from {self.user_constraints_path}")
             
             # Load the input file - store raw input data
             input_path_original = library_info.get("input")
             input_path = _copy(input_path_original)
             if input_path and os.path.exists(input_path):
                 self.current_input_data = _read_cello_config_file(input_path)
-                logger.info(f"Loaded raw input data from {input_path}")
+                logger.debug(f"Loaded raw input data from {input_path}")
 
             # Load the output file - store raw output data
             output_path_original = library_info.get("output")
             output_path = _copy(output_path_original)
             if output_path and os.path.exists(output_path):
                 self.current_output_data = _read_cello_config_file(output_path)
-                logger.info(f"Loaded raw output data from {output_path}")
+                logger.debug(f"Loaded raw output data from {output_path}")
                     
 
         except Exception as e:
@@ -284,19 +285,19 @@ class CelloLibrary:
         # Store input and output file paths if available
         self.inputs_path = input_path
         if self.inputs_path:
-             logger.info(f"Registered input file: {self.inputs_path}")
+             logger.debug(f"Registered input file: {self.inputs_path}")
         else:
-             logger.info(f"No input file found for library {library_id}")
+             logger.debug(f"No input file found for library {library_id}")
         
         self.outputs_path = output_path
         if self.outputs_path:
-            logger.info(f"Registered output file: {self.outputs_path}")
+            logger.debug(f"Registered output file: {self.outputs_path}")
         else:
-            logger.info(f"No output file found for library {library_id}")
+            logger.debug(f"No output file found for library {library_id}")
         
         # Set the current library ID *after* successful loading
         self.current_library_id = library_id
-        logger.info(f"Successfully selected library: {library_id}")
+        logger.debug(f"Successfully selected library: {library_id}")
         
         # Update active context to use working copy
         self._active_context = {

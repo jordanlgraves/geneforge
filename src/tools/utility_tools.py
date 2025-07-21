@@ -269,6 +269,7 @@ class SequenceSimilarityTool(Tool):
             "seq1": {"type": "string", "description": "The first sequence."},
             "seq2": {"type": "string", "description": "The second sequence."},
         },
+        "required": ["seq1", "seq2"]
     }
     
     def execute(self, seq1: str, seq2: str):
@@ -285,15 +286,14 @@ class ReportAnswerTool(Tool):
         "properties": {
             "answer": {"type": "string", "description": "The answer to the user."},
         },
-        "required": ["answer"],
-        "annotations": {
-            "title": "Report Answer",
-            "readOnlyHint": True,
-            "destructiveHint": False,
-            "idempotentHint": True,
-            "openWorldHint": False,
-        },
-        "strict": True
+        "required": ["answer"]
     }
+    # annotations = {
+    #         "title": "Report Answer",
+    #         "readOnlyHint": True,
+    #         "destructiveHint": False,
+    #         "idempotentHint": True,
+    #         "openWorldHint": False,
+    #     }
     def execute(self, answer: str):
         return {"success": True, "answer": answer}

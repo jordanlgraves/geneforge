@@ -681,7 +681,11 @@ class EvaluateCircuitPerformanceTool(Tool):
         from src.integrations.cello_integration import CelloIntegration
         
         # Initialize Cello integration
-        cello = CelloIntegration()
+        cello_library = self.session_state.cello_library
+        cello = CelloIntegration(
+            output_root=self.session_state.output_directory,
+            library_manager=cello_library
+        )
         
         # Evaluate circuit performance
         metrics = cello.evaluate_circuit_performance(output_path)

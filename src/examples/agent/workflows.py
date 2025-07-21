@@ -9,7 +9,6 @@ from glob import glob
 from src.llm_module import get_llm_client
 from src.prompt_manager import get_system_prompt
 from src.session_state import SessionState
-
 from src.tool_registry import ToolIntegration, tool_functions
 
 SYSTEM_PROMPT = get_system_prompt()
@@ -20,11 +19,17 @@ class WorkflowRunner:
     Encapsulates common functionality for setup, execution, and result handling.
     """
     
-    def __init__(self, 
-                 example_name: str, 
-                 prompt: str = None, 
-                 system_prompt: str = None,
-                 use_reasoning_model: bool = False):
+    def __init__(
+        self,
+        example_name: str,
+        prompt: str = None,
+        system_prompt: str = None,
+        *,
+        llm_client_type: str = "openai",
+        use_reasoning_model: bool = False,
+        art_model: "art.TrainableModel" = None,
+        model_name: str = None,
+    ):
         """
         Initialize the example runner with the given parameters.
         
@@ -50,8 +55,10 @@ class WorkflowRunner:
         self.model = None
         self.messages = []
         self.rounds_seen = 0        # ❶ counter
-        
+
         self.use_reasoning_model = use_reasoning_model
+        self.llm_client_type = llm_client_type
+        self.art_model = art_model
         
     
     def _process_prompt(self, prompt: str):  
@@ -66,6 +73,18 @@ class WorkflowRunner:
         """
         return system_prompt or SYSTEM_PROMPT
     
+    def get_metrics(self):
+        """
+        Get the metrics for the workflow run.
+        """
+        return {"num_rounds": self.rounds_seen}
+    
+    def get_metadata(self):
+        """
+        Get the metadata for the workflow run.
+        """
+        return {"example_name": self.example_name}
+    
     def _reset(self):
         """Set up the LLM client and initial messages (Chat Completions)."""
         # Load environment variables
@@ -79,7 +98,11 @@ class WorkflowRunner:
         self.rounds_seen = 0
         
         # Initialize LLM client
-        self.client, self.model = get_llm_client(client_type="openai", reasoning=self.use_reasoning_model)
+        self.client, self.model = get_llm_client(
+            client_type=self.llm_client_type,
+            reasoning=self.use_reasoning_model,
+            art_model=self.art_model,
+        )
         self.logger.info(f"Using LLM Client: {type(self.client).__name__}, Model: {self.model}")
         
         # Initialise messages list and record snapshots for each
@@ -593,3 +616,23 @@ class WorkflowRunner:
             score = self.score_run(messages, session_state['history'])
             scores[chat_history_file] = score
         return scores
+    
+    def get_tool_usage(self):
+        tool_usage = dict()
+        for message in self.messages:
+            if message.get("role") == "assistant" and message.get("tool_calls"):
+                # This is an assistant message that requested tool calls.
+                for tool_call in message.get("tool_calls"):
+                    tool_name = tool_call.get("function", {}).get("name")
+                    if tool_name not in tool_usage:
+                        tool_usage[tool_name] = {'uses': 0, 'errors': 0}
+                    tool_usage[tool_name]['uses'] += 1
+            if message.get("role") == "tool":
+                # This is a tool call response.
+                content = json.loads(message.get("content"))
+                if content.get("error"):
+                    tool_name = message.get("name")
+                    if tool_name not in tool_usage:
+                        tool_usage[tool_name] = {'uses': 0, 'errors': 0}
+                    tool_usage[tool_name]['errors'] += 1
+        return tool_usage

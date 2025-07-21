@@ -122,24 +122,24 @@ class EstimatePromoterStrengthWithProDTool(_ProDToolBase):
     parameters = {
         "type": "object",
         "properties": {
-            "promoter": {"type": "string", "description": "Promoter name/id from the selected library or full DNA sequence or 17-bp spacer."},
+            "promoter_or_spacer": {"type": "string", "description": "Promoter name/id from the selected library or full DNA sequence or 17-bp spacer."},
             "file_type": {"type": "string", "enum": ["ucf", "input", "output"], "description": "Which library JSON to search when an ID is supplied", "default": "ucf"}
         },
-        "required": ["promoter"]
+        "required": ["promoter_or_spacer"]
     }
 
-    def execute(self, promoter: str, file_type: str = "ucf") -> Dict[str, Any]:
+    def execute(self, promoter_or_spacer: str, file_type: str = "ucf") -> Dict[str, Any]:
         prod = self._get_prod()
 
         # Determine if string looks like DNA
         dna_chars = set("ATGCRYSWKMBDHVNatgcryswkmbdhvn")
-        is_dna = set(promoter).issubset(dna_chars) and len(promoter) >= 17
+        is_dna = set(promoter_or_spacer).issubset(dna_chars) and len(promoter_or_spacer) >= 17
 
         sequence = None
         cello_library = self.session_state.cello_library
 
         if is_dna:
-            sequence = promoter.upper()
+            sequence = promoter_or_spacer.upper()
         else:
             # treat as part ID
             if not cello_library.current_library_id:
@@ -153,12 +153,12 @@ class EstimatePromoterStrengthWithProDTool(_ProDToolBase):
                 lib_data = cello_library.get_output_device_data()
 
             import src.library.cello_utils as plc
-            part = plc.get_part_by_name(lib_data, promoter)
+            part = plc.get_part_by_name(lib_data, promoter_or_spacer)
             if not part:
-                return {"error": f"Promoter ID '{promoter}' not found in {file_type} file."}
+                return {"error": f"Promoter ID '{promoter_or_spacer}' not found in {file_type} file."}
             sequence = part.get("dnasequence") or part.get("sequence")
             if not sequence:
-                return {"error": f"Promoter part '{promoter}' lacks dna sequence field."}
+                return {"error": f"Promoter part '{promoter_or_spacer}' lacks dna sequence field."}
 
         # Evaluate via ProD
         result = prod.evaluate_spacers([sequence])
@@ -168,9 +168,9 @@ class EstimatePromoterStrengthWithProDTool(_ProDToolBase):
         cls_val = int(result[sequence])
         ymax = result.get(sequence + "_ymax", class_to_rpu(cls_val))
         spacer = extract_id_ecoli_spacer(sequence)
-
+        
         return {
-            "promoter_sequence": sequence,
+            "sequence": sequence,
             "spacer": spacer,
             "class": cls_val,
             "ymax": ymax,
@@ -478,6 +478,7 @@ class PatchUcfWithPromotersTool(Tool):
                 selected_parts=list(modified_parts.keys()),
                 modified_parts=list(modified_parts.values()),
                 ucf_name=f"custom_{cello_library.current_library_id}_{parent_promoter_id}_variants.UCF.json",
+                output_dir=self.session_state.output_directory
             )
             return {"success": True, "n_variants": len(modified_parts)}
         except Exception as e:
@@ -579,6 +580,7 @@ class AddPromoterVariantTool(Tool):
                 modified_parts=None,
                 new_parts=new_items,
                 ucf_name=f"custom_{cello_library.current_library_id}_{new_promoter_id}.UCF.json",
+                output_dir=self.session_state.output_directory
             )
             cello_library.load_custom_ucf(path)
             self.session_state.custom_ucf_path = path

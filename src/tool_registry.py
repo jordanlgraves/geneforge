@@ -100,6 +100,7 @@ class ToolIntegration:
             tool_name: tool_class(session_state) 
             for tool_name, tool_class in tool_registry.items()
         }
+        
 
     def call_tool_function(self, function_name, function_args):
         """

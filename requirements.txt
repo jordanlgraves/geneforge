@@ -29,6 +29,12 @@ sbol2>=1.0
 # High-level utilities that perform SBOL-3 ↔ SBOL-2 graph conversion
 # sbol_utilities>=1.1
 
+# needed for promoter calculator
+scikit-learn
+
+# needed for scientific tools
+biopython
+
 # Type checking
 mypy>=1.0.0
 types-requests>=2.31.0
@@ -60,3 +66,9 @@ beautifulsoup4>=4.12.0
 py4j
 
 llama_index
+
+python-libsbml
+tellurium
+
+litellm
+openpipe-art

@@ -21,7 +21,7 @@ class SessionState:
     intermediate results, etc.
     """
     def __init__(self):
-        logger.info("Initializing new session state.")
+        logger.debug("Initializing new session state.")
         # Initialize CelloLibrary once per session
         self.cello_library = CelloLibrary()
         self.cello_results: Optional[Dict[str, Any]] = None
@@ -42,7 +42,7 @@ class SessionState:
         try:
             from src.chat_history import ChatHistoryLogger
             self.chat_logger: Optional[ChatHistoryLogger] = ChatHistoryLogger()
-            logger.info(f"Chat history will be saved to {self.chat_logger.get_path()}")
+            logger.debug(f"Chat history will be saved to {self.chat_logger.get_path()}")
         except Exception as exc:
             # Do not crash the session if logging cannot be initialised
             logger.warning("Chat history logger not initialised – %s", exc)
@@ -133,17 +133,17 @@ class SessionState:
 
     def select_library(self, library_id: str) -> bool:
         """Selects a library and updates the session state."""
-        logger.info(f"Session selecting library: {library_id}")
+        logger.debug(f"Session selecting library: {library_id}")
         success = self.cello_library.select_library(library_id)
         if success:
             # Update session state's copy of UCF data if needed
             self.cello_library.user_constraints = self.cello_library.get_ucf_data()
-            logger.info(f"Session state updated with UCF data for {library_id}")
+            logger.debug(f"Session state updated with UCF data for {library_id}")
             
             # Automatically calibrate ProD
             calibration_result = self.auto_calibrate_prod()
             if calibration_result.get("success"):
-                logger.info(f"ProD calibrated successfully: {calibration_result}")
+                logger.debug(f"ProD calibrated successfully: {calibration_result}")
             else:
                 logger.warning(f"ProD calibration failed or was skipped: {calibration_result.get('error')}")
 
@@ -153,7 +153,7 @@ class SessionState:
 
     def query_libraries_by_organism(self, organism: str) -> bool:
         """Filter the available libraries by organism."""
-        logger.info(f"Session filtering libraries by organism: {organism}")
+        logger.debug(f"Session filtering libraries by organism: {organism}")
         success = self.cello_library.filter_libraries_by_organism(organism)
         return success
 
