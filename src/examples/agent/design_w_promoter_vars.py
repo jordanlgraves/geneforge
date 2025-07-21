@@ -2,10 +2,12 @@
 import logging
 import json
 import os
-from src.examples.agent.workflow_harness import WorkflowRunner
+from src.examples.agent.workflows import WorkflowRunner
 from src.prompt_manager import get_system_prompt
 import src.library.cello_utils as cello_utils
 from glob import glob
+import pandas as pd
+import io
 
 # Set up logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
@@ -23,12 +25,12 @@ Report the name of the final DNA sequence design if successful."""
 SYSTEM_PROMPT = get_system_prompt()
 
 
-class DesignWithPromoterVarsRunner(WorkflowRunner):
+class DesignWithPromoterVarsWorkflow(WorkflowRunner):
     """
     Extension of ExampleRunner to check for a custom UCF file where the original
     promoter has been replaced by variants, and Cello results are present.
     """
-    def check_success(self) -> bool:
+    def check_finished(self) -> bool:
         """
         Check if:
         1. A custom UCF file was created.
@@ -39,153 +41,181 @@ class DesignWithPromoterVarsRunner(WorkflowRunner):
 
         return has_cello_results
 
-
-def score_run(messages, session_state_history):
-    # The different criteria that are scored and the points for each
-    HAS_3_UNIQUE_PROMOTERS, POINTS_FOR_3_UNIQUE_PROMOTERS = False, 5
-    HAS_3_NEW_PROMOTERS, POINTS_FOR_3_NEW_PROMOTERS = False, 5
-    HAS_3_NEW_PROMOTER_SEQUENCES, POINTS_FOR_3_NEW_PROMOTER_SEQUENCES = False, 5
-    HAS_CORRECT_ORDER, POINTS_FOR_CORRECT_ORDER = False, 2
-    NUM_TOOL_FAILURES, POINTS_FOR_NO_TOOL_FAILURES = 0, 2
-    HAS_CORRECT_TRUTH_TABLE, POINTS_FOR_CORRECT_TRUTH_TABLE = False, 5
-    
-    user_constraints_path = "ext_repos/Cello-UCF/files/v2/ucf/Eco/Eco1C1G1T1.UCF.json"
-    with open(user_constraints_path, 'r') as f:
-        ucf_data = json.load(f)
-    original_promoters = [p for p in ucf_data if p.get('collection') == 'parts' and p.get('type') == 'promoter']
-    original_promoters_names = [p.get('name') for p in original_promoters]
-    original_promoters_sequences = [p.get('sequence') for p in original_promoters]
-
-    score = 0
-    
-    last_session_state = session_state_history[-1]['state']
-    cello_results = last_session_state.get("cello_results")
-    if cello_results:
-        cello_library = last_session_state.get("cello_library")
-        if cello_library:
-            ucf_data = cello_library.get('user_constraints')
-            if ucf_data:
-                """
-                Check there are three unique promoters in the ucf_data
-                """
-                promoters = [p for p in ucf_data if p.get('collection') == 'parts' and p.get('type') == 'promoter']
-                final_promoter_names = [p.get('name') for p in promoters]
-                final_promoter_sequences = [p.get('dnasequence') for p in promoters]
-                num_promoters = len(set([p.get('name') for p in promoters]))
-                if num_promoters == 3:
-                    HAS_3_UNIQUE_PROMOTERS = True
-                
-                """
-                Check that the new promoters are novel in name
-                """
-                new_promoter_names = set(final_promoter_names) - set(original_promoters_names)
-                if len(new_promoter_names) == 3:
-                    HAS_3_NEW_PROMOTERS = True
-
-                """
-                Check that the sequences are different
-                """
-                new_promoter_sequences = set(final_promoter_sequences) - set(original_promoters_sequences)
-                if len(new_promoter_sequences) == 3:
-                    HAS_3_NEW_PROMOTER_SEQUENCES = True
-                
+    def _process_prompt(self, prompt):
         """
-        Check that the truth table is correct
+        Get the prompt for the example.
         """
-        activity_table = cello_results.get('dna_design', dict()).get('activity_table', '')
-        if activity_table:
-            from src.library.cello_utils import parse_activity_table
-            df_scores, df_binary = parse_activity_table(activity_table)                
-            input_1_col = df_binary.iloc[:, 0]
-            input_2_col = df_binary.iloc[:, 1]
-            output_col = df_binary.iloc[:, 2]
-            for in1, in2, out in zip(input_1_col, input_2_col, output_col):
-                # check that matches a NOR gate truth table
-                if in1 == 1 and in2 == 1:
-                    if out != 0:
-                        HAS_CORRECT_TRUTH_TABLE = False
-                else: # all other cases should have output 0
-                    if out != 1:
-                        HAS_CORRECT_TRUTH_TABLE = False
-
+        return PROMPT
     
-    """
-    ADD POINTS for calling the correct functions
-    """
-    fn_order = ['select_library', 
-                'list_promoters',
-                'generate_verilog',
-                'design_w_cello']
-    assistant_messages = [m for m in messages if m.get('role') == 'assistant']
-    agent_tool_calls = []
-    for message in assistant_messages:
-        tool_calls = message.get('tool_calls', [])
-        for tool_call in tool_calls:
-            tool_name = tool_call.get('function', dict()).get('name', None)
-            if tool_name in fn_order:
-                agent_tool_calls.append(tool_name)
-                    
-    """
-    CHECK TOOL CALL ORDER
-    Validate that the agent invoked the critical tools in the required *relative* order.
-    We treat the expected list as an *ordered subsequence* of the actual calls list;
-    other calls may appear in-between and are ignored.
-    """
-    expected_idx = 0
-    for tool_name in agent_tool_calls:
-        if tool_name == fn_order[expected_idx]:
-            expected_idx += 1
-            if expected_idx == len(fn_order):
-                break
+    def _process_system_prompt(self, system_prompt):
+        """
+        Get the system prompt for the example.
+        """
+        return SYSTEM_PROMPT
 
-    if expected_idx == len(fn_order):
-        HAS_CORRECT_ORDER = True
+    def score_run(self, messages, session_state_history):
+        # The different criteria that are scored and the points for each
+        HAS_3_UNIQUE_PROMOTERS, POINTS_FOR_3_UNIQUE_PROMOTERS = False, 5
+        HAS_3_NEW_PROMOTERS, POINTS_FOR_3_NEW_PROMOTERS = False, 5
+        HAS_3_NEW_PROMOTER_SEQUENCES, POINTS_FOR_3_NEW_PROMOTER_SEQUENCES = False, 5
+        HAS_CORRECT_ORDER, POINTS_FOR_CORRECT_ORDER = False, 2
+        NUM_TOOL_FAILURES, POINTS_FOR_NO_TOOL_FAILURES = 0, 2
+        HAS_CORRECT_TRUTH_TABLE, POINTS_FOR_CORRECT_TRUTH_TABLE = False, 5
         
-    """
-    COUNT TOOL FAILURES
-    """
-    tool_failures = []
-    tool_results = [m for m in messages if m.get('role') == 'tool']
-    for tr in tool_results:
-        content = json.loads(tr.get('content', ''))
-        if isinstance(content, str):
-            continue
-        if content.get('success', False) is False:
-            tool_failures.append(tr)
-    NUM_TOOL_FAILURES = len(tool_failures)
-    
-    """
-    ADD POINTS FOR THE CRITERIA THAT WERE MET
-    """
-    if HAS_3_UNIQUE_PROMOTERS:
-        score += POINTS_FOR_3_UNIQUE_PROMOTERS
-    if HAS_3_NEW_PROMOTERS:
-        score += POINTS_FOR_3_NEW_PROMOTERS
-    if HAS_3_NEW_PROMOTER_SEQUENCES:
-        score += POINTS_FOR_3_NEW_PROMOTER_SEQUENCES
-    if HAS_CORRECT_ORDER:   
-        score += POINTS_FOR_CORRECT_ORDER
-    if NUM_TOOL_FAILURES == 0:
-        score += POINTS_FOR_NO_TOOL_FAILURES
-    if HAS_CORRECT_TRUTH_TABLE:
-        score += POINTS_FOR_CORRECT_TRUTH_TABLE
+        user_constraints_path = "ext_repos/Cello-UCF/files/v2/ucf/Eco/Eco1C1G1T1.UCF.json"
+        with open(user_constraints_path, 'r') as f:
+            ucf_data = json.load(f)
+        original_promoters = [p for p in ucf_data if p.get('collection') == 'parts' and p.get('type') == 'promoter']
+        original_promoters_names = [p.get('name') for p in original_promoters]
+        original_promoters_sequences = [p.get('sequence') for p in original_promoters]
 
-    # small penalty based on number of messages
-    num_messages = len(messages)
-    score -= num_messages * 0.05
+        score = 0
+        
+        last_session_state = session_state_history[-1]['state']
+        cello_results = last_session_state.get("cello_results")
+        if cello_results:
+            cello_library = last_session_state.get("cello_library")
+            if cello_library:
+                ucf_data = cello_library.get('user_constraints')
+                if ucf_data:
+                    """
+                    Check there are three unique promoters in the ucf_data
+                    """
+                    promoters = [p for p in ucf_data if p.get('collection') == 'parts' and p.get('type') == 'promoter']
+                    final_promoter_names = [p.get('name') for p in promoters]
+                    final_promoter_sequences = [p.get('dnasequence') for p in promoters]
+                    num_promoters = len(set([p.get('name') for p in promoters]))
+                    if num_promoters == 3:
+                        HAS_3_UNIQUE_PROMOTERS = True
+                    
+                    """
+                    Check that the new promoters are novel in name
+                    """
+                    new_promoter_names = set(final_promoter_names) - set(original_promoters_names)
+                    if len(new_promoter_names) == 3:
+                        HAS_3_NEW_PROMOTERS = True
 
-    score = float(score) / 24
+                    """
+                    Check that the sequences are different
+                    """
+                    new_promoter_sequences = set(final_promoter_sequences) - set(original_promoters_sequences)
+                    if len(new_promoter_sequences) == 3:
+                        HAS_3_NEW_PROMOTER_SEQUENCES = True
+                    
+            """
+            Check that the truth table is correct
+            """
+            activity_table = cello_results.get('dna_design', dict()).get('activity_table', '')
+            if activity_table:
+                # skip the first line
+                table_lines = activity_table.split('\n')[1:]
 
-    return {'score': score, 
-            'num_tool_failures': NUM_TOOL_FAILURES, 
-            'num_messages': num_messages,
-            'num_tool_calls': len(agent_tool_calls),
-            'num_agent_messages': len(assistant_messages),
-            'has_3_unique_promoters': HAS_3_UNIQUE_PROMOTERS,
-            'has_3_new_promoters': HAS_3_NEW_PROMOTERS,
-            'has_3_new_promoter_sequences': HAS_3_NEW_PROMOTER_SEQUENCES,
-            'has_correct_order': HAS_CORRECT_ORDER,
-            'has_correct_truth_table': HAS_CORRECT_TRUTH_TABLE}
+                # split into the two tables. 
+                # Table 1 is all lines before the first occurrence of '""'
+                split_idx = table_lines.index('""')
+
+                table_str_scores = '\n'.join(table_lines[:split_idx])
+                table_str_binary = '\n'.join(table_lines[split_idx + 2:]) # skip the '""' line and the 'Binary' line
+
+                df_scores = pd.read_csv(io.StringIO(table_str_scores), index_col=None)
+                df_binary = pd.read_csv(io.StringIO(table_str_binary), index_col=None)
+
+        
+                input_1_col = df_binary.iloc[:, 0]
+                input_2_col = df_binary.iloc[:, 1]
+                output_col = df_binary.iloc[:, 2]
+                for in1, in2, out in zip(input_1_col, input_2_col, output_col):
+                    # check that matches a NOR gate truth table
+                    if in1 == 1 and in2 == 1:
+                        if out != 0:
+                            HAS_CORRECT_TRUTH_TABLE = False
+                    else: # all other cases should have output 0
+                        if out != 1:
+                            HAS_CORRECT_TRUTH_TABLE = False
+                                
+        """
+        ADD POINTS for calling the correct functions
+        """
+        fn_order = ['select_library', 
+                    'list_promoters',
+                    'generate_verilog',
+                    'design_w_cello']
+        assistant_messages = [m for m in messages if m.get('role') == 'assistant']
+        agent_tool_calls = []
+        for message in assistant_messages:
+            tool_calls = message.get('tool_calls', [])
+            for tool_call in tool_calls:
+                tool_name = tool_call.get('function', dict()).get('name', None)
+                if tool_name in fn_order:
+                    agent_tool_calls.append(tool_name)
+                        
+        """
+        CHECK TOOL CALL ORDER
+        Validate that the agent invoked the critical tools in the required *relative* order.
+        We treat the expected list as an *ordered subsequence* of the actual calls list;
+        other calls may appear in-between and are ignored.
+        """
+        expected_idx = 0
+        for tool_name in agent_tool_calls:
+            if tool_name == fn_order[expected_idx]:
+                expected_idx += 1
+                if expected_idx == len(fn_order):
+                    break
+
+        if expected_idx == len(fn_order):
+            HAS_CORRECT_ORDER = True
+            
+        """
+        COUNT TOOL FAILURES
+        """
+        tool_failures = []
+        tool_results = [m for m in messages if m.get('role') == 'tool']
+        for tr in tool_results:
+            content = json.loads(tr.get('content', ''))
+            if isinstance(content, str):
+                continue
+            if content.get('success', False) is False:
+                tool_failures.append(tr)
+        NUM_TOOL_FAILURES = len(tool_failures)
+        
+        """
+        ADD POINTS FOR THE CRITERIA THAT WERE MET
+        """
+        if HAS_3_UNIQUE_PROMOTERS:
+            score += POINTS_FOR_3_UNIQUE_PROMOTERS
+        if HAS_3_NEW_PROMOTERS:
+            score += POINTS_FOR_3_NEW_PROMOTERS
+        if HAS_3_NEW_PROMOTER_SEQUENCES:
+            score += POINTS_FOR_3_NEW_PROMOTER_SEQUENCES
+        if HAS_CORRECT_ORDER:   
+            score += POINTS_FOR_CORRECT_ORDER
+        if NUM_TOOL_FAILURES == 0:
+            score += POINTS_FOR_NO_TOOL_FAILURES
+        if HAS_CORRECT_TRUTH_TABLE:
+            score += POINTS_FOR_CORRECT_TRUTH_TABLE
+
+        # small penalty based on number of messages
+        MAX_SCORE = sum([POINTS_FOR_3_UNIQUE_PROMOTERS, 
+                        POINTS_FOR_3_NEW_PROMOTERS, 
+                        POINTS_FOR_3_NEW_PROMOTER_SEQUENCES, 
+                        POINTS_FOR_CORRECT_ORDER, 
+                        POINTS_FOR_NO_TOOL_FAILURES, 
+                        POINTS_FOR_CORRECT_TRUTH_TABLE])
+        # small penalty based on number of messages
+        num_messages = len(messages)
+        score -= num_messages * 0.05
+        score = float(score) / MAX_SCORE
+
+        return {'score': score, 
+                'num_tool_failures': NUM_TOOL_FAILURES, 
+                'num_messages': num_messages,
+                'num_tool_calls': len(agent_tool_calls),
+                'num_agent_messages': len(assistant_messages),
+                'has_3_unique_promoters': HAS_3_UNIQUE_PROMOTERS,
+                'has_3_new_promoters': HAS_3_NEW_PROMOTERS,
+                'has_3_new_promoter_sequences': HAS_3_NEW_PROMOTER_SEQUENCES,
+                'has_correct_order': HAS_CORRECT_ORDER,
+                'has_correct_truth_table': HAS_CORRECT_TRUTH_TABLE}
 
 
 def run_example():
@@ -194,7 +224,7 @@ def run_example():
     that involves creating and using promoter variants.
     """
     # Create and run the example using the customized runner
-    runner = DesignWithPromoterVarsRunner(
+    runner = DesignWithPromoterVarsWorkflow(
         example_name="DesignWithPromoterVars",
         prompt=PROMPT,
         system_prompt=SYSTEM_PROMPT,
@@ -206,43 +236,6 @@ def run_example():
     runner.log_results(final_result)
     
     return runner
-
-def get_runner(max_rounds=25, max_attempts=3):
-    """
-    Get a runner for the DesignWithPromoterVars example.
-    """
-    runner = DesignWithPromoterVarsRunner(
-        example_name="DesignWithPromoterVars",
-        prompt=PROMPT,
-        system_prompt=SYSTEM_PROMPT,
-        max_rounds=max_rounds,
-        max_attempts=max_attempts
-    )
-    return runner
-
-def generate_chat_histories(output_dir, num_attempts, start_index=0):
-    for attempt_index in range(start_index, start_index + num_attempts):
-        run_id = f"design_w_promoter_vars_dataset_{attempt_index}"
-
-        runner = run_example()
-        messages, session_state_history = runner.messages, runner.session_state_history().to_dict()
-        
-        os.makedirs(f"{output_dir}/{run_id}", exist_ok=True)
-        with open(f"{output_dir}/{runner.model}/{run_id}/chat_history.json", "w") as f:
-            json.dump(messages, f)
-        with open(f"{output_dir}/{runner.model}/{run_id}/session_state.json", "w") as f:
-            json.dump(session_state_history, f)
-
-def scores_for_runs_from_directory(directory):
-    scores = {}
-    for chat_history_file in glob(f"{directory}/*/chat_history.json"):
-        with open(chat_history_file, "r") as f:
-            messages = json.load(f)
-        with open(chat_history_file.replace("chat_history.json", "session_state.json"), "r") as f:
-            session_state = json.load(f)
-        score = score_run(messages, session_state['history'])
-        scores[chat_history_file] = score
-    return scores
 
 if __name__ == "__main__":
     run_example()

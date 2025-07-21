@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 import logging
-from src.examples.agent.workflow_harness import WorkflowRunner
+from src.examples.agent.workflows import WorkflowRunner
 
 # Set up logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
@@ -16,7 +16,7 @@ Please create the model and simulate it with whatever parameters you think are a
 class KineticModelingSimulationRunner(WorkflowRunner):
     """Extension of ExampleRunner to check for both custom input sensors file and Cello results."""
 
-    def check_success(self) -> bool:
+    def check_finished(self) -> bool:
         # Should check for a SBML file in the session state
         return False
 

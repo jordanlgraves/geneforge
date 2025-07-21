@@ -1,3 +1,4 @@
+from pathlib import Path
 from src.tools.base_tool import Tool
 import os
 import dotenv
@@ -10,8 +11,9 @@ class SetParameterValueTool(Tool):
     description = (
         "Bulk-update values inside the current parameter template for the loaded kinetic model. "
         "Supply an *updates* JSON object that mirrors the parameter template hierarchy. "
-        "Missing keys are ignored. Example::\n\n"
-        "    {\"species\": {\"AraC\": 1.0}, \"parameters\": {\"k_syn\": 0.05}}"
+        "Missing keys are ignored.  "
+        "Example with AraC and k_syn in the parameter template::\n\n"
+        "{\"updates\": {\"species\": {\"AraC\": 1.0}, \"parameters\": {\"k_syn\": 0.05} } }"
     )
     parameters = {
         "type": "object",
@@ -85,6 +87,7 @@ class GenerateKineticModelFromNaturalLanguageTool(Tool):
         gpt = KineticModelingGPTIntegration()
         messages = None
         previous_attempt_message = None
+        antimony = None
         for attempt in range(self.num_attempts):
             try:
                 antimony, messages = gpt.generate_kinetic_model(spec, previous_messages=messages, previous_attempt_message=previous_attempt_message)
@@ -95,7 +98,10 @@ class GenerateKineticModelFromNaturalLanguageTool(Tool):
                 if attempt == self.num_attempts - 1:
                     return {"error": f"Antimony→SBML conversion failed: {exc}"}
                 else:
-                    previous_attempt_message = f"The generated model from specification is invalid: Antimony: \n{antimony} \n\nSpec: {spec} \n\n due to error: {exc}."
+                    if antimony is None:
+                        previous_attempt_message = f"The generated model from specification is invalid: Spec: {spec} \n\n due to error: {exc}."
+                    else:
+                        previous_attempt_message = f"The generated model from specification is invalid: Antimony: \n{antimony} \n\nSpec: {spec} \n\n due to error: {exc}."
 
         from src.simulate.param_template import build_param_template
         template = build_param_template(sbml_doc)

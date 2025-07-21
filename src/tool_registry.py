@@ -83,6 +83,8 @@ TOOL_REGISTRY[ToolDocsQueryTool.name] = ToolDocsQueryTool
 TOOL_REGISTRY[TranslateDnaTool.name] = TranslateDnaTool
 TOOL_REGISTRY[GcContentTool.name] = GcContentTool
 TOOL_REGISTRY[SearchBioNumbersTool.name] = SearchBioNumbersTool
+TOOL_REGISTRY[ReportAnswerTool.name] = ReportAnswerTool
+TOOL_REGISTRY[SequenceSimilarityTool.name] = SequenceSimilarityTool
 
 # Generate OpenAI function schemas from tools
 _tool_schemas = [
@@ -98,6 +100,7 @@ class ToolIntegration:
             tool_name: tool_class(session_state) 
             for tool_name, tool_class in tool_registry.items()
         }
+        
 
     def call_tool_function(self, function_name, function_args):
         """

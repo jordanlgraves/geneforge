@@ -15,7 +15,7 @@ if os.path.exists(cello_core_path):
     os.environ["PYTHONPATH"] = f"{cello_core_path}:{os.environ.get('PYTHONPATH', '')}"
 
 from src.integrations.cello_integration import CelloIntegration
-from src.library.cello import CelloLibrary
+from src.library.cello_library import CelloLibrary
 
 class TestCelloIntegration(unittest.TestCase):
     """
@@ -44,24 +44,24 @@ class TestCelloIntegration(unittest.TestCase):
     def test_initialization(self):
         """Test that CelloIntegration initializes correctly"""
         # Test initialization with default parameters
-        cello = CelloIntegration()
+        cello = CelloIntegration(library_manager=self.library_manager)
         self.assertIsNotNone(cello)
-        self.assertIsNotNone(cello.library_manager)
+        self.assertIsNotNone(cello.cello_library)
         self.assertIsNotNone(cello.cello_config)
         
         # Test initialization with a specific library ID
-        cello = CelloIntegration(library_id='Eco1C1G1T1')
-        self.assertEqual(cello.library_manager.current_library_id, 'Eco1C1G1T1')
+        cello = CelloIntegration(library_id='Eco1C1G1T1', library_manager=self.library_manager)
+        self.assertEqual(cello.cello_library.current_library_id, 'Eco1C1G1T1')
     
     def test_select_library(self):
         """Test selecting a library"""
-        cello = CelloIntegration()
+        cello = CelloIntegration(library_manager=self.library_manager)
         
         # Test selecting each available library
         for library_id in self.available_libraries:
             success = cello.select_library(library_id)
             self.assertTrue(success)
-            self.assertEqual(cello.library_manager.current_library_id, library_id)
+            self.assertEqual(cello.cello_library.current_library_id, library_id)
         
         # Test selecting a non-existent library
         success = cello.select_library("NonExistentLibrary")
@@ -69,7 +69,7 @@ class TestCelloIntegration(unittest.TestCase):
     
     def test_get_available_libraries(self):
         """Test getting available libraries"""
-        cello = CelloIntegration()
+        cello = CelloIntegration(library_manager=self.library_manager)
         
         # Get available libraries
         libraries = cello.get_available_libraries()
@@ -141,7 +141,7 @@ class TestCelloIntegration(unittest.TestCase):
         print(f"Cello arguments: {cello_args}")
         
         # Create Cello instance with custom args
-        cello = CelloIntegration(library_id='Eco1C1G1T1') #, cello_args=cello_args)
+        cello = CelloIntegration(library_id='Eco1C1G1T1', library_manager=self.library_manager) #, cello_args=cello_args)
         
         # Simple NOT gate Verilog code
         verilog_code = """

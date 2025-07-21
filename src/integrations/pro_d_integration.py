@@ -280,7 +280,7 @@ class ProDIntegration:
         if not os.path.exists(self.model_path):
             logger.warning(f"Model file not found at {self.model_path}. ProD functions may fail.")
         else:
-            logger.info(f"Initialized ProD integration with model at {self.model_path}")
+            logger.debug(f"Initialized ProD integration with model at {self.model_path}")
     
     def evaluate_spacers(self, spacers: List[str], output_path: Optional[str] = None) -> Dict[str, float]:
         """
@@ -308,7 +308,7 @@ class ProDIntegration:
                     )
                     continue
                 seq_up = maybe_spacer.upper()
-                logger.info("Auto-extracted spacer %s from full promoter", seq_up)
+                logger.debug("Auto-extracted spacer %s from full promoter", seq_up)
             processed.append(seq_up)
             original_map[seq_up] = seq  # preserve original key
 
@@ -463,7 +463,7 @@ class ProDIntegration:
         _CAL_SLOPE = slope
         _CAL_INTERCEPT = intercept
 
-        logger.info("ProD class→RPU calibration stored: log10(RPU) = %.3f*class + %.3f", slope, intercept)
+        logger.debug("ProD class→RPU calibration stored: log10(RPU) = %.3f*class + %.3f", slope, intercept)
 
         return {
             'success': True,

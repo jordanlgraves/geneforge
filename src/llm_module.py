@@ -3,6 +3,15 @@ import logging
 import json
 from openai import OpenAI
 from typing import List, Dict, Any, Tuple, Optional
+import asyncio
+
+# New abstraction imports
+from src.model_client import BaseModelClient, OpenAIModelClient, ArtModelClient
+
+try:
+    import art  # type: ignore
+except ModuleNotFoundError:
+    art = None  # type: ignore
 
 from src.tool_registry import ToolIntegration, tool_functions
 from src.session_state import SessionState
@@ -14,125 +23,97 @@ logger = logging.getLogger(__name__)
 
 DEBUG_MODEL = True
 
-def get_llm_client(client_type: str = None, reasoning: bool = False) -> Optional[Tuple[OpenAI, str]]:
-    """Initialise an LLM client.
+def get_llm_client(client_type: str = None, 
+                   reasoning: bool = False, 
+                   *, 
+                   art_model: "art.TrainableModel" = None,
+                   model_name: str = None):
+    """Initialise a model client wrapper.
 
-    The caller may supply credentials via *environment variables* **or** by
-    setting them dynamically in ``os.environ`` *before* calling this
-    function.  The Streamlit UI does the latter so that users can paste keys
-    at runtime.
-
+    Args:
+        client_type: One of ``openai``, ``deepseek`` or ``art``.
+        reasoning:   When *True* select the reasoning-optimised model variant
+                      for providers that differentiate (e.g. OpenAI, DeepSeek).
+        art_model:   Pre-initialised :class:`art.TrainableModel` instance when
+                      ``client_type='art'``.  The caller is responsible for
+                      having registered the model with a backend already.
+        model_name:  The name of the model to use.  If not provided, the default
+                      model for the client type will be used.
     Returns:
-        (OpenAI client instance, model_name)  – or ``None`` on failure.
+        Tuple ``(client_wrapper, model_name)`` where *client_wrapper* exposes
+        the familiar ``chat.completions.create`` interface.  ``None`` is
+        returned if initialisation fails.
     """
 
-    # The UI stores (or updates) credentials in the process environment so we
-    # always read from ``os.environ`` here.  This keeps the public API simple
-    # and avoids passing sensitive strings around unnecessarily.
+    # ------------------------------------------------------------------
+    # Environment-provided credentials & defaults
+    # ------------------------------------------------------------------
     openai_api_key = os.getenv("OPENAI_API_KEY", "")
     deepseek_api_key = os.getenv("DEEPSEEK_API_KEY", "")
     deepseek_base_url = os.getenv("DEEPSEEK_BASE_URL", "")
-    openai_model = os.getenv("OPENAI_MODEL", "")
-    openai_model_reasoning = os.getenv("OPENAI_MODEL_REASONING", "")
+    openai_model_env = os.getenv("OPENAI_MODEL", "")
+    openai_model_reasoning_env = os.getenv("OPENAI_MODEL_REASONING", "")
 
-    client: Optional[OpenAI] = None
-    model: Optional[str] = None
+    client: Optional[BaseModelClient] = None
+    model_name: Optional[str] = None
 
+    # Default to deepseek if nothing specified (keeps previous behaviour)
+    client_type = client_type or "deepseek"
+
+    # ------------------------------------------------------------------
+    # OpenAI or compatible endpoints
+    # ------------------------------------------------------------------
     if client_type == "openai":
-        logger.info("Using OpenAI API")
+        logger.info("Initialising OpenAI backend")
         try:
-            client = OpenAI(api_key=openai_api_key)
-            model = openai_model if not reasoning else openai_model_reasoning
-            # Test connection (optional but recommended)
-            client.models.list()
-            logger.info(f"Successfully connected to OpenAI with model {model}")
-        except Exception as e:
-            logger.error(f"Failed to initialize OpenAI client: {e}")
-            client = None
-            model = None
-    elif client_type == "deepseek" or client_type is None:
-        logger.info("Using DeepSeek API")
+            sdk_client = OpenAI(api_key=openai_api_key, webhook_secret=None)
+            model_name = openai_model_env if not reasoning else openai_model_reasoning_env
+            # Lightweight probe to ensure creds are valid
+            sdk_client.models.list()
+            client = OpenAIModelClient(sdk_client, model_name)
+            logger.info("Connected to OpenAI with model %s", model_name)
+        except Exception as exc:
+            logger.error("Failed to initialise OpenAI client: %s", exc, exc_info=True)
+            return None
+
+    # ------------------------------------------------------------------
+    # DeepSeek
+    # ------------------------------------------------------------------
+    elif client_type == "deepseek":
+        logger.info("Initialising DeepSeek backend")
         try:
-            client = OpenAI(api_key=deepseek_api_key, base_url=deepseek_base_url)
-            model = "deepseek-reasoner" if reasoning else "deepseek-coder"
-            client.models.list()
-            logger.info(f"Successfully connected to DeepSeek with model {model}")
-        except Exception as e:
-            logger.error(f"Failed to initialize DeepSeek client: {e}")
-            client = None # Ensure client is None on failure
-            model = None
+            sdk_client = OpenAI(api_key=deepseek_api_key, base_url=deepseek_base_url)  # type: ignore[arg-type]
+            model_name = "deepseek-reasoner" if reasoning else "deepseek-coder"
+            sdk_client.models.list()
+            client = OpenAIModelClient(sdk_client, model_name)
+            logger.info("Connected to DeepSeek with model %s", model_name)
+        except Exception as exc:
+            logger.error("Failed to initialise DeepSeek client: %s", exc, exc_info=True)
+            return None
+
+    # ------------------------------------------------------------------
+    # Local *art* model
+    # ------------------------------------------------------------------
+    elif client_type == "art":
+        if art is None:
+            logger.error("Requested 'art' backend but package not available")
+            return None
+        if art_model is None:
+            logger.error("'art_model' parameter is required for client_type='art'")
+            return None
+        try:
+            client = ArtModelClient(art_model)
+            model_name = client.model_name
+            logger.info("Using local art model '%s'", model_name)
+        except Exception as exc:
+            logger.error("Failed to initialise art model client: %s", exc, exc_info=True)
+            return None
+
     else:
-        logger.error("No API keys found for OpenAI or DeepSeek in environment variables.")
+        logger.error("Unknown client_type '%s'", client_type)
         return None
 
-    if client and model:
-        return client, model
-    else:
-        logger.error("LLM Client initialization failed.")
-        return None
-
-def get_or_create_assistant(client: OpenAI, session_state: SessionState, system_prompt: str) -> str:
-    """Get existing assistant or create a new one."""
-    if session_state.assistant_id:
-        logger.info(f"Using existing assistant: {session_state.assistant_id}")
-        return session_state.assistant_id
-
-    logger.info("Creating new assistant...")
-    import dotenv
-    dotenv.load_dotenv()
-    openai_model = os.getenv("OPENAI_MODEL", "")
-    
-    assistant = client.beta.assistants.create(
-        name="GeneForge Assistant",
-        instructions=system_prompt,
-        model=openai_model,
-        tools=tool_functions,
-        temperature=0.0
-    )
-    session_state.assistant_id = assistant.id
-    logger.info(f"Created new assistant: {assistant.id}")
-    return assistant.id
-
-def get_or_create_thread(client: OpenAI, session_state: SessionState) -> str:
-    """Get existing thread or create a new one."""
-    if session_state.thread_id:
-        logger.info(f"Using existing thread: {session_state.thread_id}")
-        return session_state.thread_id
-
-    logger.info("Creating new thread...")
-    thread = client.beta.threads.create()
-    session_state.thread_id = thread.id
-    logger.info(f"Created new thread: {thread.id}")
-    return thread.id
-        
-def run_assistant(
-    client: OpenAI,
-    session_state: SessionState,
-    user_prompt: str,
-    system_prompt: str,
-    event_handler: "AssistantEventHandler"
-):
-    """
-    Streams an assistant run and delegates event handling to the provided handler.
-    """
-    assistant_id = get_or_create_assistant(client, session_state, system_prompt)
-    thread_id = get_or_create_thread(client, session_state)
-
-    # Add the user's message to the thread
-    client.beta.threads.messages.create(
-        thread_id=thread_id,
-        role="user",
-        content=user_prompt
-    )
-    logger.info(f"Added user message to thread {thread_id}")
-
-    # Stream the run
-    with client.beta.threads.runs.stream(
-        thread_id=thread_id,
-        assistant_id=assistant_id,
-        event_handler=event_handler
-    ) as stream:
-        stream.until_done()
+    return (client, model_name) if client and model_name else None
 
 def main():
     """Example demonstrating the session-based workflow."""

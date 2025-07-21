@@ -60,7 +60,7 @@ class ToolDocsQueryTool(Tool):
         import os
         from openai import OpenAI
 
-        client = OpenAI()
+        client = OpenAI(api_key=os.environ.get("OPENAI_API_KEY"))
 
         # Use session_state to cache a single assistant for all tool docs
         cache_key = "tooldoc_assistant"
@@ -73,12 +73,12 @@ class ToolDocsQueryTool(Tool):
 
             try:
                 # 1. Create a single vector store for all tool docs
-                vector_store = client.vector_stores.create(name="Tool Documentation Store")
+                vector_store = client.beta.vector_stores.create(name="Tool Documentation Store")
 
                 # 2. Upload all files and add them to the vector store
                 file_streams = [open(path, "rb") for path in doc_paths]
                 try:
-                    file_batch = client.vector_stores.file_batches.upload_and_poll(
+                    file_batch = client.beta.vector_stores.file_batches.upload_and_poll(
                         vector_store_id=vector_store.id, files=file_streams
                     )
                 finally:
@@ -247,3 +247,53 @@ class ArxivSearchTool(Tool):
 
         results = agent.chat(query)
         return {"success": True, "results": results}
+    
+class GetSessionStateTool(Tool):
+    name = "get_session_state"
+    description = "Get the state of the active session including which library is currently active, if there are design results attached, parameter values for simulations, etc."
+    parameters = {
+        "type": "object",
+        "properties": {},
+        "required": []
+    }
+    def execute(self):
+        return {"success": True, "session_state": self.session_state.to_dict()}
+    
+    
+class SequenceSimilarityTool(Tool):
+    name = "sequence_similarity"
+    description = "Return the similarity score by calculating the similarity between two sequences using the `PairwiseAligner` from the BioPython library. "
+    parameters = {
+        "type": "object",
+        "properties": {
+            "seq1": {"type": "string", "description": "The first sequence."},
+            "seq2": {"type": "string", "description": "The second sequence."},
+        },
+        "required": ["seq1", "seq2"]
+    }
+    
+    def execute(self, seq1: str, seq2: str):
+        from Bio import Align
+        aligner = Align.PairwiseAligner()
+        alignments = aligner.align(seq1, seq2)
+        return {"success": True, "similarity": alignments.score}
+    
+class ReportAnswerTool(Tool):
+    name = "report_answer"
+    description = "Report the answer to the user. This is the final answer to the user's question."
+    parameters = {
+        "type": "object",
+        "properties": {
+            "answer": {"type": "string", "description": "The answer to the user."},
+        },
+        "required": ["answer"]
+    }
+    # annotations = {
+    #         "title": "Report Answer",
+    #         "readOnlyHint": True,
+    #         "destructiveHint": False,
+    #         "idempotentHint": True,
+    #         "openWorldHint": False,
+    #     }
+    def execute(self, answer: str):
+        return {"success": True, "answer": answer}

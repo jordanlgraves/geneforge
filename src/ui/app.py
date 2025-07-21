@@ -5,9 +5,11 @@ import logging
 import json
 import uuid
 from pathlib import Path
-from typing import Dict, Any
-from typing_extensions import override
-from openai import AssistantEventHandler
+from typing import Dict, Any, Optional
+from dotenv import load_dotenv
+
+load_dotenv()
+from src.tool_registry import tool_functions
 
 # Ensure the project root is on the PYTHONPATH
 PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), os.pardir, os.pardir))
@@ -15,12 +17,12 @@ if PROJECT_ROOT not in sys.path:
     sys.path.append(PROJECT_ROOT)
 
 
-from src.llm_module import get_llm_client, run_assistant
+from src.llm_module import get_llm_client
 from src.prompt_manager import get_system_prompt
 from src.session_state import SessionState
-from src.tool_registry import ToolIntegration
+from src.tool_registry import ToolIntegration, tool_functions
 
-from src.examples.agent.design_w_promoter_vars import DesignWithPromoterVarsRunner, PROMPT as PROMPT_VARS
+from src.examples.agent.design_w_promoter_vars import DesignWithPromoterVarsWorkflow, PROMPT as PROMPT_VARS
 from src.examples.agent.design_minimal_input_sensors import MinimalInputSensorsRunner, PROMPT as PROMPT_SENSORS
 from src.examples.agent.design_w_promoter_vars_and_research import DesignWithPromoterVarsWResearchRunner, PROMPT as PROMPT_VARS_W_RESEARCH
 from src.examples.agent.design_toggle_switch import SimpleNotGateSimulationRunner, PROMPT as PROMPT_SIMPLE_NOT_GATE
@@ -44,7 +46,7 @@ st.set_page_config(
 # --- Examples ---
 EXAMPLES: Dict[str, Any] = {
     # "Circuit Design: Simple Not Gate Simulation": (SimpleNotGateSimulationRunner, PROMPT_SIMPLE_NOT_GATE),
-    "Circuit Design: with Promoter Variants": (DesignWithPromoterVarsRunner, PROMPT_VARS),
+    "Circuit Design: with Promoter Variants": (DesignWithPromoterVarsWorkflow, PROMPT_VARS),
     "Circuit Design: with Minimal Input Sensors": (MinimalInputSensorsRunner, PROMPT_SENSORS),
     "Circuit Design: with Promoter Variants and Research": (DesignWithPromoterVarsWResearchRunner, PROMPT_VARS_W_RESEARCH),
     "Kinetic Modeling: Simple Simulation": (KineticModelingSimulationRunner, PROMPT_KM_SIMULATION),
@@ -96,10 +98,10 @@ def init_session_state():
         st.session_state.agent_mode = True  # Default to automatic agent mode
     if "pending_tool_calls" not in st.session_state:
         st.session_state.pending_tool_calls = []
-    if "current_run_id" not in st.session_state:
-        st.session_state.current_run_id = None
-    if "current_thread_id" not in st.session_state:
-        st.session_state.current_thread_id = None
+    # Clean up deprecated assistant state
+    for key in ["current_run_id", "current_thread_id"]:
+        if key in st.session_state:
+            del st.session_state[key]
 
 # --- UI Components ---
 def draw_sidebar():
@@ -109,8 +111,14 @@ def draw_sidebar():
         with st.expander("⚙️ Settings", expanded=False):
             client_type = st.radio(
                 "Select LLM Provider",
-                ("openai", "deepseek"),
-                index=0 if (st.session_state.llm_client_type in (None, "openai")) else 1,
+                ("openai", "deepseek", "art"),
+                index=(
+                    0
+                    if st.session_state.llm_client_type in (None, "openai")
+                    else 1
+                    if st.session_state.llm_client_type == "deepseek"
+                    else 2
+                ),
                 key="llm_provider_radio"
             )
 
@@ -131,7 +139,7 @@ def draw_sidebar():
                     if "client" in st.session_state: del st.session_state["client"]
                     if "model" in st.session_state: del st.session_state["model"]
                     st.rerun()
-            else:
+            elif client_type == "deepseek":
                 deepseek_key = st.text_input("DeepSeek API Key", value=st.session_state.deepseek_api_key, type="password")
                 deepseek_url = st.text_input("DeepSeek Base URL", value=st.session_state.deepseek_base_url)
 
@@ -148,6 +156,9 @@ def draw_sidebar():
                     if "client" in st.session_state: del st.session_state["client"]
                     if "model" in st.session_state: del st.session_state["model"]
                     st.rerun()
+            else:
+                # 'art' backend currently requires no additional credentials.
+                st.info("Using local *art* model – no API keys required.")
 
             agent_mode = st.toggle(
                 "🤖 Agent Mode",
@@ -157,6 +168,23 @@ def draw_sidebar():
             if agent_mode != st.session_state.agent_mode:
                 st.session_state.agent_mode = agent_mode
                 st.rerun()
+
+        st.divider()
+
+        # ---------------- History Export ----------------
+        if st.session_state.messages:
+            # Use a unique key for the button based on message count to avoid state issues
+            export_key = f"export_{len(st.session_state.messages)}"
+            if st.button("Export Chat History", key=export_key):
+                # Create a unique filename for the export
+                export_filename = f"geneforge_chat_{uuid.uuid4().hex[:8]}.json"
+                export_data = json.dumps(st.session_state.messages, indent=2)
+                st.download_button(
+                    label="Download JSON",
+                    data=export_data,
+                    file_name=export_filename,
+                    mime="application/json",
+                )
 
         # ---------------- Examples ----------------
         st.caption("### Examples")
@@ -238,150 +266,41 @@ def draw_sidebar():
                 del st.session_state[key]
             st.rerun()
 
-def display_chat():
-    """Display the chat messages."""
-    for message in st.session_state.messages:
-        with st.chat_message(message["role"]):
-            content = message.get("content")
-
-            # ------------------------------------------------------------------
-            #  Render normal assistant / user content
-            # ------------------------------------------------------------------
-            if content and message["role"] in ("assistant", "user"):
-                st.markdown(content)
-
-            # ------------------------------------------------------------------
-            #  Special handling for tool messages
-            # ------------------------------------------------------------------
-            if message["role"] == "tool":
-                try:
-                    tool_payload = json.loads(content)
-                except Exception:
-                    st.markdown(content)
-                    tool_payload = None
-
-                tool_name = message.get("name", "tool_result")
-
-                if tool_name == "run_kinetic_model_simulation" and tool_payload and tool_payload.get("success"):
-                    import pandas as pd
-                    cols = tool_payload.get("columns") or []
-                    data = tool_payload.get("result", [])
-                    if data:
-                        try:
-                            df = pd.DataFrame(data, columns=cols if cols else None)
-                            if cols:
-                                df.set_index(cols[0], inplace=True)
-                            st.line_chart(df)
-                        except Exception as e:
-                            st.error(f"Failed to render chart: {e}")
-                    # Show PNG if generated
-                    if tool_payload.get("plot_path"):
-                        from pathlib import Path
-                        p = Path(tool_payload["plot_path"])
-                        if p.exists():
-                            st.image(str(p))
-                    else:
-                        st.info("No simulation data.")
-                else:
-                    # Fallback – pretty-print JSON
-                    if tool_payload is not None:
-                        st.json(tool_payload)
-                    else:
-                        st.markdown(content)
-
-            # ------------------------------------------------------------------
-            #  Display tool calls requested by assistant (within assistant msg)
-            # ------------------------------------------------------------------
-            if message["role"] == "assistant" and "tool_calls" in message:
-                for tool_call in message["tool_calls"]:
-                    tool_name = tool_call.get("name")
-                    args = tool_call.get("arguments", {})
-                    result = tool_call.get("result")
-                    with st.expander(f"Tool Call: `{tool_name}`", expanded=False):
-                        st.write("**Arguments:**")
-                        st.json(args)
-                        if result:
-                            st.write("**Result:**")
-                            st.json(result)
-
-    # Display pending tool calls for manual approval
-    if not st.session_state.agent_mode and st.session_state.pending_tool_calls:
-        st.divider()
-        st.subheader("🔧 Pending Tool Calls")
-        st.write("The assistant wants to execute the following tools. Review and approve them:")
-        
-        for i, tool_call in enumerate(st.session_state.pending_tool_calls):
-            with st.expander(f"Tool {i+1}: `{tool_call['function']['name']}`", expanded=True):
-                try:
-                    args = json.loads(tool_call['function']['arguments'])
-                    st.json(args)
-                except json.JSONDecodeError:
-                    st.error("Invalid JSON arguments")
-                    st.text(tool_call['function']['arguments'])
-                
-                col1, col2 = st.columns(2)
-                with col1:
-                    if st.button(f"✅ Execute Tool {i+1}", key=f"execute_{i}"):
-                        execute_pending_tool_call(i)
-                        st.rerun()
-                with col2:
-                    if st.button(f"❌ Skip Tool {i+1}", key=f"skip_{i}"):
-                        skip_pending_tool_call(i)
-                        st.rerun()
-        
-        col1, col2 = st.columns(2)
-        with col1:
-            if st.button("✅ Execute All Tools"):
-                execute_all_pending_tools()
-                st.rerun()
-        with col2:
-            if st.button("❌ Skip All Tools"):
-                st.session_state.pending_tool_calls = []
-                continue_without_tools()
-                st.rerun()
-
-    # Clear pending tool calls
-    st.session_state.pending_tool_calls = []
-    st.session_state.current_run_id = None
-    st.session_state.current_thread_id = None
-
-def execute_pending_tool_call(index: int):
+def execute_pending_tool_call(index: int, container=st):
     """Execute a specific pending tool call."""
     if index >= len(st.session_state.pending_tool_calls):
         return
     
     tool_call = st.session_state.pending_tool_calls[index]
     fn_name = tool_call['function']['name']
-    
+    tool_msg = None
     try:
         fn_args = json.loads(tool_call['function']['arguments'])
         result = st.session_state.tool_integration.call_tool_function(fn_name, fn_args)
         
         # Store result for submission
-        tool_call['result'] = result
-        tool_call['executed'] = True
-        
-        # Log the tool execution
-        tool_msg = {
-            "role": "tool",
-            "name": fn_name,
-            "content": json.dumps(result),
-        }
-        st.session_state.messages.append(tool_msg)
-        
-        chat_logger = getattr(st.session_state.core_session, "chat_logger", None)
-        if chat_logger:
-            chat_logger.add_message(tool_msg)
-            
-        st.success(f"Executed {fn_name} successfully!")
-        
-        # Update live session overview
-        refresh_session_overview()
+        tool_msg_content = json.dumps(result)
+        # container.success(f"Executed {fn_name} successfully!")
         
     except Exception as e:
-        st.error(f"Error executing {fn_name}: {e}")
-        tool_call['result'] = {"error": str(e)}
-        tool_call['executed'] = True
+        # container.error(f"Error executing {fn_name}: {e}")
+        tool_msg_content = json.dumps({"error": str(e), "success": False})
+
+    # Create and log the tool message
+    tool_msg = {
+        "role": "tool",
+        "tool_call_id": tool_call["id"],
+        "name": fn_name,
+        "content": tool_msg_content,
+    }
+    st.session_state.messages.append(tool_msg)
+    
+    chat_logger = getattr(st.session_state.core_session, "chat_logger", None)
+    if chat_logger:
+        chat_logger.add_message(tool_msg)
+            
+    tool_call["executed"] = True
+    refresh_session_overview()
 
 def skip_pending_tool_call(index: int):
     """Skip a specific pending tool call."""
@@ -389,11 +308,22 @@ def skip_pending_tool_call(index: int):
         return
     
     tool_call = st.session_state.pending_tool_calls[index]
-    tool_call['result'] = {"error": "Tool execution skipped by user"}
-    tool_call['executed'] = True
-    st.info(f"Skipped {tool_call['function']['name']}")
+    
+    tool_msg_content = json.dumps({"error": "Tool execution skipped by user", "success": False})
+    tool_msg = {
+        "role": "tool",
+        "tool_call_id": tool_call["id"],
+        "name": tool_call["function"]["name"],
+        "content": tool_msg_content,
+    }
+    st.session_state.messages.append(tool_msg)
 
-    # Update live session overview
+    chat_logger = getattr(st.session_state.core_session, "chat_logger", None)
+    if chat_logger:
+        chat_logger.add_message(tool_msg)
+
+    st.info(f"Skipped {tool_call['function']['name']}")
+    tool_call['executed'] = True
     refresh_session_overview()
 
 def execute_all_pending_tools():
@@ -410,286 +340,88 @@ def submit_tool_results():
     if not st.session_state.pending_tool_calls:
         return
     
-    tool_outputs = []
-    for tool_call in st.session_state.pending_tool_calls:
-        if tool_call.get('executed'):
-            tool_outputs.append({
-                "tool_call_id": tool_call['id'],
-                "output": json.dumps(tool_call.get('result', {}))
-            })
-    
-    if tool_outputs and st.session_state.current_run_id and st.session_state.current_thread_id:
-        try:
-            # Continue the assistant run with tool outputs
-            with st.chat_message("assistant"):
-                message_placeholder = st.empty()
-                full_response = ""
-                
-                class ContinuationHandler(AssistantEventHandler):
-                    @override
-                    def on_text_delta(self, delta, snapshot):
-                        nonlocal full_response
-                        full_response += delta.value
-                        message_placeholder.markdown(full_response + "▌")
-                
-                with st.session_state.client.beta.threads.runs.submit_tool_outputs_stream(
-                    thread_id=st.session_state.current_thread_id,
-                    run_id=st.session_state.current_run_id,
-                    tool_outputs=tool_outputs,
-                    event_handler=ContinuationHandler(),
-                ) as stream:
-                    stream.until_done()
-                
-                message_placeholder.markdown(full_response)
-                if full_response:
-                    assistant_msg = {"role": "assistant", "content": full_response}
-                    st.session_state.messages.append(assistant_msg)
-                    
-                    chat_logger = getattr(st.session_state.core_session, "chat_logger", None)
-                    if chat_logger:
-                        chat_logger.add_message(assistant_msg)
-        
-        except Exception as e:
-            st.error(f"Error submitting tool results: {e}")
-    
-    # Clear pending tool calls
+    handle_chat_submission(prompt=None)
     st.session_state.pending_tool_calls = []
-    st.session_state.current_run_id = None
-    st.session_state.current_thread_id = None
 
 def continue_without_tools():
     """Continue the conversation without executing tools."""
-    # Submit empty/error results for all pending tools
-    tool_outputs = []
     for tool_call in st.session_state.pending_tool_calls:
-        tool_outputs.append({
-            "tool_call_id": tool_call['id'],
-            "output": json.dumps({"error": "Tool execution declined by user"})
-        })
-    
-    if tool_outputs and st.session_state.current_run_id and st.session_state.current_thread_id:
-        try:
-            with st.session_state.client.beta.threads.runs.submit_tool_outputs_stream(
-                thread_id=st.session_state.current_thread_id,
-                run_id=st.session_state.current_run_id,
-                tool_outputs=tool_outputs,
-                event_handler=AssistantEventHandler(),
-            ) as stream:
-                stream.until_done()
-        except Exception as e:
-            st.error(f"Error continuing without tools: {e}")
-    
-    # Clear pending tool calls
+        tool_msg = {
+            "role": "tool",
+            "tool_call_id": tool_call["id"],
+            "name": tool_call["function"]["name"],
+            "content": json.dumps({"error": "Tool execution declined by user", "success": False}),
+        }
+        st.session_state.messages.append(tool_msg)
+        chat_logger = getattr(st.session_state.core_session, "chat_logger", None)
+        if chat_logger:
+            chat_logger.add_message(tool_msg)
+
     st.session_state.pending_tool_calls = []
-    st.session_state.current_run_id = None
-    st.session_state.current_thread_id = None
+    handle_chat_submission(prompt=None)
 
-def handle_chat_submission(prompt: str):
-    """Handles the logic for submitting a prompt to the LLM and updating the chat."""
-    if not prompt:
-        return
-
-    # ------------------------------------------------------------------
-    #  User message – update in-memory chat and persistent log (if enabled)
-    # ------------------------------------------------------------------
-    user_msg = {"role": "user", "content": prompt}
-    st.session_state.messages.append(user_msg)
+def handle_chat_submission(prompt: Optional[str]):
+    """Handles one turn of the conversation: takes a prompt, calls the LLM, and appends the response."""
     chat_logger = getattr(st.session_state.core_session, "chat_logger", None)
-    if chat_logger:
-        chat_logger.add_message(user_msg)
 
-    # Display user message immediately
-    with st.chat_message("user"):
-        st.markdown(prompt)
+    # 1. Add new user prompt to history if provided
+    if prompt:
+        user_msg = {"role": "user", "content": prompt}
+        st.session_state.messages.append(user_msg)
+        if chat_logger:
+            chat_logger.add_message(user_msg)
 
-    with st.chat_message("assistant"):
-        message_placeholder = st.empty()
-        full_response = ""
+    # 2. Run the LLM if it's our turn
+    # (i.e., last message was from user or a tool response)
+    last_message = st.session_state.messages[-1] if st.session_state.messages else None
+    if not last_message or last_message["role"] in ("user", "tool"):
+        with st.spinner("Assistant is thinking..."):
+            try:
+                api_messages = [
+                    {k: v for k, v in msg.items() if k != "name"}
+                    for msg in st.session_state.messages
+                ]
+                stream = st.session_state.client.chat.completions.create(
+                    model=st.session_state.model,
+                    messages=api_messages,
+                    tools=tool_functions,
+                    tool_choice="auto",
+                    stream=True,
+                )
 
-        class EventHandler(AssistantEventHandler):
-            def __init__(self, run_id=None, thread_id=None):
-                super().__init__()
-                self.client = st.session_state.client
-                self.tool_integration = st.session_state.tool_integration
-                self.run_id = run_id
-                self.thread_id = thread_id
-                self.chat_logger = chat_logger
-
-            @override
-            def on_event(self, event):
-                if event.event == 'thread.run.created':
-                    self.run_id = event.data.id
-                    self.thread_id = event.data.thread_id
+                # We can't use the streaming context manager because we need the final assembled message
+                response_content = ""
+                tool_call_chunks = []
+                for chunk in stream:
+                    delta = chunk.choices[0].delta
+                    if delta and delta.content:
+                        response_content += delta.content
+                    if delta and delta.tool_calls:
+                        for tool_call_chunk in delta.tool_calls:
+                            if len(tool_call_chunks) <= tool_call_chunk.index:
+                                tool_call_chunks.append({"id": "", "type": "function", "function": {"name": "", "arguments": ""}})
+                            
+                            chunk_json = tool_call_chunk.model_dump()
+                            if chunk_json.get("id"):
+                                tool_call_chunks[tool_call_chunk.index]["id"] += chunk_json.get("id", "")
+                            if chunk_json.get("function", {}).get("name"):
+                                tool_call_chunks[tool_call_chunk.index]["function"]["name"] += chunk_json["function"]["name"]
+                            if chunk_json.get("function", {}).get("arguments"):
+                                tool_call_chunks[tool_call_chunk.index]["function"]["arguments"] += chunk_json["function"]["arguments"]
                 
-                if event.event == 'thread.run.requires_action':
-                    if st.session_state.agent_mode:
-                        self.handle_requires_action_auto(event.data)
-                    else:
-                        self.handle_requires_action_manual(event.data)
-                
-                if event.event == 'thread.run.failed':
-                    self.handle_run_failed(event.data)
+            except Exception as e:
+                st.error(f"An error occurred: {e}")
+                logger.error(f"Chat completion failed: {e}", exc_info=True)
+                return
 
-            @override
-            def on_text_delta(self, delta, snapshot):
-                nonlocal full_response
-                full_response += delta.value
-                message_placeholder.markdown(full_response + "▌")
-            
-            def handle_run_failed(self, data):
-                """Handle run failure."""
-                # show an error message
-                # st.error(f"Run failed: {data.error.message}") Will not work: "'Run' object has no attribute 'error'"
-                # add a failure message to the chat
-                # st.chat_message("assistant").markdown(f"**Run failed:** {data.last_error.message}")
-                st.session_state.messages.append({"role": "assistant", "content": f"**Run failed:** {data.last_error.message}"})
-                if self.chat_logger:
-                    self.chat_logger.add_message({"role": "assistant", "content": f"**Run failed:** {data.last_error.message}"})  # type: ignore
-
-
-            def handle_requires_action_auto(self, data):
-                """Handle tool calls automatically in agent mode."""
-                nonlocal full_response, message_placeholder  # capture outer scope
-
-                # ----------------------------------------------------------
-                #  Finalise assistant text *before* the tool call so that
-                #  chat order is preserved (text → tool → next text).
-                # ----------------------------------------------------------
-                pre_text = full_response.strip()
-                if pre_text:
-                    # Remove the typing cursor and commit to chat history
-                    message_placeholder.markdown(pre_text)
-                    st.session_state.messages.append({"role": "assistant", "content": pre_text})
-                    if self.chat_logger:
-                        self.chat_logger.add_message({"role": "assistant", "content": pre_text})
-
-                # Reset buffer & placeholder for post-tool text
-                full_response = ""
-                message_placeholder = st.empty()
-
-                run_id = data.id
-                thread_id = data.thread_id
-                tool_outputs = []
-
-                with st.expander("Tool Calls", expanded=True):
-                    seen_call_ids: set[str] = set()
-                    for tool_call in data.required_action.submit_tool_outputs.tool_calls:
-                        if tool_call.id in seen_call_ids:
-                            continue  # skip duplicates
-                        seen_call_ids.add(tool_call.id)
-                        fn_name = tool_call.function.name
-                        try:
-                            fn_args = json.loads(tool_call.function.arguments)
-                            st.write(f"Calling function: `{fn_name}`")
-                            st.json(fn_args)
-                        except json.JSONDecodeError as e:
-                            st.error(f"Invalid JSON for {fn_name}: {e}")
-                            tool_outputs.append({
-                                "tool_call_id": tool_call.id,
-                                "output": json.dumps({"error": f"Invalid JSON arguments: {e}"})
-                            })
-                            continue
-
-                        try:
-                            result = self.tool_integration.call_tool_function(fn_name, fn_args)
-                            # If this is a simulation result, render a chart immediately
-                            if fn_name == "run_kinetic_model_simulation" and result.get("success"):
-                                import pandas as pd
-                                cols = result.get("columns") or []
-                                data = result.get("result", [])
-                                if data:
-                                    try:
-                                        df = pd.DataFrame(data, columns=cols if cols else None)
-                                        if cols:
-                                            df.set_index(cols[0], inplace=True)
-                                        st.line_chart(df)
-                                    except Exception as e:
-                                        st.error(f"Failed to render simulation chart: {e}")
-
-                            st.write("Tool Result:")
-                            st.json(result)
-                            tool_outputs.append({
-                                "tool_call_id": tool_call.id,
-                                "output": json.dumps(result)
-                            })
-                            # Persist tool call result as a separate message so that
-                            # the exported chat log fully reconstructs the dialogue.
-                            tool_msg = {
-                                "role": "tool",
-                                "name": fn_name,
-                                "content": json.dumps(result),
-                            }
-                            st.session_state.messages.append(tool_msg)
-                            if self.chat_logger:
-                                self.chat_logger.add_message(tool_msg)
-
-                            # Refresh overview in real time
-                            refresh_session_overview()
-
-                        except Exception as e:
-                            st.error(f"Error calling {fn_name}: {e}")
-                            tool_outputs.append({
-                                "tool_call_id": tool_call.id,
-                                "output": json.dumps({"error": str(e)})
-                            })
-                
-                # Ensure tool_outputs have unique ids (defensive)
-                filtered_outputs = []
-                seen_ids_submit: set[str] = set()
-                for entry in tool_outputs:
-                    tcid = entry["tool_call_id"]
-                    if tcid in seen_ids_submit:
-                        continue
-                    seen_ids_submit.add(tcid)
-                    filtered_outputs.append(entry)
-
-                new_handler = EventHandler(run_id=run_id, thread_id=thread_id)
-                with self.client.beta.threads.runs.submit_tool_outputs_stream(
-                    thread_id=thread_id,
-                    run_id=run_id,
-                    tool_outputs=filtered_outputs,
-                    event_handler=new_handler,
-                ) as stream:
-                    stream.until_done()
-
-            def handle_requires_action_manual(self, data):
-                """Handle tool calls manually - store for user approval."""
-                nonlocal full_response
-                
-                # Store pending tool calls for manual approval
-                st.session_state.pending_tool_calls = data.required_action.submit_tool_outputs.tool_calls
-                st.session_state.current_run_id = data.id
-                st.session_state.current_thread_id = data.thread_id
-                
-                # Update the response to indicate pending tools
-                full_response += "\n\n🔧 **Tool calls pending your approval** (see below)"
-                message_placeholder.markdown(full_response)
-
-        try:
-            run_assistant(
-                client=st.session_state.client,
-                session_state=st.session_state.core_session,
-                user_prompt=prompt,
-                system_prompt=st.session_state.system_prompt,
-                event_handler=EventHandler()
-            )
-            
-            message_placeholder.markdown(full_response)
-            if full_response:
-                assistant_msg = {"role": "assistant", "content": full_response}
-                st.session_state.messages.append(assistant_msg)
-                
-                if chat_logger:
-                    chat_logger.add_message(assistant_msg)
-            
-            # Since we don't get the full message history back anymore,
-            # we need to retrieve it manually if we want to repopulate the UI state.
-            # For now, we've just appended our own messages.
-
-        except Exception as e:
-            logger.error(f"An error occurred: {e}", exc_info=True)
-            st.error(f"An error occurred: {e}")
-
+        assistant_msg = {"role": "assistant", "content": response_content or ""}
+        if tool_call_chunks:
+            assistant_msg["tool_calls"] = tool_call_chunks
+        
+        st.session_state.messages.append(assistant_msg)
+        if chat_logger:
+            chat_logger.add_message(assistant_msg)
+        
 # ---------------------------------------------------------------------------
 #  Session overview (read-only) panel (updates live via placeholder)
 # ---------------------------------------------------------------------------
@@ -766,15 +498,147 @@ def refresh_session_overview():
 def main():
     """Main function to run the Streamlit app."""
     init_session_state()
-    st.title("Genetic Design Assistant")
+
+    # If the last run set a flag to continue, do it now
+    if st.session_state.get("run_llm_on_next_rerun"):
+        st.session_state.run_llm_on_next_rerun = False
+        handle_chat_submission(prompt=None)
+        st.rerun()
+
+    # st.title("Genetic Design Assistant")
     
     # with st.expander("View System Prompt"):
     #     st.markdown(f"```\n{st.session_state.system_prompt}\n```")
 
     draw_sidebar()
 
+    # --- CSS for scrollable tool container ---
+    st.markdown("""
+        <style>
+        /*
+        The selector below targets the second column of the main layout.
+        It's designed to be specific enough to avoid affecting other parts of the UI.
+        - 'section[data-testid="stSidebar"] + section': Targets the main content area next to the sidebar.
+        - '[data-testid="stHorizontalBlock"]': Finds the horizontal block for the columns.
+        - '> div:nth-child(2)': Selects the wrapper of the second column.
+        */
+        section[data-testid="stSidebar"] + section [data-testid="stHorizontalBlock"] > div:nth-child(2) {
+            max-height: 80vh; /* Use max-height to be flexible */
+            overflow-y: auto;
+            padding-right: 1rem; /* Add some padding */
+        }
+        </style>
+    """, unsafe_allow_html=True)
+
     # --- Main chat area ---
-    display_chat()
+    col_text, col_tool = st.columns([1, 1], gap="medium")
+
+    with col_text:
+        st.subheader("Chat")
+        for m in st.session_state.messages:
+            if m["role"] == "user":
+                 with st.chat_message("user"):
+                    content = m.get("content", "")
+                    if content:
+                        st.markdown(content)
+            elif m["role"] == "assistant":
+                content = m.get("content", "")
+                if content:
+                    with st.chat_message("assistant"):
+                        st.markdown(content)
+    
+    with col_tool:
+        st.subheader("Tool Use")
+        for m in st.session_state.messages:
+            role = m["role"]
+            if role == "assistant" and m.get("tool_calls"):
+                for tc in m["tool_calls"]:
+                    fn_name = tc["function"]["name"]
+                    st.info(f"🛠️ Tool Call: `{fn_name}`")
+                    try:
+                        args = json.loads(tc["function"]["arguments"])
+                        st.json(args, expanded=False)
+                    except json.JSONDecodeError:
+                        st.text(tc["function"]["arguments"])
+
+            if role == "tool":
+                label = m.get("name") or "tool_response"
+                st.info(f"📤 Tool Response: `{label}`")
+                try:
+                    payload = json.loads(m.get("content", ""))
+                    if label == "run_kinetic_model_simulation" and isinstance(payload, dict) and payload.get("success"):
+                        import pandas as pd
+                        cols = payload.get("columns", [])
+                        data = payload.get("result", [])
+                        if data:
+                            try:
+                                df = pd.DataFrame(data, columns=cols if cols else None)
+                                if cols:
+                                    df.set_index(cols[0], inplace=True)
+                                st.line_chart(df)
+                            except Exception as e:
+                                st.error(f"Chart error: {e}")
+                        if payload.get("plot_path"):
+                            from pathlib import Path as _P
+                            p = _P(payload["plot_path"])
+                            if p.exists():
+                                st.image(str(p))
+                    else:
+                        st.json(payload, expanded=False)
+                except Exception:
+                    st.text(m.get("content", ""))
+
+
+    # --- Agent Execution Logic ---
+    last_message = st.session_state.messages[-1] if st.session_state.messages else None
+    if last_message and last_message.get("tool_calls"):
+        if st.session_state.agent_mode:
+            st.session_state.pending_tool_calls = last_message["tool_calls"]
+            with st.spinner("Executing tools..."):
+                for i in range(len(st.session_state.pending_tool_calls)):
+                    execute_pending_tool_call(i)
+            st.session_state.pending_tool_calls = []
+            st.session_state.run_llm_on_next_rerun = True
+            st.rerun()
+        elif not st.session_state.pending_tool_calls:
+            st.session_state.pending_tool_calls = last_message.get("tool_calls", [])
+            st.rerun()
+
+
+    # --- Manual Tool Approval UI ---
+    if not st.session_state.agent_mode and st.session_state.pending_tool_calls:
+        st.divider()
+        st.subheader("🔧 Pending Tool Calls")
+        st.write("The assistant wants to execute the following tools. Review and approve them:")
+        
+        for i, tool_call in enumerate(st.session_state.pending_tool_calls):
+            with st.expander(f"Tool {i+1}: `{tool_call['function']['name']}`", expanded=True):
+                try:
+                    args = json.loads(tool_call['function']['arguments'])
+                    st.json(args)
+                except json.JSONDecodeError:
+                    st.error("Invalid JSON arguments")
+                    st.text(tool_call['function']['arguments'])
+                
+                col1, col2 = st.columns(2)
+                with col1:
+                    if st.button(f"✅ Execute Tool {i+1}", key=f"execute_{i}"):
+                        execute_pending_tool_call(i)
+                        st.rerun()
+                with col2:
+                    if st.button(f"❌ Skip Tool {i+1}", key=f"skip_{i}"):
+                        skip_pending_tool_call(i)
+                        st.rerun()
+        
+        col1, col2 = st.columns(2)
+        with col1:
+            if st.button("✅ Execute All Tools"):
+                execute_all_pending_tools()
+                # The underlying functions will trigger the rerun
+        with col2:
+            if st.button("❌ Skip All Tools"):
+                continue_without_tools()
+                # The underlying functions will trigger the rerun
 
     # Example prompt form
     if st.session_state.get("loaded_prompt"):
@@ -784,10 +648,12 @@ def main():
             if submitted:
                 st.session_state.loaded_prompt = None
                 handle_chat_submission(prompt_text)
+                st.rerun()
 
     # Free-form chat input
     if prompt := st.chat_input("What would you like to design?"):
         handle_chat_submission(prompt)
+        st.rerun()
 
 if __name__ == "__main__":
     main() 

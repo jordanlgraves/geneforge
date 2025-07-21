@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 import logging
 import json
-from src.examples.agent.workflow_harness import WorkflowRunner
+from src.examples.agent.workflows import WorkflowRunner
 from src.prompt_manager import get_system_prompt
 import src.library.cello_utils as cello_utils
 
@@ -24,7 +24,7 @@ class DesignWithPromoterVarsWResearchRunner(WorkflowRunner):
     Extension of ExampleRunner to check for a custom UCF file where the original
     promoter has been replaced by variants, and Cello results are present.
     """
-    def check_success(self) -> bool:
+    def check_finished(self) -> bool:
         """
         Check if:
         1. A custom UCF file was created.

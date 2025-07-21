@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 import logging
-from src.examples.agent.workflow_harness import WorkflowRunner
+from src.examples.agent.workflows import WorkflowRunner
 from src.prompt_manager import get_system_prompt
 # Set up logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
@@ -16,7 +16,7 @@ SYSTEM_PROMPT = get_system_prompt()
 class MinimalUCFRunner(WorkflowRunner):
     """Extension of ExampleRunner to check for both custom input sensors file and Cello results."""
     
-    def check_success(self) -> bool:
+    def check_finished(self) -> bool:
         """
         Check if both a custom input sensors file was created and Cello results were obtained.
         

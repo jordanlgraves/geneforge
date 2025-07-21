@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 import logging
-from src.examples.agent.workflow_harness import WorkflowRunner
+from src.examples.agent.workflows import WorkflowRunner
 
 # Set up logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
@@ -22,7 +22,7 @@ The model should be designed to be robust to parameter variation.
 class GeneticToggleSwitchExample(WorkflowRunner):
     """Extension of ExampleRunner to check for both custom input sensors file and Cello results."""
 
-    def check_success(self) -> bool:
+    def check_finished(self) -> bool:
         # Should check for a SBML file in the session state
         return False
 
