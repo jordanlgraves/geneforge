@@ -1,67 +1,44 @@
 # Gene Forge: Automated Genetic Circuit Design and Optimization
 
-This repository contains an the foundation work for developing an automated AI-driven system to design and optimize genetic circuits.
+This repository contains tools and frameworks for developing and training AI-agents for genetic engineering workflows.
 
-## Overview
+## ModelClient 
+The `ModelClient` provides an interface to an LLM of choice (currently only from `openai` or a local model via `vllm`).
 
-To core features of the system include a master LLM-agent which plans and orchestrates the design of a genetic circuit. The agent uses tool calls handle different parts of the design process. The agent is able to generate verilog and manage a UCF, input and output library using other tools, allowing it to run Cello with custom parts and logic. The agent also uses retrieval augmented generation, allowing it to search through scientific literature to find relevant information to assist in the design process. Other tools allow for predicting and optimizing genetic parts and sequences. The high-level interface accepts an initial natural language prompt and with a design specification.
-
-**State Management:** The system uses a `SessionState` object to manage the context (like the currently selected library, custom UCF files, etc.) across multiple tool calls within a single user design request..
-
-## Examples and use cases:
-Examples of prompts can be found in `examples_and_prompts`. These range from simple to complex to aspirational and are designed to guide the implementation of this project and outline the vision of more sophisticated systems.
+**State Management:** The system uses a `SessionState` object to manage the context (like the currently selected library, custom UCF files, etc.) across multiple tool calls within a single user design request. The agent modifies the session state through the tool calls.
 
 ## Tool Use
 
 Several tools will be used to design and optimize genetic circuits. These tools are be wrapped in an integration layer which will be used by the agent. Listed below are some of the key tools that will be used:
 
-Cello:
-- Includes tools to search through and select a specific library (UCF, input and output files). This enables the agent to select appropriate parts for the design.
-- Includes a tool to run the cello program and capture the output.
-- Includes a tool to parse the results of the cello program, returning various metrics and data (e.g. truth tables, circuit scores).
-- Allows the agent to select appropriate files based on the user's request (e.g. "I want a **NOT gate** for **E. coli** with input using **specific sensor X**, **specific sensor Y**. The output shoud be **YFP**")
+- Cello - includes library management tools for adding/editing parts in a library files and a tool for kicking off Cello's design algorithm
+- SynBioHub - includes tools to search and download parts from SynBioHub 
+- Part Optimization - ProD for promoter design, RBS Calculator for RBS design
+- Scientific utilities - Count GC in a sequence, run sequence similarity, literature search
 
-### SynBioHub Integration
-What can SynBioHub be used for?
+## Workflows 
+A `Workflow` defines:
+1. A natural language `prompt` describing a task
+2. A `get_metrics` functions for computing the metrics based on the generated chat history and session state. This can be used for computing a `reward` or `score` for various forms of RL via policy-optimization. 
+3. A `check_finished` function for optionally terminating the chat stream upon some condition
+4. An optional `GRADING_RUBRIC` - instructions for assigning a grade/reward to the rolled our workflow
 
-SynBioHub can be used to publish a library of synthetic parts and designs as a service, to share designs with collaborators, and to store designs of biological systems locally. Data in SynBioHub can be accessed via the HTTP API, Java API, or Python API where it can then be integrated into CAD tools for building genetic designs. SynBioHub contains an interface for users to upload new biological data to the database, to visualize DNA parts, to perform queries to access desired parts, and to download SBOL, GenBank, FASTA, etc.
+Workflows can be `run` which coordinates a multi-turn conversations with the `ModelClient`. Upon finishing, `get_metrics()` can be used.
 
+ArtAdapter
+- An `ArtAdapter` object wraps the `Workflow` and exposes the `async` `rollout` function. This allows multiple runs to
+execute in parallel and can be dropped into `art` training scheme to fine-tune an LLM via GRPO.
+- The optional `GRADING_RUBRIC` can be used in conjunction with LLM judges to compute reward (e.g. ART's RULER)
 
-The agent can:
-- **Search** the registry (`synbiohub_search`) using the same key–value parameters accepted by the `/search/` web API.
-- **Download** any object or collection by URI in common formats such as SBOL, FASTA, GenBank, or GFF (`synbiohub_download_part`).
-- **Run sequence similarity searches** against the global database (`synbiohub_sequence_search`).
-- **Inspect related content** for provenance or design exploration (`synbiohub_get_related`).
-- **Submit** new parts/collections when credentials are supplied (`synbiohub_submit`).
+## Examples and use cases:
+Examples of prompts can be found in `examples_and_prompts`. These range from simple to complex to aspirational and are designed to guide the implementation of this project and outline the vision of more sophisticated systems.
 
-These helpers return the *raw* server response (JSON, XML, or text) so that downstream code or the LLM can interpret it flexibly.
+## Fine-tuning
 
-#### Quick examples
+The workflows provide a convenient means of "rolling" out scenarios and comparing outcomes. Their primary intention is to easily enable RL-training on the various implemented tools.
 
-```json
-{"name": "synbiohub_search", "arguments": {"query": "objectType=ComponentDefinition&dcterms:title=pLac", "limit": 10}}
-{"name": "synbiohub_download_part", "arguments": {"uri": "https://synbiohub.org/public/igem/BBa_R0010/1", "format": "gb"}}
-{"name": "synbiohub_sequence_search", "arguments": {"search_params": "globalsequence=ATGCGTACGTAGCTAG&id=0.9&maxaccepts=50"}}
-{"name": "synbiohub_get_related", "arguments": {"uri": "https://synbiohub.org/public/igem/BBa_R0010/1", "relation": "twins"}}
-```
-
-Part Optimization:
-
-- Promoter Calculator (https://salislab.net/software/predict_promoter_calculator) A tool for generating, optimizing and predicting the performance of promoters.
-- RBS Calculator (https://salislab.net/software/predict_promoter_calculator) A tool for modifying RBS parts (e.g. specifying transcription rates).
-
-UCF Library Manager:
-- Scans directories for JSON files
-- Extracts metadata from each file
-- Determines file types based on filename patterns
-- Validates file selections for compatibility
-- Finds alternative files if the selected files are not valid
-- Allows the agent to select appropriate files based on the user's request (e.g. "I want a **NOT gate** for **E. coli** with input using **specific sensor X**, **specific sensor Y**. The output shoud be **YFP**")
-
-## Retrieval Augmented Generation 
-Retrieval Augmented Generation: [https://arxiv.org/abs/2005.11401]
-A narrow implementation of RAG is implemented through tool use. For example, the agent has the option to query available libraries and parts within those libraries. The responses from these tools calls allow the model to integrate drop-in libraries in the design process. 
-While not yet fully implemented, RAG will be used to provide the agent with access to a wide range of background information. This will give the planning agent the ability to search through scientific literature to find relevant information to assist in the design process.
+## UI
+A basic `streamlit` UI allows for interactive chat sessions with an LLM agent (openai and models served via vllm supported)
 
 ## Examples
 
@@ -103,12 +80,17 @@ CELLO_ROOT=ext_repos/Cello-v2-1-Core
 19. Test the setup by running `python src/examples/agent/design_simple_circuit.py` from `geneforge` directory.
 
 
-## References/Links
+## Notable References/Links
 
 Tools/Core
 - Cello [Github](https://github.com/CIDARLAB/Cello-v2-1-Core.git)
 - Cello Libs [Github](https://github.com/CIDARLAB/Cello-UCF.git)
 - Promoter Calculator [Github](https://github.com/barricklab/promoter-calculator.git)
+
+RL/Fine-tuning
+- openai
+- art
+- GRPO
 
 Verilog Generation
 - CodeV: Empowering LLMs for Verilog Generation through Multi-Level Summarization [Paper](https://arxiv.org/html/2407.10424v4)
