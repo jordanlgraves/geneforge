@@ -5,7 +5,8 @@ This repository contains tools and frameworks for developing and training AI-age
 ## ModelClient 
 The `ModelClient` provides an interface to an LLM of choice (currently only from `openai` or a local model via `vllm`).
 
-**State Management:** The system uses a `SessionState` object to manage the context (like the currently selected library, custom UCF files, etc.) across multiple tool calls within a single user design request. The agent modifies the session state through the tool calls.
+
+**State Management:** The system uses a `SessionState` object to manage the context (like the currently selected library, custom UCF files, etc.) across multiple tool calls within a single user design request..
 
 ## Tool Use
 
