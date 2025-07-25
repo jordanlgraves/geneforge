@@ -11,8 +11,11 @@ logs/
 
 wandb/
 
-# External repositories
+# External repositories except for `Cello-UCF` and `Cello-v2-1-Core` and `ProD`
 ext_repos/
+!ext_repos/Cello-UCF
+!ext_repos/Cello-v2-1-Core
+!ext_repos/ProD
 
 # Outputs and artifacts
 outputs/
