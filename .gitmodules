@@ -1,0 +1,9 @@
+[submodule "ext_repos/ProD"]
+	path = ext_repos/ProD
+	url = https://github.com/MEMO-group/ProD.git
+[submodule "ext_repos/Cello-UCF"]
+	path = ext_repos/Cello-UCF
+	url = https://github.com/CIDARLAB/Cello-UCF.git
+[submodule "ext_repos/Cello-v2-1-Core"]
+	path = ext_repos/Cello-v2-1-Core
+	url = https://github.com/CIDARLAB/Cello-v2-1-Core.git
