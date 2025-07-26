@@ -109,7 +109,7 @@ class PromNeural(nn.Module):
 
 def calc_gen_seq(out):
 
-    seq = pd.Series()
+    seq = pd.Series(dtype='object')
     matrix = pd.DataFrame(np.array([out.str[i] for i in np.arange(len(out.iloc[0]))]).T)
     counts = matrix.apply(lambda x: x.value_counts(dropna=False))
     while True:
@@ -119,7 +119,7 @@ def calc_gen_seq(out):
         #counts_frac = counts_frac.fillna(0)
         if (counts_frac.max() == 1).any():
             mask = counts_frac.max() < 1
-            seq = seq.append(counts.idxmax().loc[mask == False])
+            seq = pd.concat([seq, counts.idxmax().loc[~mask]])
             matrix = matrix.loc[:, mask].drop_duplicates()
         elif len(matrix) == 1/counts_frac.max().product():
             break
@@ -128,8 +128,8 @@ def calc_gen_seq(out):
             nt = counts_frac.loc[:,pos].idxmin()
             mask = matrix.loc[:,pos]!=nt
             matrix = matrix.loc[mask].drop_duplicates()
-    degen_dict = {m[0]: np.unique(m[1]) for m in matrix.iteritems()}
-    seq = seq.append(pd.Series({k: get_degen_key(v) for k, v in degen_dict.items()}))
+    degen_dict = {col_idx: np.unique(col_data) for col_idx, col_data in matrix.items()}
+    seq = pd.concat([seq, pd.Series({k: get_degen_key(v) for k, v in degen_dict.items()})])
     seq = seq.sort_index().values.astype('|S1').tostring().decode('utf-8')
 
     return seq
@@ -253,7 +253,7 @@ def forward_pass(model, seq_img, cuda=False):
     device = torch.device('cuda' if cuda else 'cpu')
     pred_te = model(torch.Tensor(seq_img).to(device))
     pred_te_prob = logistic.cdf(pred_te.cpu().data.numpy())
-    pred_te_disc = np.argmax(pred_te_prob, axis=1).astype(np.int)
+    pred_te_disc = np.argmax(pred_te_prob, axis=1).astype(int)
 
     return pred_te_prob, pred_te_disc
 
@@ -299,7 +299,7 @@ def forward(input_data, lib=True, lib_size=5, classes=np.arange(11),
                                seqs[idx*1000:(idx+1)*1000]))
         idx += 1
         if lib:
-            out_temp = pd.DataFrame().append(outputs, ignore_index=True)
+            out_temp = pd.concat(outputs, ignore_index=True)
             counts = out_temp.strength.value_counts()
             cond_1 = np.array([cl in counts.index.values for cl in classes])
 
@@ -311,12 +311,12 @@ def forward(input_data, lib=True, lib_size=5, classes=np.arange(11),
                     log.add(f'Sampled {sample_size} out of {total} possible sequences.\n\
                     Rerun the tool to evaluate more samples')
 
-    match_all = pd.DataFrame().append(outputs, ignore_index=True)
+    match_all = pd.concat(outputs, ignore_index=True)
     if lib:
         match_list = [match_all.loc[match_all.strength == i][:lib_size] for i in classes]
         if not random:
             class_list = [match_all.loc[match_all.strength == i][:] for i in classes]
-            match_class = pd.DataFrame().append(class_list, ignore_index=True)
+            match_class = pd.concat(class_list, ignore_index=True)
             bp = calc_gen_seq(match_class.spacer)
             counts = forward([bp], lib=False, random=False,
                              cuda=cuda)[0].strength.value_counts()
@@ -326,10 +326,10 @@ def forward(input_data, lib=True, lib_size=5, classes=np.arange(11),
             log.add(f'Library blueprint: {bp}')
             log.add(f'Library blueprint strength fractions ({counts.sum()} total):')
             string = ''
-            for idx,value in counts_frac.sort_index().iteritems():
+            for idx, value in counts_frac.sort_index().items():
                 string = string + '{}: {:.3f}\t'.format(idx,value)
             log.add(string)
-        match_short = pd.DataFrame().append(match_list, ignore_index=True)
+        match_short = pd.concat(match_list, ignore_index=True) if match_list else pd.DataFrame()
 
         return match_short, log
     else:
