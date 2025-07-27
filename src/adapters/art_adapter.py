@@ -51,7 +51,7 @@ class ArtAdapter:
             metadata=None if step is None else dict(step=step),
             reward=0,  # reward to be set by caller
             metrics=workflow.get_metrics(),
-            # tools=tool_functions
+            tools=workflow.tool_integration.tool_functions
             )
 
         # ------------------------------------------------------------------

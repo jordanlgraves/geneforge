@@ -8,11 +8,13 @@ from typing import Optional, List, Dict, Any, Union
 from dotenv import load_dotenv
 import os
 from glob import glob
+from litellm import acompletion, completion
 
-from src.llm_module import get_llm_client
+from src.llm_module import get_llm_params
 from src.prompt_manager import get_system_prompt
 from src.session_state import SessionState
 from src.tool_registry import ToolIntegration, tool_functions
+
 
 SYSTEM_PROMPT = get_system_prompt()
 
@@ -56,6 +58,7 @@ class WorkflowRunner:
         self.tool_integration = ToolIntegration(self.session_state)
         self.client = None
         self.model = None
+        self.llm_params = {}
         self.messages = []
         self.messages_and_choices: List[Any] = []
         self.rounds_seen = 0        # ❶ counter
@@ -137,12 +140,13 @@ class WorkflowRunner:
         self.messages_and_choices = []
         
         # Initialize LLM client
-        self.client, self.model = get_llm_client(
+        self.llm_params = get_llm_params(
             client_type=self.llm_client_type,
             reasoning=self.use_reasoning_model,
             art_model=self.art_model,
         )
-        self.logger.info(f"Using LLM Client: {type(self.client).__name__}, Model: {self.model}")
+        self.model = self.llm_params.get("model")
+        self.logger.info(f"Using LLM with params: {self.llm_params}")
         
         # Initialise messages list and record snapshots for each
         self.messages = []
@@ -231,24 +235,15 @@ class WorkflowRunner:
 
                 rounds = 0
                 while rounds < max_rounds:
-                    if self.llm_client_type == "art":
-                        response = asyncio.run(
-                            self.client.chat.completions.create(
-                                model=self.model,
-                                messages=self.messages,
-                                tools=tool_functions,
-                                tool_choice="auto",
-                                temperature=temperature,
-                            )
-                        )
-                    else:
-                        response = self.client.chat.completions.create(
-                            model=self.model,
+                    response = asyncio.run(
+                        acompletion(
                             messages=self.messages,
                             tools=tool_functions,
                             tool_choice="auto",
                             temperature=temperature,
+                            **self.llm_params
                         )
+                    )
 
                     assistant_choice = response.choices[0]
                     raw_assistant = assistant_choice.message
@@ -407,7 +402,9 @@ class WorkflowRunner:
         self.messages.append(msg)
         
         if choice:
-            self.messages_and_choices.append(choice)
+            from art.utils.litellm import convert_litellm_choice_to_openai
+            openai_choice = convert_litellm_choice_to_openai(choice)
+            self.messages_and_choices.append(openai_choice)
         else:
             self.messages_and_choices.append(msg)
 
@@ -426,14 +423,9 @@ class WorkflowRunner:
         while retry < max_tool_retry and preferred_assistant is None:
             retry += 1
             
-            if self.llm_client_type == "art":
-                retry_response = asyncio.run(
-                    self.client.chat.completions.create(messages=retry_context, **chat_kwargs)
-                )
-            else:
-                retry_response = self.client.chat.completions.create(
-                    messages=retry_context, **chat_kwargs
-                )
+            retry_response = asyncio.run(
+                acompletion(messages=retry_context, **chat_kwargs, **self.llm_params)
+            )
             raw_retry_asst = retry_response.choices[0].message
 
             retry_asst_msg = {
@@ -547,7 +539,6 @@ class WorkflowRunner:
 
         # ChatCompletion parameters (deterministic behaviour)
         chat_kwargs = {
-            "model": self.model,
             "tools": tool_functions,
             "tool_choice": "auto",
             "temperature": 0.0,
@@ -558,18 +549,13 @@ class WorkflowRunner:
             # ----------------------------------------------------------------
             #  Ask the model for the next assistant turn
             # ----------------------------------------------------------------
-            if self.llm_client_type == "art":
-                response = asyncio.run(
-                    self.client.chat.completions.create(
-                        messages=self.messages,
-                        **chat_kwargs,  # type: ignore[arg-type]
-                    )
-                )
-            else:
-                response = self.client.chat.completions.create(
+            response = asyncio.run(
+                acompletion(
                     messages=self.messages,
                     **chat_kwargs,  # type: ignore[arg-type]
+                    **self.llm_params
                 )
+            )
 
             raw_assistant = response.choices[0].message  # OpenAI object
 

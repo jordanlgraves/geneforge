@@ -88,12 +88,25 @@ class EGCProblem1p1Workflow(WorkflowRunner):
         return {}
 
 if __name__ == "__main__":
-    workflow = EGCProblem1p1Workflow(
-        example_name="EGCProblem1p1",
-        prompt=PROMPT,
-        use_reasoning_model=True,
-    )
-    workflow.run()
+    from src.adapters.art_adapter import ArtAdapter
+    import asyncio
+    
+    trajectories = []
+    for i in range(3):
+        workflow = EGCProblem1p1Workflow(
+            example_name="EGCProblem1p1",
+            prompt=PROMPT,
+            use_reasoning_model=True,
+        )
+        adapter = ArtAdapter(workflow, step=0)
+        trajectory = asyncio.run(adapter.rollout())
+        trajectories.append(trajectory)
+    
+    from art import TrajectoryGroup
+    trajectory_group = TrajectoryGroup(trajectories)
+    from art.rewards.ruler import ruler_score_group
+    score = asyncio.run(ruler_score_group(trajectory_group))
+    print(score)
     
     # get the report_answer tool call
     for message in workflow.messages:
