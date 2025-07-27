@@ -86,10 +86,13 @@ class ArtModelClient(BaseModelClient):
             raise RuntimeError("'art' package not available in environment")
 
         self._art_model = art_model
-        openai_like_client: OpenAI = art_model.openai_client()
+        self._openai: OpenAI = art_model.openai_client()
         super().__init__(art_model.name)
-        # Build wrappers so we expose the canonical ``chat.completions.create``
-        self.chat = _ChatWrapper(openai_like_client.chat.completions.create)  # type: ignore[attr-defined]
+        self.chat = self._openai.chat
+        
+    def __getattr__(self, item):
+        """Delegate to underlying OpenAI client for convenience."""
+        return getattr(self._openai, item)
 
     # ------------------------------------------------------------------
     # Additional convenience

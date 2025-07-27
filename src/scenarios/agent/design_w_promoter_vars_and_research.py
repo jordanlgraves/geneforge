@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 import logging
 import json
-from src.examples.agent.workflows import WorkflowRunner
+from src.scenarios.agent.workflows import WorkflowRunner
 from src.prompt_manager import get_system_prompt
 import src.library.cello_utils as cello_utils
 

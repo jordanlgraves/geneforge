@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 import json
 import logging
-from src.examples.agent.workflows import WorkflowRunner
+from src.scenarios.agent.workflows import WorkflowRunner
 
 from src.tools.promoter_tools import EstimatePromoterStrengthWithProDTool
 
@@ -14,6 +14,13 @@ PROMPT = """You will be given an E. coli promoter sequence and a set of tools to
 Your task is to use the tools to maximize the strength of a given promoter sequence while preserving the original sequence as much as possible.
 
 Use as many rounds as you need to determine an optimal promoter sequence.
+
+Call tools by using xml tags. For example, to call the `estimate_promoter_strength_with_pro_d` tool, you would use the following xml tag:
+<tool_call>
+    {"name": "estimate_promoter_strength_with_pro_d", "arguments": {"promoter_or_spacer: "example promoter sequence"}} 
+</tool_call>
+
+The `promoter_or_spacer` argument is the sequence to estimate the strength of.
 
 Once you have determined an optimal promoter sequence, use the `report_answer` tool to submit the promoter sequence as you answer as a json string in the following format:
 {
@@ -55,7 +62,7 @@ class MaximizePromoterStrengthWorkflow(WorkflowRunner):
             # This is the tool call that results that we need to check for the answer
             if message['role'] == 'tool' and message['tool_call_id'] == answer_tool_id:
                 return True
-        return super().check_finished()
+        return False
     
     def _process_prompt(self, prompt):
         """
@@ -119,13 +126,21 @@ class MaximizePromoterStrengthWorkflow(WorkflowRunner):
         return dict()
 
 
-    def score_trajectory(self, trajectory):
-        metrics = self.get_metrics(trajectory.messages_and_choices)
+    @staticmethod
+    def _score_trajectory(trajectory):
+        metrics = MaximizePromoterStrengthWorkflow.get_metrics(trajectory.messages_and_choices)
         # larger difference is better, larger sequence similarity is better, smaller num_rounds is better (negative weight)
         # These weights are based on the mean of the metrics for several runs
+        if 'difference' not in metrics or 'num_rounds' not in metrics or 'sequence_similarity' not in metrics:
+            return -1
+        
         weights = {'difference': 0.021787418910884617, 'num_rounds': -0.9606398999917061, 'sequence_similarity': 0.017572681097409257}
         return sum([metrics[metric] * weights[metric] for metric in metrics])
 
+    @staticmethod
+    def _get_metrics(messages):
+        metrics = MaximizePromoterStrengthWorkflow._score_trajectory(messages)
+        return metrics.get("difference", 0)
 
 def run_example(sequence: str):
     """

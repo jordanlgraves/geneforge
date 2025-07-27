@@ -295,5 +295,8 @@ class ReportAnswerTool(Tool):
     #         "idempotentHint": True,
     #         "openWorldHint": False,
     #     }
-    def execute(self, answer: str):
-        return {"success": True, "answer": answer}
+    def execute(self, **kwargs):
+        if 'answer' in kwargs:
+            return {"success": True, "answer": kwargs['answer']}
+        else:
+            return {"success": True, "answer": kwargs}

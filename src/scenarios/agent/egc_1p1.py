@@ -1,5 +1,5 @@
 import json
-from src.examples.agent.workflows import WorkflowRunner
+from src.scenarios.agent.workflows import WorkflowRunner
 
 
 PROMPT = """Consider the first part of the enzymatic reaction:
@@ -70,13 +70,20 @@ class EGCProblem1p1Workflow(WorkflowRunner):
         last_message = self.messages[-1]
         if last_message["role"] == "tool" and last_message.get("function", {}).get("name", None) == "report_answer": # Why would this ever be None?
             answer = json.loads(last_message["content"])
+            ES_correct = abs(answer.get("ES", 0) - self.reference_answer["ES"]) < 0.01
+            S_correct = abs(answer.get("S", 0) - self.reference_answer["S"]) < 0.01
+            E_correct = abs(answer.get("E", 0) - self.reference_answer["E"]) < 0.01
+            reaction_direction_correct = answer.get("reaction_favored", "").lower() == self.reference_answer["reaction_favored"].lower()
+            dg_correct = abs(answer["dG"] - self.reference_answer["dG"]) < 0.01
+            is_correct = ES_correct and S_correct and E_correct and reaction_direction_correct and dg_correct
             return {
                 "num_rounds": len(self.messages),
-                "dg_correct": abs(answer["dG"] - self.reference_answer["dG"]) < 0.01,
-                "reaction_direction_correct": int(answer.get("reaction_favored", "").lower() == self.reference_answer["reaction_favored"].lower()),
-                "ES_correct": abs(answer.get("ES", 0) - self.reference_answer["ES"]) < 0.01,
-                "S_correct": abs(answer.get("S", 0) - self.reference_answer["S"]) < 0.01,
-                "E_correct": abs(answer.get("E", 0) - self.reference_answer["E"]) < 0.01,
+                "correct": is_correct,
+                "ES_correct": ES_correct,
+                "S_correct": S_correct,
+                "E_correct": E_correct,
+                "reaction_direction_correct": reaction_direction_correct,
+                "dg_correct": dg_correct,
             }
         return {}
 
@@ -106,3 +113,7 @@ if __name__ == "__main__":
     print(score)
     
     
+    
+    
+    # 2S_1 &\xrightarrow{0.1} 2S_2 \\
+# S_1 + S_2 &\xrightarrow{0.2} 2S_1

@@ -6,7 +6,7 @@ from typing import Any, Dict, List, Optional, Sequence
 
 import art  # type: ignore
 
-from src.examples.agent.workflows import WorkflowRunner
+from src.scenarios.agent.workflows import WorkflowRunner
 
 from src.tool_registry import tool_functions # Need to change this. Makes no sense to do this here. Should get from workflow
 
