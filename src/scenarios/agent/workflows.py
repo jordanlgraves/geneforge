@@ -57,6 +57,7 @@ class WorkflowRunner:
         self.client = None
         self.model = None
         self.messages = []
+        self.messages_and_choices: List[Any] = []
         self.rounds_seen = 0        # ❶ counter
 
         self.use_reasoning_model = use_reasoning_model
@@ -133,6 +134,7 @@ class WorkflowRunner:
 
         self.tool_integration = ToolIntegration(self.session_state)
         self.rounds_seen = 0
+        self.messages_and_choices = []
         
         # Initialize LLM client
         self.client, self.model = get_llm_client(
@@ -248,7 +250,8 @@ class WorkflowRunner:
                             temperature=temperature,
                         )
 
-                    raw_assistant = response.choices[0].message
+                    assistant_choice = response.choices[0]
+                    raw_assistant = assistant_choice.message
 
                     assistant_msg: Dict[str, Any] = {
                         "role": "assistant",
@@ -282,7 +285,7 @@ class WorkflowRunner:
                             })
                         assistant_msg["tool_calls"] = tc_list
 
-                    self._add_message(**assistant_msg)
+                    self._add_message(choice=assistant_choice, **assistant_msg)
 
                     # ---------------- Execute tool calls if any ---------------
                     if "tool_calls" in assistant_msg:
@@ -390,7 +393,7 @@ class WorkflowRunner:
     #  Internal helper – keeps chat ↔ snapshot alignment
     # ------------------------------------------------------------------
 
-    def _add_message(self, role: str, content: str, name: str | None = None, **kwargs):
+    def _add_message(self, role: str, content: str, name: str | None = None, choice: Optional[Any] = None, **kwargs):
         """Append *content* as a new chat message and snapshot the state.
 
         Additional keyword arguments are merged into the message dict so callers can
@@ -402,6 +405,12 @@ class WorkflowRunner:
         if kwargs:
             msg.update(kwargs)
         self.messages.append(msg)
+        
+        if choice:
+            self.messages_and_choices.append(choice)
+        else:
+            self.messages_and_choices.append(msg)
+
         # Keep the session-state snapshot aligned with message index
         self.session_state.record_snapshot(msg_index=len(self.messages) - 1)
 

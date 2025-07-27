@@ -47,7 +47,7 @@ class ArtAdapter:
     @staticmethod
     def trajectory_from_workflow(workflow=None, step=None):
         trajectory = art.Trajectory(  # type: ignore[attr-defined]
-            messages_and_choices=workflow.messages,
+            messages_and_choices=workflow.messages_and_choices,
             metadata=None if step is None else dict(step=step),
             reward=0,  # reward to be set by caller
             metrics=workflow.get_metrics(),
