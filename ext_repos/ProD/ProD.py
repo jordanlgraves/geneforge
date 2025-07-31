@@ -5,6 +5,8 @@ import torch.nn as nn
 import torch.nn.functional as F
 from scipy.stats import logistic
 import argparse
+import dotenv
+import os
 
 DEF_ARGS = argparse.Namespace(data_path='ex_seqs.fa', output_path='ex_seqs_out', cuda=False)
 
@@ -172,7 +174,9 @@ def initialize_model(cuda=False):
     nclass = 11
     batch_size = 32
     model = PromNeural(nclass, batch_size, device)
-    model.load_state_dict(torch.load('models/model_RPOD.pt', map_location=device))
+    dotenv.load_dotenv()
+    model_path = os.getenv('PRO_D_MODEL_PATH')
+    model.load_state_dict(torch.load(model_path, map_location=device))
     model.to(device)
     model.eval()
 
