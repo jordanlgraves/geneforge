@@ -124,5 +124,3 @@ if __name__ == "__main__":
     from src.rl.graders.grade_egc_promblem1p1 import grade
     score = grade(sample, item)
     print(score)
-    
-    
