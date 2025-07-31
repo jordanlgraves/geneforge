@@ -150,10 +150,12 @@ class WorkflowRunner:
             reasoning=self.use_reasoning_model,
             art_model=self.art_model,
         )
-        
+        # Request token logprobs only for OpenAI endpoints that support it
+        if self.llm_client_type == "openai":
+            self.llm_params.update({"logprobs": 1})
+
         self.model = self.llm_params.get("model")
         self.logger.info(f"Using LLM with params: {self.llm_params}")
-        print(f"self.llm_params: {self.llm_params}")
         # Initialise messages list and record snapshots for each
         self.messages = []
         if self.system_prompt is not None:
@@ -241,6 +243,7 @@ class WorkflowRunner:
 
                 rounds = 0
                 while rounds < max_rounds:
+
                     response = await acompletion(
                         messages=self.messages,
                         tools=tool_functions,

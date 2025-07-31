@@ -166,4 +166,13 @@ def run_example(sequence: str):
 
 if __name__ == "__main__":
     sequence = 'CTTGTCCAACCAAATGATTCGTTACCAATTGACAGTTTCTATCGATCTATAGATAATGCTAGC'
-    run_example(sequence)   
+    runner = MaximizePromoterStrengthWorkflow(
+        example_name="MaximizePromoterStrength",
+        promoter_sequence=sequence,
+        use_reasoning_model=True
+    )
+    from src.adapters.art_adapter import ArtAdapter
+    import asyncio
+    art_adapter = ArtAdapter(runner, step=0)
+    final_result = asyncio.run(art_adapter.rollout())
+    print(runner.messages_and_choices)
