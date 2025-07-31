@@ -35,13 +35,7 @@ class ArtAdapter:
     @art.retry()
     async def rollout(self, **workflow_run_kwargs) -> art.Trajectory:  # type: ignore[name-defined]
         """Execute the underlying workflow asynchronously and capture a trajectory."""
-        loop = asyncio.get_event_loop()
-        await loop.run_in_executor(None, lambda: self.workflow.run(**workflow_run_kwargs))
-        # print(f'Messages: {self.workflow.messages}')
-        # filter out values that are not numbers
-        # self.metadata = {k: v for k, v in self.metadata.items() if isinstance(v, (int, float))}
-        # metadata["step"] = self.step
-        # messages_and_choices=[msg.copy() for msg in self.workflow.messages], 
+        await self.workflow.run_async(**workflow_run_kwargs)
         return self.trajectory_from_workflow(self.workflow, self.step)
 
     @staticmethod

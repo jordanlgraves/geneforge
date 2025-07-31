@@ -126,7 +126,3 @@ if __name__ == "__main__":
     print(score)
     
     
-    
-    
-    # 2S_1 &\xrightarrow{0.1} 2S_2 \\
-# S_1 + S_2 &\xrightarrow{0.2} 2S_1

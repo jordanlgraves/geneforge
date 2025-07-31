@@ -15,6 +15,11 @@ from src.prompt_manager import get_system_prompt
 from src.session_state import SessionState
 from src.tool_registry import ToolIntegration, tool_functions
 
+try:
+    import art
+except ModuleNotFoundError:
+    art = None
+
 
 SYSTEM_PROMPT = get_system_prompt()
 
@@ -32,7 +37,7 @@ class WorkflowRunner:
         *,
         llm_client_type: str = "openai",
         use_reasoning_model: bool = False,
-        art_model: "art.TrainableModel" = None,
+        art_model = None,
         model_name: str = None,
     ):
         """
@@ -154,7 +159,7 @@ class WorkflowRunner:
             self._add_message("system", self.system_prompt)
         self._add_message("user", self.prompt)
         
-    def run(
+    async def run_async(
         self,
         max_rounds: int = 15, 
         num_retries: int = 1,
@@ -235,14 +240,12 @@ class WorkflowRunner:
 
                 rounds = 0
                 while rounds < max_rounds:
-                    response = asyncio.run(
-                        acompletion(
-                            messages=self.messages,
-                            tools=tool_functions,
-                            tool_choice="auto",
-                            temperature=temperature,
-                            **self.llm_params
-                        )
+                    response = await acompletion(
+                        messages=self.messages,
+                        tools=tool_functions,
+                        tool_choice="auto",
+                        temperature=temperature,
+                        **self.llm_params
                     )
 
                     assistant_choice = response.choices[0]
@@ -331,6 +334,18 @@ class WorkflowRunner:
             self.logger.error(f"Conversation failed: {e}", exc_info=True)
             return None
 
+    # ------------------------------------------------------------------
+    #  Synchronous wrapper for legacy callers
+    # ------------------------------------------------------------------
+    def run(self, *args, **kwargs):
+        """Blocking wrapper around :pymeth:`run_async`.
+
+        This keeps backward-compatibility with code that expected a synchronous
+        ``WorkflowRunner.run``.  Internally it spins up an event-loop just once
+        and delegates to the real coroutine.
+        """
+        return asyncio.run(self.run_async(*args, **kwargs))
+
     def get_retry_message(self):
         return "Please use the tools to complete the task."
     
@@ -402,16 +417,20 @@ class WorkflowRunner:
         self.messages.append(msg)
         
         if choice:
-            from art.utils.litellm import convert_litellm_choice_to_openai
-            openai_choice = convert_litellm_choice_to_openai(choice)
-            self.messages_and_choices.append(openai_choice)
+            try:
+                from art.utils.litellm import convert_litellm_choice_to_openai
+                openai_choice = convert_litellm_choice_to_openai(choice)
+                self.messages_and_choices.append(openai_choice)
+            except ImportError:
+                # Fallback if art.utils.litellm is not available
+                self.messages_and_choices.append(msg)
         else:
             self.messages_and_choices.append(msg)
 
         # Keep the session-state snapshot aligned with message index
         self.session_state.record_snapshot(msg_index=len(self.messages) - 1)
 
-    def _find_dpo_preferred_assistant(self, context_messages: List[Dict[str, Any]], chat_kwargs: Dict[str, Any], max_tool_retry: int) -> tuple[Optional[Dict[str, Any]], Optional[Dict[str, Any]]]:
+    async def _find_dpo_preferred_assistant(self, context_messages: List[Dict[str, Any]], chat_kwargs: Dict[str, Any], max_tool_retry: int) -> tuple[Optional[Dict[str, Any]], Optional[Dict[str, Any]]]:
         """
         Retry logic to find a successful tool call after a failure.
         """
@@ -423,9 +442,7 @@ class WorkflowRunner:
         while retry < max_tool_retry and preferred_assistant is None:
             retry += 1
             
-            retry_response = asyncio.run(
-                acompletion(messages=retry_context, **chat_kwargs, **self.llm_params)
-            )
+            retry_response = await acompletion(messages=retry_context, **chat_kwargs, **self.llm_params)
             raw_retry_asst = retry_response.choices[0].message
 
             retry_asst_msg = {
@@ -494,7 +511,7 @@ class WorkflowRunner:
     #  New functionality – generate (preferred, rejected) pairs for DPO
     # ------------------------------------------------------------------
 
-    def run_generate_preference_pair_on_tool_failures(
+    async def run_generate_preference_pair_on_tool_failures_async(
         self,
         max_rounds: int = 15, 
         *,
@@ -549,12 +566,10 @@ class WorkflowRunner:
             # ----------------------------------------------------------------
             #  Ask the model for the next assistant turn
             # ----------------------------------------------------------------
-            response = asyncio.run(
-                acompletion(
-                    messages=self.messages,
-                    **chat_kwargs,  # type: ignore[arg-type]
-                    **self.llm_params
-                )
+            response = await acompletion(
+                messages=self.messages,
+                **chat_kwargs,  # type: ignore[arg-type]
+                **self.llm_params
             )
 
             raw_assistant = response.choices[0].message  # OpenAI object
@@ -575,7 +590,7 @@ class WorkflowRunner:
                     self.logger.warning(f"DPO: Malformed XML or JSON response from ART model: {error_message}")
                     
                     context_messages = list(self.messages)
-                    preferred_assistant, preferred_tool_msg = self._find_dpo_preferred_assistant(context_messages, chat_kwargs, max_tool_retry)
+                    preferred_assistant, preferred_tool_msg = await self._find_dpo_preferred_assistant(context_messages, chat_kwargs, max_tool_retry)
 
                     if preferred_assistant and preferred_tool_msg:
                         dpo_samples.append({
@@ -649,7 +664,7 @@ class WorkflowRunner:
                     rollback_count = len(tool_results_messages) + 1
                     context_messages = self.messages[:-rollback_count]
 
-                    preferred_assistant, preferred_tool_msg = self._find_dpo_preferred_assistant(context_messages, chat_kwargs, max_tool_retry)
+                    preferred_assistant, preferred_tool_msg = await self._find_dpo_preferred_assistant(context_messages, chat_kwargs, max_tool_retry)
 
                     if preferred_assistant is not None and preferred_tool_msg is not None:
                         # Make sure that the tool function as well as the arguments are actually different. 
@@ -710,6 +725,18 @@ class WorkflowRunner:
                 break
 
         return dpo_samples
+
+    # ------------------------------------------------------------------
+    #  Synchronous wrapper for legacy callers
+    # ------------------------------------------------------------------
+    def run_generate_preference_pair_on_tool_failures(self, *args, **kwargs):
+        """Blocking wrapper around :pymeth:`run_generate_preference_pair_on_tool_failures_async`.
+
+        This keeps backward-compatibility with code that expected a synchronous
+        method.  Internally it spins up an event-loop just once
+        and delegates to the real coroutine.
+        """
+        return asyncio.run(self.run_generate_preference_pair_on_tool_failures_async(*args, **kwargs))
 
     def generate_chat_histories(self, output_dir, num_runs, base_run_name, start_index=0):
         for run_index in range(start_index, start_index + num_runs):
