@@ -46,6 +46,7 @@ def get_llm_params(
             params["model"] = f"hosted_vllm/{art_model.name}"
             params["api_base"] = art_model.inference_base_url
             params["api_key"] = art_model.inference_api_key
+            params["logprobs"] = True
         else:
             raise ValueError("'art_model' is required for client_type='art'")
     elif client_type == "openai":

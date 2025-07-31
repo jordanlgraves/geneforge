@@ -150,9 +150,10 @@ class WorkflowRunner:
             reasoning=self.use_reasoning_model,
             art_model=self.art_model,
         )
+        
         self.model = self.llm_params.get("model")
         self.logger.info(f"Using LLM with params: {self.llm_params}")
-        
+        print(f"self.llm_params: {self.llm_params}")
         # Initialise messages list and record snapshots for each
         self.messages = []
         if self.system_prompt is not None:
@@ -259,13 +260,14 @@ class WorkflowRunner:
                     if self.llm_client_type == "art":
                         parsed_tool_calls, error_message, text_content = self._parse_art_tool_calls(assistant_msg["content"])
                         
-                        assistant_msg["content"] = text_content
-
                         if error_message:
+                            # Keep original content when parsing fails so user can see the malformed request
                             self._add_message(**assistant_msg)
                             self._add_message("user", f"Error parsing your response: {error_message}. Please correct the JSON and try again.")
                             continue
                         
+                        # Only update content if parsing succeeded
+                        assistant_msg["content"] = text_content
                         if parsed_tool_calls:
                             assistant_msg["tool_calls"] = parsed_tool_calls
                     
@@ -453,7 +455,6 @@ class WorkflowRunner:
             # Handle ART model's XML format
             if self.llm_client_type == "art":
                 parsed_tool_calls, error_message, text_content = self._parse_art_tool_calls(retry_asst_msg["content"])
-                retry_asst_msg["content"] = text_content
 
                 if error_message:
                     # Parsing failed on retry, add error and continue to next retry
@@ -464,6 +465,9 @@ class WorkflowRunner:
                         "tool_call_id": str(uuid.uuid4())
                     })
                     continue
+                
+                # Only update content if parsing succeeded
+                retry_asst_msg["content"] = text_content
                 if parsed_tool_calls:
                     retry_asst_msg["tool_calls"] = parsed_tool_calls
             
@@ -584,7 +588,6 @@ class WorkflowRunner:
             # Handle ART model's XML format
             if self.llm_client_type == "art":
                 parsed_tool_calls, error_message, text_content = self._parse_art_tool_calls(assistant_msg["content"])
-                assistant_msg["content"] = text_content
                 
                 if error_message:
                     self.logger.warning(f"DPO: Malformed XML or JSON response from ART model: {error_message}")
@@ -608,6 +611,8 @@ class WorkflowRunner:
                     if stop_on_first_failure: break
                     continue
 
+                # Only update content if parsing succeeded
+                assistant_msg["content"] = text_content
                 if parsed_tool_calls:
                     assistant_msg["tool_calls"] = parsed_tool_calls
 
