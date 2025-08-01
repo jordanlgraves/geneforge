@@ -127,16 +127,21 @@ class WorkflowRunner:
         
         tool_calls = 0
         tool_call_failures = 0
-        assistant_call_failures = 0
+        tool_call_successes = 0
         for message in self.messages:
             if message.get("role") == "tool":
-                tool_calls += 1
-            if message.get("role") == "tool" and message.get("content").get("error"):
-                tool_call_failures += 1
-            if message.get("role") == "assistant" and message.get("content").get("error"):
-                assistant_call_failures += 1
+                tool_response = message.get("content")
+                tool_response_json = json.loads(tool_response)
+                if tool_response_json.get("success", False) is False:
+                    tool_call_failures += 1
+                if tool_response_json.get("success", False) is True:
+                    tool_call_successes += 1
                 
-        return {"num_rounds": self.rounds_seen, "tool_calls": tool_calls, "tool_call_failures": tool_call_failures, "assistant_call_failures": assistant_call_failures}
+            if message.get("role") == "assistant" and message.get("tool_calls"):
+                tool_calls += len(message.get("tool_calls"))
+            
+                
+        return {"num_rounds": self.rounds_seen, "tool_calls": tool_calls, "tool_call_failures": tool_call_failures, "tool_call_successes": tool_call_successes}
     
     def get_metadata(self):
         """

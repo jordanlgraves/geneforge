@@ -149,10 +149,11 @@ if __name__ == "__main__":
         promoter_sequence=sequence,
         use_reasoning_model=True
     )
-    from src.adapters.art_adapter import ArtAdapter
-    import asyncio
-    art_adapter = ArtAdapter(runner, step=0)
-    final_result = asyncio.run(art_adapter.rollout())
-    print(runner.messages_and_choices)
+    runner.run()
+    # from src.adapters.art_adapter import ArtAdapter
+    # import asyncio
+    # art_adapter = ArtAdapter(runner, step=0)
+    # final_result = asyncio.run(art_adapter.rollout())
+    print(len(runner.messages_and_choices))
     print(runner.get_metrics())
     print('Done')
