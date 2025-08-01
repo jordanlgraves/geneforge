@@ -15,14 +15,9 @@ Your task is to use the tools to maximize the strength of a given promoter seque
 
 Use as many rounds as you need to determine an optimal promoter sequence.
 
-Call tools by using xml tags. For example, to call the `estimate_promoter_strength_with_pro_d` tool, you would use the following xml tag:
-<tool_call>
-    {"name": "estimate_promoter_strength_with_pro_d", "arguments": {"promoter_or_spacer: "example promoter sequence"}} 
-</tool_call>
-
 The `promoter_or_spacer` argument is the sequence to estimate the strength of.
 
-Once you have determined an optimal promoter sequence, use the `report_answer` tool to submit the promoter sequence as you answer as a json string in the following format:
+Once you have determined an optimal promoter sequence, use the `report_answer` tool to submit the promoter sequence as you answer in json using the `promoter_sequence` argument in the following format:
 {
     "promoter_sequence": (string)
 }
@@ -70,9 +65,7 @@ class MaximizePromoterStrengthWorkflow(WorkflowRunner):
         """
         return PROMPT.replace("{promoter_sequence}", self.promoter_sequence)
     
-    def get_metrics(self, messages=None):
-        if messages is None:
-            messages = self.messages
+    def get_metrics(self):
         
         def get_answer_tool_id():
             answer_tool_id = None
@@ -87,7 +80,7 @@ class MaximizePromoterStrengthWorkflow(WorkflowRunner):
         
         answer_tool_id = get_answer_tool_id()
         if answer_tool_id is None:
-            return dict()
+            return super().get_metrics()
         
         for message in self.messages:
             if message.get("role") == "tool" and message.get('tool_call_id') == answer_tool_id:
@@ -120,27 +113,12 @@ class MaximizePromoterStrengthWorkflow(WorkflowRunner):
                     "reference_class": reference_class,
                     "answer_class": estimated_class,
                     "sequence_similarity": similarity,
-                    "num_rounds": len(self.messages)
+                    "num_rounds": len(self.messages),
+                    **super().get_metrics()
                 }
                 
-        return dict()
+        return super().get_metrics()
 
-
-    @staticmethod
-    def _score_trajectory(trajectory):
-        metrics = MaximizePromoterStrengthWorkflow.get_metrics(trajectory.messages_and_choices)
-        # larger difference is better, larger sequence similarity is better, smaller num_rounds is better (negative weight)
-        # These weights are based on the mean of the metrics for several runs
-        if 'difference' not in metrics or 'num_rounds' not in metrics or 'sequence_similarity' not in metrics:
-            return -1
-        
-        weights = {'difference': 0.021787418910884617, 'num_rounds': -0.9606398999917061, 'sequence_similarity': 0.017572681097409257}
-        return sum([metrics[metric] * weights[metric] for metric in metrics])
-
-    @staticmethod
-    def _get_metrics(messages):
-        metrics = MaximizePromoterStrengthWorkflow._score_trajectory(messages)
-        return metrics.get("difference", 0)
 
 def run_example(sequence: str):
     """
@@ -176,3 +154,5 @@ if __name__ == "__main__":
     art_adapter = ArtAdapter(runner, step=0)
     final_result = asyncio.run(art_adapter.rollout())
     print(runner.messages_and_choices)
+    print(runner.get_metrics())
+    print('Done')

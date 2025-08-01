@@ -62,4 +62,4 @@ class ArtAdapter:
                     except Exception:
                         pass
         
-        return trajectory`
+        return trajectory

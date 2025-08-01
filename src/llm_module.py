@@ -52,6 +52,12 @@ def get_llm_params(
     elif client_type == "openai":
         model_name = os.getenv("OPENAI_MODEL_REASONING") if reasoning else os.getenv("OPENAI_MODEL")
         params["model"] = f"openai/{model_name}"
+        # litellm.UnsupportedParamsError: openai does not support parameters: ['logprobs'], for model=o4-mini. 
+        # To drop these, set `litellm.drop_params=True` or for proxy: `litellm_settings: drop_params: true`
+        # if you want to use these params dynamically send allowed_openai_params=['logprobs'] in your request.
+        # This is a workaround to avoid the error.
+        if 'o4-mini' not in model_name:
+            params["logprobs"] = True
     elif client_type == "deepseek":
         model_name = "deepseek-reasoner" if reasoning else "deepseek-coder"
         params["model"] = f"deepseek/{model_name}"

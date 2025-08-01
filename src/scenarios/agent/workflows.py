@@ -123,7 +123,20 @@ class WorkflowRunner:
         """
         Get the metrics for the workflow run.
         """
-        return {"num_rounds": self.rounds_seen}
+        # get number of tool calls, number of tool call failures,
+        
+        tool_calls = 0
+        tool_call_failures = 0
+        assistant_call_failures = 0
+        for message in self.messages:
+            if message.get("role") == "tool":
+                tool_calls += 1
+            if message.get("role") == "tool" and message.get("content").get("error"):
+                tool_call_failures += 1
+            if message.get("role") == "assistant" and message.get("content").get("error"):
+                assistant_call_failures += 1
+                
+        return {"num_rounds": self.rounds_seen, "tool_calls": tool_calls, "tool_call_failures": tool_call_failures, "assistant_call_failures": assistant_call_failures}
     
     def get_metadata(self):
         """
@@ -150,9 +163,7 @@ class WorkflowRunner:
             reasoning=self.use_reasoning_model,
             art_model=self.art_model,
         )
-        # Request token logprobs only for OpenAI endpoints that support it
-        if self.llm_client_type == "openai":
-            self.llm_params.update({"logprobs": 1})
+        
 
         self.model = self.llm_params.get("model")
         self.logger.info(f"Using LLM with params: {self.llm_params}")
