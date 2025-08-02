@@ -143,7 +143,7 @@ class EstimatePromoterStrengthWithProDTool(_ProDToolBase):
         else:
             # treat as part ID
             if not cello_library.current_library_id:
-                return {"error": "No library selected. Use select_library first."}
+                return {"error": "No library selected. Use select_library first.", "success": False}
 
             if file_type == "ucf":
                 lib_data = cello_library.get_ucf_data()
@@ -163,8 +163,11 @@ class EstimatePromoterStrengthWithProDTool(_ProDToolBase):
         # Evaluate via ProD
         result = prod.evaluate_spacers([sequence])
         if not result:
-            return {"error": "ProD evaluation returned no result."}
+            return {"error": "ProD evaluation returned no result.", "success": False}
 
+        if 'error' in result:
+            return result
+        
         cls_val = int(result[sequence])
         ymax = result.get(sequence + "_ymax", class_to_rpu(cls_val))
         spacer = extract_id_ecoli_spacer(sequence)
@@ -650,3 +653,9 @@ class RemovePromoterTool(Tool):
                 traceback.print_exc()
                 raise exc
             return {"error": str(exc)}
+
+if __name__ == "__main__":
+    
+    prod = ProDIntegration()
+    result = prod.evaluate_spacers(["GTTTCTATCGATCTATNN"])
+    print(result)
