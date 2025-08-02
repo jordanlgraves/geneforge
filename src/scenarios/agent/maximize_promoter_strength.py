@@ -3,6 +3,7 @@ import json
 import logging
 from src.scenarios.agent.workflows import WorkflowRunner
 
+from src.tools.cello_tools import SelectLibraryTool
 from src.tools.promoter_tools import EstimatePromoterStrengthWithProDTool
 
 # Set up logging
@@ -41,6 +42,24 @@ class MaximizePromoterStrengthWorkflow(WorkflowRunner):
     def __init__(self, promoter_sequence: str, *args, **kwargs):
         self.promoter_sequence = promoter_sequence
         super().__init__(*args, **kwargs)
+        
+        # pre-execute the select_library tool
+        self.include_pre_calls_in_chat = False
+        self.preexecuted_tool_calls = [{
+            "role": "assistant",
+            "tool_calls": [
+                {
+                    "id": "select_library_tool",
+                    "function": {
+                        "name": SelectLibraryTool.name,
+                        "arguments": json.dumps({
+                            "library_id": "Eco1C1G1T1"
+                        })
+                    }
+                }
+            ]
+        }]
+        
     
     def check_finished(self) -> bool:
         """
@@ -150,10 +169,11 @@ if __name__ == "__main__":
         use_reasoning_model=True
     )
     runner.run()
-    # from src.adapters.art_adapter import ArtAdapter
-    # import asyncio
-    # art_adapter = ArtAdapter(runner, step=0)
-    # final_result = asyncio.run(art_adapter.rollout())
-    print(len(runner.messages_and_choices))
-    print(runner.get_metrics())
-    print('Done')
+    from src.adapters.art_adapter import ArtAdapter
+    import asyncio
+    art_adapter = ArtAdapter(runner, step=0)
+    final_result = asyncio.run(art_adapter.rollout())
+    print(final_result.metrics)
+    # print(len(runner.messages_and_choices))
+    # print(runner.get_metrics())
+    # print('Done')

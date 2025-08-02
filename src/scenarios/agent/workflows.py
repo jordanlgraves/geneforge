@@ -39,6 +39,8 @@ class WorkflowRunner:
         use_reasoning_model: bool = False,
         art_model = None,
         model_name: str = None,
+        preexecuted_tool_calls: Optional[List[Dict[str, Any]]] = None,
+        include_pre_calls_in_chat: bool = True,
     ):
         """
         Initialize the example runner with the given parameters.
@@ -71,6 +73,9 @@ class WorkflowRunner:
         self.use_reasoning_model = use_reasoning_model
         self.llm_client_type = llm_client_type
         self.art_model = art_model
+        self.preexecuted_tool_calls = preexecuted_tool_calls
+        self.include_pre_calls_in_chat = include_pre_calls_in_chat
+        
         
     
     def _parse_art_tool_calls(self, content: str) -> tuple[Optional[List[Dict[str, Any]]], Optional[str], Optional[str]]:
@@ -182,10 +187,7 @@ class WorkflowRunner:
         self,
         max_rounds: int = 15, 
         num_retries: int = 1,
-        temperature: float = None,
-        *,
-        preexecuted_tool_calls: Optional[List[Dict[str, Any]]] = None,
-        include_pre_calls_in_chat: bool = True,
+        temperature: float = None
     ) -> Optional[str]:
         """
         Run the example conversation with the LLM using the streaming assistant API.
@@ -206,13 +208,13 @@ class WorkflowRunner:
         # --------------------------------------------------------------
         #  Optionally replay pre-executed tool calls to prime session state
         # --------------------------------------------------------------
-        if preexecuted_tool_calls:
-            for msg in preexecuted_tool_calls:
+        if self.preexecuted_tool_calls:
+            for msg in self.preexecuted_tool_calls:
                 role = msg.get("role")
                 # Handle assistant messages that request tool calls
                 if role == "assistant" and msg.get("tool_calls"):
                     # Optionally add assistant message to chat history
-                    if include_pre_calls_in_chat:
+                    if self.include_pre_calls_in_chat:
                         # Shallow copy to avoid later mutation
                         asst_stub = {
                             "role": "assistant",
@@ -231,7 +233,7 @@ class WorkflowRunner:
 
                         result = self.tool_integration.call_tool_function(fn_name, fn_args)
 
-                        if include_pre_calls_in_chat:
+                        if self.include_pre_calls_in_chat:
                             tool_msg = {
                                 "role": "tool",
                                 "content": json.dumps(result),
@@ -240,7 +242,7 @@ class WorkflowRunner:
                             self._add_message(**tool_msg)
                 else:
                     # For non-assistant messages, optionally record them
-                    if include_pre_calls_in_chat:
+                    if self.include_pre_calls_in_chat:
                         self._add_message(msg.get("role", "user"), msg.get("content", ""))
         
         self.logger.info("Starting LLM interaction via Chat Completions API…")
