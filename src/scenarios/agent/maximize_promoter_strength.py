@@ -105,8 +105,18 @@ class MaximizePromoterStrengthWorkflow(WorkflowRunner):
             if message.get("role") == "tool" and message.get('tool_call_id') == answer_tool_id:
                 answer = json.loads(message.get("content"))
                 answer_promoter_sequence = json.loads(answer.get("answer", {})).get("promoter_sequence" ) or answer.get("promoter_sequence")
-                estimated_answer_strength = self.tool_integration.tools['estimate_promoter_strength_with_pro_d'].execute(answer_promoter_sequence)
-                reference_answer_strength = self.tool_integration.tools['estimate_promoter_strength_with_pro_d'].execute(self.promoter_sequence)
+                
+                try:
+                    estimated_answer_strength = self.tool_integration.tools['estimate_promoter_strength_with_pro_d'].execute(answer_promoter_sequence)
+                except Exception as e:
+                    print(f'Error estimating answer strength: {answer_promoter_sequence} - {e}')
+                    estimated_answer_strength = None
+                
+                try:
+                    reference_answer_strength = self.tool_integration.tools['estimate_promoter_strength_with_pro_d'].execute(self.promoter_sequence)
+                except Exception as e:
+                    print(f'Error estimating reference strength: {self.promoter_sequence} - {e}')
+                    reference_answer_strength = None
                 
                 # calculate the difference between the answer and reference strength
                 try:
@@ -114,8 +124,14 @@ class MaximizePromoterStrengthWorkflow(WorkflowRunner):
                 except:
                     difference = None
                 
-                reference_class = reference_answer_strength.get("class")
-                estimated_class = estimated_answer_strength.get("class")
+                if reference_answer_strength:
+                    reference_class = reference_answer_strength.get("class")
+                else:
+                    reference_class = None
+                if estimated_answer_strength:
+                    estimated_class = estimated_answer_strength.get("class")
+                else:
+                    estimated_class = None
                 
                 # string similarity between the answer and reference promoter sequence
                 if answer_promoter_sequence and self.promoter_sequence:
@@ -126,8 +142,8 @@ class MaximizePromoterStrengthWorkflow(WorkflowRunner):
                 return {
                     # "answer_promoter_sequence": answer_promoter_sequence,
                     # "reference_promoter_sequence": self.promoter_sequence,
-                    "answer_strength": estimated_answer_strength.get("ymax"),
-                    "reference_strength": reference_answer_strength.get("ymax"),
+                    "answer_strength": estimated_answer_strength.get("ymax") if estimated_answer_strength else None,
+                    "reference_strength": reference_answer_strength.get("ymax") if reference_answer_strength else None,
                     "difference": difference,
                     "reference_class": reference_class,
                     "answer_class": estimated_class,
@@ -174,6 +190,7 @@ if __name__ == "__main__":
     art_adapter = ArtAdapter(runner, step=0)
     final_result = asyncio.run(art_adapter.rollout())
     print(final_result.metrics)
+    print(art_adapter.workflow.get_metrics())
     # print(len(runner.messages_and_choices))
-    # print(runner.get_metrics())
-    # print('Done')
+    print(runner.get_metrics())
+    print('Done')
