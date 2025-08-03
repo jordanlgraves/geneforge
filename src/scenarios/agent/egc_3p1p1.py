@@ -4,8 +4,8 @@ from src.scenarios.agent.workflows import WorkflowRunner
 
 PROMPT = """Consider the following reactions:
 
-2S_1 &\xrightarrow{0.1} 2S_2 \\
-S_1 + S_2 &\xrightarrow{0.2} 2S_1
+2S_1 \\xrightarrow{0.1} 2S_2 \\\\
+S_1 + S_2 \\xrightarrow{0.2} 2S_1
 
 Determine the reaction rate equations for [S_1] and [S_2]
 
@@ -46,13 +46,16 @@ class EGCProblem3p1p1Workflow(WorkflowRunner):
         return super().check_finished()
     
     def get_metrics(self):
-        last_message = self.messages[-1]
-        if last_message["role"] == "tool" and last_message.get("function", {}).get("name", None) == "report_answer": # Why would this ever be None?
-            answer = json.loads(last_message["content"])
-            # Here we need to parse the answer and check if it is correct
-            # We can do this by converting the answer to a sympy expression and checking if it is equal to the reference answer
-            return {}
-        return {}
+        # last_message = self.messages[-1]
+        # if last_message["role"] == "tool" and last_message.get("function", {}).get("name", None) == "report_answer": # Why would this ever be None?
+        #     answer = json.loads(last_message["content"])
+        #     # Here we need to parse the answer and check if it is correct
+        #     # We can do this by converting the answer to a sympy expression and checking if it is equal to the reference answer
+        #     return {}
+        return super().get_metrics()
+    
+    def get_nl_rubric(self):
+        return RUBRIC
 
 if __name__ == "__main__":
     workflow = EGCProblem3p1p1Workflow(

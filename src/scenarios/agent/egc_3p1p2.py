@@ -4,8 +4,8 @@ from src.scenarios.agent.workflows import WorkflowRunner
 
 PROMPT = """Consider the following reactions:
 
-2S_1 &\xrightarrow{0.1} 2S_2 \\
-S_1 + S_2 &\xrightarrow{0.2} 2S_1
+2S_1 \\xrightarrow{0.1} 2S_2 \\
+S_1 + S_2 \\xrightarrow{0.2} 2S_1
 
 The reaction rate equations are for [S_1] and [S_2] as follows:
 
@@ -48,29 +48,29 @@ reference_answer = """
 {
     "t=0.0": {
         "S_1": 3.0,
-        "S_2": 5.0,
+        "S_2": 5.0
     },
     "t=0.2": {
         "S_1": 3.24,
-        "S_2": 4.76,
-    },
+        "S_2": 4.76
+    },  
     "t=0.4": {
-        "S_1": 3.44
-        "S_2": 4.56,
+        "S_1": 3.44,
+        "S_2": 4.56
     },
     "t=0.6": {
         "S_1": 3.59,
-        "S_2": 4.41,
+        "S_2": 4.41
     },
     "t=0.8": {
         "S_1": 3.71,
-        "S_2": 4.29,
+        "S_2": 4.29
     },
     "t=1.0": {
         "S_1": 3.8,
-        "S_2": 4.2,
+        "S_2": 4.2
     }
-
+}
 """
 
 RUBRIC = None
@@ -99,33 +99,65 @@ class EGCProblem3p1p2Workflow(WorkflowRunner):
         return super().check_finished()
     
     def get_metrics(self):
-        last_message = self.messages[-1]
-        if last_message["role"] == "tool" and last_message.get("function", {}).get("name", None) == "report_answer": # Why would this ever be None?
-            answer = json.loads(last_message["content"])
-            # Here we need to parse the answer and check if it is correct
-            # We can do this by converting the answer to a sympy expression and checking if it is equal to the reference answer
-            return {}
-        return {}
+        reported_answer = self.get_reported_answer_content()
+        if not reported_answer:
+            return {"gave_answer": False, **super().get_metrics()}
+        
+        try:
+            answer = json.loads(reported_answer)
+        except Exception:
+            print(f'Error parsing answer: {reported_answer}')
+            return super().get_metrics()
+        
+        # Check if the answer is correct
+        reference_json = json.loads(self.reference_answer)
+        threshold = 0.01
+        num_correct = 0
+        num_incorrect = 0
+        for time_key, concentrations in reference_json.items():
+            if time_key not in answer:
+                num_incorrect += 2
+                continue            
+            for species, answer_value in concentrations.items():
+                if species not in answer[time_key]:
+                    num_incorrect += 1
+                    continue
+                if abs(answer[time_key][species] - answer_value) > threshold:
+                    num_incorrect += 1
+                    continue
+                num_correct += 1
+            
+        return {
+            "gave_answer": True,
+            "correct": num_incorrect <= 0,
+            "num_correct": num_correct,
+            "num_incorrect": num_incorrect,
+            **super().get_metrics()
+        }
+    
+    def get_nl_rubric(self):
+        return RUBRIC
 
 if __name__ == "__main__":
-    workflow = EGCProblem3p1p2Workflow(
-        example_name="EGCProblem3p1p2",
-        prompt=PROMPT,
-        use_reasoning_model=True,
-    )
-    workflow.run()
+    # workflow = EGCProblem3p1p2Workflow(
+    #     example_name="EGCProblem3p1p2",
+    #     prompt=PROMPT,
+    #     use_reasoning_model=True,
+    # )
+    # workflow.run()
     
-    # get the report_answer tool call
-    for message in workflow.messages:
-        if message["role"] == "tool" and message.get("function", {}).get("name", None) == "report_answer": # Why would this ever be None?
-            answer_message = message
-            break
+    # # get the report_answer tool call
+    # for message in workflow.messages:
+    #     if message["role"] == "tool" and message.get("function", {}).get("name", None) == "report_answer": # Why would this ever be None?
+    #         answer_message = message
+    #         break
     
-    sample = {
-        "output_text": workflow.messages[-1]["content"], 
-        "reference_answer": reference_answer,
-    }
-    item = {
-        "reference_answer": reference_answer,
-    }
+    # sample = {
+    #     "output_text": workflow.messages[-1]["content"], 
+    #     "reference_answer": reference_answer,
+    # }
+    # item = {
+    #     "reference_answer": reference_answer,
+    # }
     
+    print(json.loads(reference_answer))

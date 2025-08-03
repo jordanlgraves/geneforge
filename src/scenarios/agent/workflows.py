@@ -814,3 +814,33 @@ class WorkflowRunner:
                         tool_usage[tool_name] = {'uses': 0, 'errors': 0}
                     tool_usage[tool_name]['errors'] += 1
         return tool_usage
+    
+    
+    def get_nl_rubric(self):
+        """
+        Get the natural language rubric for the example.
+        """
+        return None
+    
+    def get_answer_tool_id(self):
+        answer_tool_id = None
+        for message in self.messages:
+            if message["role"] == "assistant" and message.get("tool_calls", []) != []:
+                for tool_call in message["tool_calls"]:
+                    if tool_call.get("function", {}).get("name", None) == "report_answer": # Why would this ever be None?
+                        answer_tool_id = tool_call["id"]
+                        return answer_tool_id
+        return None
+        
+    def get_reported_answer_content(self):
+        """
+        Fetch the content of the tool response that corresponds to the `report_answer`
+        tool call. Returns None if no such response has been recorded.
+        """
+        answer_tool_id = self.get_answer_tool_id()
+        if answer_tool_id is None:
+            return None
+        for message in self.messages:
+            if message.get("role") == "tool" and message.get("tool_call_id") == answer_tool_id:
+                return message.get("content")
+        return None

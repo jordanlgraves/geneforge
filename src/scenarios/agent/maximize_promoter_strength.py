@@ -83,76 +83,83 @@ class MaximizePromoterStrengthWorkflow(WorkflowRunner):
         # called by parent class to set self.prompt
         """
         return PROMPT.replace("{promoter_sequence}", self.promoter_sequence)
-    
+        
     def get_metrics(self):
         
-        def get_answer_tool_id():
-            answer_tool_id = None
-            for message in self.messages:
-                
-                if message["role"] == "assistant" and message.get("tool_calls", []) != []:
-                    for tool_call in message["tool_calls"]:
-                        if tool_call.get("function", {}).get("name", None) == "report_answer": # Why would this ever be None?
-                            answer_tool_id = tool_call["id"]
-                            return answer_tool_id
-            return None
+        reported_answer = self.get_reported_answer_content()
+        if not reported_answer:
+            return {"gave_answer": False, **super().get_metrics()}
         
-        answer_tool_id = get_answer_tool_id()
-        if answer_tool_id is None:
+        try:
+            answer = json.loads(reported_answer)
+        except Exception:
+            print(f'Error parsing answer: {reported_answer}')
             return super().get_metrics()
         
-        for message in self.messages:
-            if message.get("role") == "tool" and message.get('tool_call_id') == answer_tool_id:
-                answer = json.loads(message.get("content"))
-                answer_promoter_sequence = json.loads(answer.get("answer", {})).get("promoter_sequence" ) or answer.get("promoter_sequence")
-                
-                try:
-                    estimated_answer_strength = self.tool_integration.tools['estimate_promoter_strength_with_pro_d'].execute(answer_promoter_sequence)
-                except Exception as e:
-                    print(f'Error estimating answer strength: {answer_promoter_sequence} - {e}')
-                    estimated_answer_strength = None
-                
-                try:
-                    reference_answer_strength = self.tool_integration.tools['estimate_promoter_strength_with_pro_d'].execute(self.promoter_sequence)
-                except Exception as e:
-                    print(f'Error estimating reference strength: {self.promoter_sequence} - {e}')
-                    reference_answer_strength = None
-                
-                # calculate the difference between the answer and reference strength
-                try:
-                    difference = estimated_answer_strength.get("ymax") - reference_answer_strength.get("ymax")
-                except:
-                    difference = None
-                
-                if reference_answer_strength:
-                    reference_class = reference_answer_strength.get("class")
+        # Extract the promoter sequence from the answer payload
+        answer_promoter_sequence = None
+        try:
+            nested_answer = answer.get("answer")
+            if nested_answer:
+                if isinstance(nested_answer, str):
+                    nested_answer_json = json.loads(nested_answer)
+                elif isinstance(nested_answer, dict):
+                    nested_answer_json = nested_answer
                 else:
-                    reference_class = None
-                if estimated_answer_strength:
-                    estimated_class = estimated_answer_strength.get("class")
-                else:
-                    estimated_class = None
-                
-                # string similarity between the answer and reference promoter sequence
-                if answer_promoter_sequence and self.promoter_sequence:
-                    similarity = self.tool_integration.tools['sequence_similarity'].execute(answer_promoter_sequence, self.promoter_sequence).get("similarity")
-                else:
-                    similarity = None
-                
-                return {
-                    # "answer_promoter_sequence": answer_promoter_sequence,
-                    # "reference_promoter_sequence": self.promoter_sequence,
-                    "answer_strength": estimated_answer_strength.get("ymax") if estimated_answer_strength else None,
-                    "reference_strength": reference_answer_strength.get("ymax") if reference_answer_strength else None,
-                    "difference": difference,
-                    "reference_class": reference_class,
-                    "answer_class": estimated_class,
-                    "sequence_similarity": similarity,
-                    "num_rounds": len(self.messages),
-                    **super().get_metrics()
-                }
-                
-        return super().get_metrics()
+                    nested_answer_json = {}
+                answer_promoter_sequence = nested_answer_json.get("promoter_sequence")
+        except Exception:
+            # Fallback to top-level field
+            pass
+        
+        if not answer_promoter_sequence:
+            answer_promoter_sequence = answer.get("promoter_sequence")
+        
+        # If we still can't find a sequence, fall back to parent metrics
+        if not answer_promoter_sequence:
+            return super().get_metrics()
+        
+        try:
+            estimated_answer_strength = self.tool_integration.tools['estimate_promoter_strength_with_pro_d'].execute(answer_promoter_sequence)
+        except Exception as e:
+            print(f'Error estimating answer strength: {answer_promoter_sequence} - {e}')
+            estimated_answer_strength = None
+        
+        try:
+            reference_answer_strength = self.tool_integration.tools['estimate_promoter_strength_with_pro_d'].execute(self.promoter_sequence)
+        except Exception as e:
+            print(f'Error estimating reference strength: {self.promoter_sequence} - {e}')
+            reference_answer_strength = None
+        
+        # calculate the difference between the answer and reference strength
+        try:
+            difference = estimated_answer_strength.get("ymax") - reference_answer_strength.get("ymax")
+        except Exception:
+            difference = None
+        
+        reference_class = reference_answer_strength.get("class") if reference_answer_strength else None
+        estimated_class = estimated_answer_strength.get("class") if estimated_answer_strength else None
+        
+        # string similarity between the answer and reference promoter sequence
+        if answer_promoter_sequence and self.promoter_sequence:
+            similarity = self.tool_integration.tools['sequence_similarity'].execute(answer_promoter_sequence, self.promoter_sequence).get("similarity")
+        else:
+            similarity = None
+        
+        return {
+            "answer_strength": estimated_answer_strength.get("ymax") if estimated_answer_strength else None,
+            "reference_strength": reference_answer_strength.get("ymax") if reference_answer_strength else None,
+            "difference": difference,
+            "reference_class": reference_class,
+            "answer_class": estimated_class,
+            "sequence_similarity": similarity,
+            "num_rounds": len(self.messages),
+            "gave_answer": True,
+            **super().get_metrics()
+        }
+
+
+
 
 
 def run_example(sequence: str):

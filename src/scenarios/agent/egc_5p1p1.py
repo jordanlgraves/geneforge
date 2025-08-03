@@ -61,18 +61,22 @@ class EGCProblem5p1p1Workflow(WorkflowRunner):
         return super().check_finished()
     
     def get_metrics(self):
-        last_message = self.messages[-1]
-        if last_message["role"] == "tool" and last_message.get("function", {}).get("name", None) == "report_answer": # Why would this ever be None?
-            try:
-                answer = json.loads(last_message["content"])
-            except json.JSONDecodeError:
-                print(f'Answer is not a valid json string: {last_message["content"]}')
-                return {}
+        # last_message = self.messages[-1]
+        # if last_message["role"] == "tool" and last_message.get("function", {}).get("name", None) == "report_answer": # Why would this ever be None?
+        #     try:
+        #         answer = json.loads(last_message["content"])
+        #     except json.JSONDecodeError:
+        #         print(f'Answer is not a valid json string: {last_message["content"]}')
+        #         return {}
             
-            # Use sympy to parse the answer and check if it is correct
-            # We can do this by converting the answer to a sympy expression and checking if it is equal to the reference answer
-            return {}
-        return {}
+        #     # Use sympy to parse the answer and check if it is correct
+        #     # We can do this by converting the answer to a sympy expression and checking if it is equal to the reference answer
+        #     return {}
+        # return {}
+        return super().get_metrics()
+
+    def get_nl_rubric(self):
+        return RUBRIC
 
 if __name__ == "__main__":
     import asyncio

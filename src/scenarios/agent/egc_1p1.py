@@ -67,25 +67,35 @@ class EGCProblem1p1Workflow(WorkflowRunner):
         return super().check_finished()
     
     def get_metrics(self):
-        last_message = self.messages[-1]
-        if last_message["role"] == "tool" and last_message.get("function", {}).get("name", None) == "report_answer": # Why would this ever be None?
-            answer = json.loads(last_message["content"])
-            ES_correct = abs(answer.get("ES", 0) - self.reference_answer["ES"]) < 0.01
-            S_correct = abs(answer.get("S", 0) - self.reference_answer["S"]) < 0.01
-            E_correct = abs(answer.get("E", 0) - self.reference_answer["E"]) < 0.01
-            reaction_direction_correct = answer.get("reaction_favored", "").lower() == self.reference_answer["reaction_favored"].lower()
-            dg_correct = abs(answer["dG"] - self.reference_answer["dG"]) < 0.01
-            is_correct = ES_correct and S_correct and E_correct and reaction_direction_correct and dg_correct
-            return {
-                "num_rounds": len(self.messages),
-                "correct": is_correct,
-                "ES_correct": ES_correct,
-                "S_correct": S_correct,
-                "E_correct": E_correct,
-                "reaction_direction_correct": reaction_direction_correct,
-                "dg_correct": dg_correct,
-            }
-        return {}
+        reported_answer = self.get_reported_answer_content()
+        if not reported_answer:
+            return {"gave_answer": False, **super().get_metrics()}
+        
+        try:
+            answer = json.loads(reported_answer)
+        except Exception:
+            print(f'Error parsing answer: {reported_answer}')
+            return super().get_metrics()
+                
+        
+        ES_correct = abs(answer.get("ES", 0) - self.reference_answer["ES"]) < 0.01
+        S_correct = abs(answer.get("S", 0) - self.reference_answer["S"]) < 0.01
+        E_correct = abs(answer.get("E", 0) - self.reference_answer["E"]) < 0.01
+        reaction_direction_correct = answer.get("reaction_favored", "").lower() == self.reference_answer["reaction_favored"].lower()
+        dg_correct = abs(answer.get("dG", 0) - self.reference_answer["dG"]) < 0.01
+        is_correct = ES_correct and S_correct and E_correct and reaction_direction_correct and dg_correct
+        return {
+            "num_rounds": len(self.messages),
+            "correct": is_correct,
+            "ES_correct": ES_correct,
+            "S_correct": S_correct,
+            "E_correct": E_correct,
+            "reaction_direction_correct": reaction_direction_correct,
+            "dg_correct": dg_correct,
+            "gave_answer": True,
+            **super().get_metrics()
+        }
+
 
 if __name__ == "__main__":
     from src.adapters.art_adapter import ArtAdapter
