@@ -1,131 +1,82 @@
 import os
 import logging
 import json
-from openai import OpenAI
 from typing import List, Dict, Any, Tuple, Optional
 import asyncio
-
-# New abstraction imports
-from src.model_client import BaseModelClient, OpenAIModelClient, ArtModelClient
+from litellm import acompletion, completion
 
 try:
-    import art  # type: ignore
+    import art
 except ModuleNotFoundError:
-    art = None  # type: ignore
+    art = None
 
 from src.tool_registry import ToolIntegration, tool_functions
 from src.session_state import SessionState
 
-
-# Configure logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
 DEBUG_MODEL = True
 
-def get_llm_client(client_type: str = None, 
-                   reasoning: bool = False, 
-                   *, 
-                   art_model: "art.TrainableModel" = None,
-                   model_name: str = None):
-    """Initialise a model client wrapper.
+def get_llm_params(
+    client_type: str = None, 
+    reasoning: bool = False, 
+    *, 
+    art_model: "art.TrainableModel" = None,
+    model_name_str: str = None
+) -> Dict[str, Any]:
+    """Get parameters for litellm completion.
 
     Args:
         client_type: One of ``openai``, ``deepseek`` or ``art``.
         reasoning:   When *True* select the reasoning-optimised model variant
                       for providers that differentiate (e.g. OpenAI, DeepSeek).
         art_model:   Pre-initialised :class:`art.TrainableModel` instance when
-                      ``client_type='art'``.  The caller is responsible for
-                      having registered the model with a backend already.
-        model_name:  The name of the model to use.  If not provided, the default
-                      model for the client type will be used.
+                      ``client_type='art'``.
+        model_name_str:  The name of the model to use.
+
     Returns:
-        Tuple ``(client_wrapper, model_name)`` where *client_wrapper* exposes
-        the familiar ``chat.completions.create`` interface.  ``None`` is
-        returned if initialisation fails.
+        Dictionary of parameters for litellm.completion.
     """
-
-    # ------------------------------------------------------------------
-    # Environment-provided credentials & defaults
-    # ------------------------------------------------------------------
-    openai_api_key = os.getenv("OPENAI_API_KEY", "")
-    deepseek_api_key = os.getenv("DEEPSEEK_API_KEY", "")
-    deepseek_base_url = os.getenv("DEEPSEEK_BASE_URL", "")
-    openai_model_env = os.getenv("OPENAI_MODEL", "")
-    openai_model_reasoning_env = os.getenv("OPENAI_MODEL_REASONING", "")
-
-    client: Optional[BaseModelClient] = None
-    model_name: Optional[str] = None
-
-    # Default to deepseek if nothing specified (keeps previous behaviour)
     client_type = client_type or "deepseek"
+    params = {}
 
-    # ------------------------------------------------------------------
-    # OpenAI or compatible endpoints
-    # ------------------------------------------------------------------
-    if client_type == "openai":
-        logger.info("Initialising OpenAI backend")
-        try:
-            sdk_client = OpenAI(api_key=openai_api_key, webhook_secret=None)
-            model_name = openai_model_env if not reasoning else openai_model_reasoning_env
-            # Lightweight probe to ensure creds are valid
-            sdk_client.models.list()
-            client = OpenAIModelClient(sdk_client, model_name)
-            logger.info("Connected to OpenAI with model %s", model_name)
-        except Exception as exc:
-            logger.error("Failed to initialise OpenAI client: %s", exc, exc_info=True)
-            return None
-
-    # ------------------------------------------------------------------
-    # DeepSeek
-    # ------------------------------------------------------------------
+    if client_type == "art":
+        if art_model:
+            params["model"] = f"hosted_vllm/{art_model.name}"
+            params["api_base"] = art_model.inference_base_url
+            params["api_key"] = art_model.inference_api_key
+            params["logprobs"] = True
+        else:
+            raise ValueError("'art_model' is required for client_type='art'")
+    elif client_type == "openai":
+        model_name = os.getenv("OPENAI_MODEL_REASONING") if reasoning else os.getenv("OPENAI_MODEL")
+        params["model"] = f"openai/{model_name}"
+        # litellm.UnsupportedParamsError: openai does not support parameters: ['logprobs'], for model=o4-mini. 
+        # To drop these, set `litellm.drop_params=True` or for proxy: `litellm_settings: drop_params: true`
+        # if you want to use these params dynamically send allowed_openai_params=['logprobs'] in your request.
+        # This is a workaround to avoid the error.
+        if 'o4-mini' not in model_name:
+            params["logprobs"] = True
     elif client_type == "deepseek":
-        logger.info("Initialising DeepSeek backend")
-        try:
-            sdk_client = OpenAI(api_key=deepseek_api_key, base_url=deepseek_base_url)  # type: ignore[arg-type]
-            model_name = "deepseek-reasoner" if reasoning else "deepseek-coder"
-            sdk_client.models.list()
-            client = OpenAIModelClient(sdk_client, model_name)
-            logger.info("Connected to DeepSeek with model %s", model_name)
-        except Exception as exc:
-            logger.error("Failed to initialise DeepSeek client: %s", exc, exc_info=True)
-            return None
-
-    # ------------------------------------------------------------------
-    # Local *art* model
-    # ------------------------------------------------------------------
-    elif client_type == "art":
-        if art is None:
-            logger.error("Requested 'art' backend but package not available")
-            return None
-        if art_model is None:
-            logger.error("'art_model' parameter is required for client_type='art'")
-            return None
-        try:
-            client = ArtModelClient(art_model)
-            model_name = client.model_name
-            logger.info("Using local art model '%s'", model_name)
-        except Exception as exc:
-            logger.error("Failed to initialise art model client: %s", exc, exc_info=True)
-            return None
-
+        model_name = "deepseek-reasoner" if reasoning else "deepseek-coder"
+        params["model"] = f"deepseek/{model_name}"
     else:
-        logger.error("Unknown client_type '%s'", client_type)
-        return None
+        raise ValueError(f"Unknown client_type '{client_type}'")
 
-    return (client, model_name) if client and model_name else None
+    if model_name_str:
+        params["model"] = model_name_str
+
+    logger.info("Using LLM with params: %s", params)
+    return params
 
 def main():
     """Example demonstrating the session-based workflow."""
     logger.info("Starting GeneForge example...")
 
-    # 1. Initialize LLM Client
-    client_info = get_llm_client()
-    if not client_info:
-        print("Failed to initialize LLM client. Check API keys and environment variables.")
-        return
-    client, _ = client_info
-    print(f"Using LLM Client: {type(client).__name__}")
+    # 1. Initialize LLM
+    llm_params = get_llm_params()
+    print(f"Using LLM with params: {llm_params}")
 
     # 2. Create a SessionState for this request
     session_state = SessionState()
@@ -143,16 +94,25 @@ def main():
     )
     print(f"\nUser Request: {user_request}")
 
-    # 5. Start the conversation loop - This main function won't stream, so it's not a great example anymore
+    # 5. Start the conversation loop
     print("\nStarting LLM conversation...")
-    # The run_assistant function is now designed for streaming and requires an event handler,
-    # so we cannot easily call it here in this synchronous example.
-    # We would need a simple console-based event handler to run this.
-    print("Main function cannot run streaming assistant directly. Run the UI with `streamlit run src/ui/app.py`")
-    
+    messages = [
+        {"role": "system", "content": system_prompt},
+        {"role": "user", "content": user_request},
+    ]
+
+    try:
+        response = completion(
+            **llm_params,
+            messages=messages,
+            tools=tool_functions
+        )
+        print("Response from LLM:")
+        print(response)
+    except Exception as e:
+        print(f"An error occurred: {e}")
 
 if __name__ == "__main__":
-    # Load .env file if present
     from dotenv import load_dotenv
     load_dotenv()
     main()

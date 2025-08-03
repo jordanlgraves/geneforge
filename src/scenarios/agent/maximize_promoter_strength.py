@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
 import json
 import logging
-from src.examples.agent.workflows import WorkflowRunner
+from src.scenarios.agent.workflows import WorkflowRunner
 
+from src.tools.cello_tools import SelectLibraryTool
 from src.tools.promoter_tools import EstimatePromoterStrengthWithProDTool
 
 # Set up logging
@@ -15,7 +16,9 @@ Your task is to use the tools to maximize the strength of a given promoter seque
 
 Use as many rounds as you need to determine an optimal promoter sequence.
 
-Once you have determined an optimal promoter sequence, use the `report_answer` tool to submit the promoter sequence as you answer as a json string in the following format:
+The `promoter_or_spacer` argument is the sequence to estimate the strength of.
+
+Once you have determined an optimal promoter sequence, use the `report_answer` tool to submit the promoter sequence as you answer in json using the `promoter_sequence` argument in the following format:
 {
     "promoter_sequence": (string)
 }
@@ -39,6 +42,24 @@ class MaximizePromoterStrengthWorkflow(WorkflowRunner):
     def __init__(self, promoter_sequence: str, *args, **kwargs):
         self.promoter_sequence = promoter_sequence
         super().__init__(*args, **kwargs)
+        
+        # pre-execute the select_library tool
+        self.include_pre_calls_in_chat = False
+        self.preexecuted_tool_calls = [{
+            "role": "assistant",
+            "tool_calls": [
+                {
+                    "id": "select_library_tool",
+                    "function": {
+                        "name": SelectLibraryTool.name,
+                        "arguments": json.dumps({
+                            "library_id": "Eco1C1G1T1"
+                        })
+                    }
+                }
+            ]
+        }]
+        
     
     def check_finished(self) -> bool:
         """
@@ -55,7 +76,7 @@ class MaximizePromoterStrengthWorkflow(WorkflowRunner):
             # This is the tool call that results that we need to check for the answer
             if message['role'] == 'tool' and message['tool_call_id'] == answer_tool_id:
                 return True
-        return super().check_finished()
+        return False
     
     def _process_prompt(self, prompt):
         """
@@ -63,9 +84,7 @@ class MaximizePromoterStrengthWorkflow(WorkflowRunner):
         """
         return PROMPT.replace("{promoter_sequence}", self.promoter_sequence)
     
-    def get_metrics(self, messages=None):
-        if messages is None:
-            messages = self.messages
+    def get_metrics(self):
         
         def get_answer_tool_id():
             answer_tool_id = None
@@ -80,14 +99,24 @@ class MaximizePromoterStrengthWorkflow(WorkflowRunner):
         
         answer_tool_id = get_answer_tool_id()
         if answer_tool_id is None:
-            return dict()
+            return super().get_metrics()
         
         for message in self.messages:
             if message.get("role") == "tool" and message.get('tool_call_id') == answer_tool_id:
                 answer = json.loads(message.get("content"))
                 answer_promoter_sequence = json.loads(answer.get("answer", {})).get("promoter_sequence" ) or answer.get("promoter_sequence")
-                estimated_answer_strength = self.tool_integration.tools['estimate_promoter_strength_with_pro_d'].execute(answer_promoter_sequence)
-                reference_answer_strength = self.tool_integration.tools['estimate_promoter_strength_with_pro_d'].execute(self.promoter_sequence)
+                
+                try:
+                    estimated_answer_strength = self.tool_integration.tools['estimate_promoter_strength_with_pro_d'].execute(answer_promoter_sequence)
+                except Exception as e:
+                    print(f'Error estimating answer strength: {answer_promoter_sequence} - {e}')
+                    estimated_answer_strength = None
+                
+                try:
+                    reference_answer_strength = self.tool_integration.tools['estimate_promoter_strength_with_pro_d'].execute(self.promoter_sequence)
+                except Exception as e:
+                    print(f'Error estimating reference strength: {self.promoter_sequence} - {e}')
+                    reference_answer_strength = None
                 
                 # calculate the difference between the answer and reference strength
                 try:
@@ -95,8 +124,14 @@ class MaximizePromoterStrengthWorkflow(WorkflowRunner):
                 except:
                     difference = None
                 
-                reference_class = reference_answer_strength.get("class")
-                estimated_class = estimated_answer_strength.get("class")
+                if reference_answer_strength:
+                    reference_class = reference_answer_strength.get("class")
+                else:
+                    reference_class = None
+                if estimated_answer_strength:
+                    estimated_class = estimated_answer_strength.get("class")
+                else:
+                    estimated_class = None
                 
                 # string similarity between the answer and reference promoter sequence
                 if answer_promoter_sequence and self.promoter_sequence:
@@ -107,24 +142,17 @@ class MaximizePromoterStrengthWorkflow(WorkflowRunner):
                 return {
                     # "answer_promoter_sequence": answer_promoter_sequence,
                     # "reference_promoter_sequence": self.promoter_sequence,
-                    "answer_strength": estimated_answer_strength.get("ymax"),
-                    "reference_strength": reference_answer_strength.get("ymax"),
+                    "answer_strength": estimated_answer_strength.get("ymax") if estimated_answer_strength else None,
+                    "reference_strength": reference_answer_strength.get("ymax") if reference_answer_strength else None,
                     "difference": difference,
                     "reference_class": reference_class,
                     "answer_class": estimated_class,
                     "sequence_similarity": similarity,
-                    "num_rounds": len(self.messages)
+                    "num_rounds": len(self.messages),
+                    **super().get_metrics()
                 }
                 
-        return dict()
-
-
-    def score_trajectory(self, trajectory):
-        metrics = self.get_metrics(trajectory.messages_and_choices)
-        # larger difference is better, larger sequence similarity is better, smaller num_rounds is better (negative weight)
-        # These weights are based on the mean of the metrics for several runs
-        weights = {'difference': 0.021787418910884617, 'num_rounds': -0.9606398999917061, 'sequence_similarity': 0.017572681097409257}
-        return sum([metrics[metric] * weights[metric] for metric in metrics])
+        return super().get_metrics()
 
 
 def run_example(sequence: str):
@@ -151,4 +179,18 @@ def run_example(sequence: str):
 
 if __name__ == "__main__":
     sequence = 'CTTGTCCAACCAAATGATTCGTTACCAATTGACAGTTTCTATCGATCTATAGATAATGCTAGC'
-    run_example(sequence)   
+    runner = MaximizePromoterStrengthWorkflow(
+        example_name="MaximizePromoterStrength",
+        promoter_sequence=sequence,
+        use_reasoning_model=True
+    )
+    runner.run()
+    from src.adapters.art_adapter import ArtAdapter
+    import asyncio
+    art_adapter = ArtAdapter(runner, step=0)
+    final_result = asyncio.run(art_adapter.rollout())
+    print(final_result.metrics)
+    print(art_adapter.workflow.get_metrics())
+    # print(len(runner.messages_and_choices))
+    print(runner.get_metrics())
+    print('Done')

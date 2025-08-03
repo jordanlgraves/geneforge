@@ -1,5 +1,5 @@
 import json
-from src.examples.agent.workflows import WorkflowRunner
+from src.scenarios.agent.workflows import WorkflowRunner
 
 
 PROMPT = """Consider the first part of the enzymatic reaction:
@@ -70,23 +70,43 @@ class EGCProblem1p1Workflow(WorkflowRunner):
         last_message = self.messages[-1]
         if last_message["role"] == "tool" and last_message.get("function", {}).get("name", None) == "report_answer": # Why would this ever be None?
             answer = json.loads(last_message["content"])
+            ES_correct = abs(answer.get("ES", 0) - self.reference_answer["ES"]) < 0.01
+            S_correct = abs(answer.get("S", 0) - self.reference_answer["S"]) < 0.01
+            E_correct = abs(answer.get("E", 0) - self.reference_answer["E"]) < 0.01
+            reaction_direction_correct = answer.get("reaction_favored", "").lower() == self.reference_answer["reaction_favored"].lower()
+            dg_correct = abs(answer["dG"] - self.reference_answer["dG"]) < 0.01
+            is_correct = ES_correct and S_correct and E_correct and reaction_direction_correct and dg_correct
             return {
                 "num_rounds": len(self.messages),
-                "dg_correct": abs(answer["dG"] - self.reference_answer["dG"]) < 0.01,
-                "reaction_direction_correct": int(answer.get("reaction_favored", "").lower() == self.reference_answer["reaction_favored"].lower()),
-                "ES_correct": abs(answer.get("ES", 0) - self.reference_answer["ES"]) < 0.01,
-                "S_correct": abs(answer.get("S", 0) - self.reference_answer["S"]) < 0.01,
-                "E_correct": abs(answer.get("E", 0) - self.reference_answer["E"]) < 0.01,
+                "correct": is_correct,
+                "ES_correct": ES_correct,
+                "S_correct": S_correct,
+                "E_correct": E_correct,
+                "reaction_direction_correct": reaction_direction_correct,
+                "dg_correct": dg_correct,
             }
         return {}
 
 if __name__ == "__main__":
-    workflow = EGCProblem1p1Workflow(
-        example_name="EGCProblem1p1",
-        prompt=PROMPT,
-        use_reasoning_model=True,
-    )
-    workflow.run()
+    from src.adapters.art_adapter import ArtAdapter
+    import asyncio
+    
+    trajectories = []
+    for i in range(3):
+        workflow = EGCProblem1p1Workflow(
+            example_name="EGCProblem1p1",
+            prompt=PROMPT,
+            use_reasoning_model=True,
+        )
+        adapter = ArtAdapter(workflow, step=0)
+        trajectory = asyncio.run(adapter.rollout())
+        trajectories.append(trajectory)
+    
+    from art import TrajectoryGroup
+    trajectory_group = TrajectoryGroup(trajectories)
+    from art.rewards.ruler import ruler_score_group
+    score = asyncio.run(ruler_score_group(trajectory_group))
+    print(score)
     
     # get the report_answer tool call
     for message in workflow.messages:
@@ -104,5 +124,3 @@ if __name__ == "__main__":
     from src.rl.graders.grade_egc_promblem1p1 import grade
     score = grade(sample, item)
     print(score)
-    
-    

@@ -1,15 +1,25 @@
 #!/usr/bin/env python3
 import logging
 import json
+import asyncio
+import re
+import uuid
 from typing import Optional, List, Dict, Any, Union
 from dotenv import load_dotenv
 import os
 from glob import glob
+from litellm import acompletion, completion
 
-from src.llm_module import get_llm_client
+from src.llm_module import get_llm_params
 from src.prompt_manager import get_system_prompt
 from src.session_state import SessionState
 from src.tool_registry import ToolIntegration, tool_functions
+
+try:
+    import art
+except ModuleNotFoundError:
+    art = None
+
 
 SYSTEM_PROMPT = get_system_prompt()
 
@@ -27,8 +37,10 @@ class WorkflowRunner:
         *,
         llm_client_type: str = "openai",
         use_reasoning_model: bool = False,
-        art_model: "art.TrainableModel" = None,
+        art_model = None,
         model_name: str = None,
+        preexecuted_tool_calls: Optional[List[Dict[str, Any]]] = None,
+        include_pre_calls_in_chat: bool = True,
     ):
         """
         Initialize the example runner with the given parameters.
@@ -53,14 +65,53 @@ class WorkflowRunner:
         self.tool_integration = ToolIntegration(self.session_state)
         self.client = None
         self.model = None
+        self.llm_params = {}
         self.messages = []
+        self.messages_and_choices: List[Any] = []
         self.rounds_seen = 0        # ❶ counter
 
         self.use_reasoning_model = use_reasoning_model
         self.llm_client_type = llm_client_type
         self.art_model = art_model
+        self.preexecuted_tool_calls = preexecuted_tool_calls
+        self.include_pre_calls_in_chat = include_pre_calls_in_chat
+        
         
     
+    def _parse_art_tool_calls(self, content: str) -> tuple[Optional[List[Dict[str, Any]]], Optional[str], Optional[str]]:
+        if "<tool_call>" not in content:
+            return None, None, content
+
+        tool_calls = []
+        errors = []
+        
+        # Regex to find all JSON blobs inside <tool_call>...</tool_call> blocks
+        pattern = r"<tool_call>.*?({.*?}).*?</tool_call>"
+        matches = re.findall(pattern, content, re.DOTALL)
+        
+        # Get the text outside of the tool calls
+        text_content = re.sub(pattern, '', content, flags=re.DOTALL).strip()
+
+        for match in matches:
+            # The regex captures only the JSON part.
+            try:
+                tool_data = json.loads(match)
+                tool_calls.append({
+                    "id": str(uuid.uuid4()),
+                    "type": "function",
+                    "function": {
+                        "name": tool_data.get("name"),
+                        "arguments": json.dumps(tool_data.get("arguments", {})),
+                    },
+                })
+            except json.JSONDecodeError as e:
+                errors.append(f"Invalid JSON in tool call: {e}. Malformed JSON: ```json\n{match}\n```")
+
+        if errors:
+            return None, "\n".join(errors), text_content
+
+        return tool_calls, None, text_content
+
     def _process_prompt(self, prompt: str):  
         """
         Get the prompt for the example.
@@ -77,7 +128,25 @@ class WorkflowRunner:
         """
         Get the metrics for the workflow run.
         """
-        return {"num_rounds": self.rounds_seen}
+        # get number of tool calls, number of tool call failures,
+        
+        tool_calls = 0
+        tool_call_failures = 0
+        tool_call_successes = 0
+        for message in self.messages:
+            if message.get("role") == "tool":
+                tool_response = message.get("content")
+                tool_response_json = json.loads(tool_response)
+                if tool_response_json.get("success", False) is False:
+                    tool_call_failures += 1
+                if tool_response_json.get("success", False) is True:
+                    tool_call_successes += 1
+                
+            if message.get("role") == "assistant" and message.get("tool_calls"):
+                tool_calls += len(message.get("tool_calls"))
+            
+                
+        return {"num_rounds": self.rounds_seen, "tool_calls": tool_calls, "tool_call_failures": tool_call_failures, "tool_call_successes": tool_call_successes}
     
     def get_metadata(self):
         """
@@ -96,29 +165,29 @@ class WorkflowRunner:
 
         self.tool_integration = ToolIntegration(self.session_state)
         self.rounds_seen = 0
+        self.messages_and_choices = []
         
         # Initialize LLM client
-        self.client, self.model = get_llm_client(
+        self.llm_params = get_llm_params(
             client_type=self.llm_client_type,
             reasoning=self.use_reasoning_model,
             art_model=self.art_model,
         )
-        self.logger.info(f"Using LLM Client: {type(self.client).__name__}, Model: {self.model}")
         
+
+        self.model = self.llm_params.get("model")
+        self.logger.info(f"Using LLM with params: {self.llm_params}")
         # Initialise messages list and record snapshots for each
         self.messages = []
         if self.system_prompt is not None:
             self._add_message("system", self.system_prompt)
         self._add_message("user", self.prompt)
         
-    def run(
+    async def run_async(
         self,
         max_rounds: int = 15, 
         num_retries: int = 1,
-        temperature: float = None,
-        *,
-        preexecuted_tool_calls: Optional[List[Dict[str, Any]]] = None,
-        include_pre_calls_in_chat: bool = True,
+        temperature: float = None
     ) -> Optional[str]:
         """
         Run the example conversation with the LLM using the streaming assistant API.
@@ -139,13 +208,13 @@ class WorkflowRunner:
         # --------------------------------------------------------------
         #  Optionally replay pre-executed tool calls to prime session state
         # --------------------------------------------------------------
-        if preexecuted_tool_calls:
-            for msg in preexecuted_tool_calls:
+        if self.preexecuted_tool_calls:
+            for msg in self.preexecuted_tool_calls:
                 role = msg.get("role")
                 # Handle assistant messages that request tool calls
                 if role == "assistant" and msg.get("tool_calls"):
                     # Optionally add assistant message to chat history
-                    if include_pre_calls_in_chat:
+                    if self.include_pre_calls_in_chat:
                         # Shallow copy to avoid later mutation
                         asst_stub = {
                             "role": "assistant",
@@ -164,7 +233,7 @@ class WorkflowRunner:
 
                         result = self.tool_integration.call_tool_function(fn_name, fn_args)
 
-                        if include_pre_calls_in_chat:
+                        if self.include_pre_calls_in_chat:
                             tool_msg = {
                                 "role": "tool",
                                 "content": json.dumps(result),
@@ -173,7 +242,7 @@ class WorkflowRunner:
                             self._add_message(**tool_msg)
                 else:
                     # For non-assistant messages, optionally record them
-                    if include_pre_calls_in_chat:
+                    if self.include_pre_calls_in_chat:
                         self._add_message(msg.get("role", "user"), msg.get("content", ""))
         
         self.logger.info("Starting LLM interaction via Chat Completions API…")
@@ -192,21 +261,37 @@ class WorkflowRunner:
 
                 rounds = 0
                 while rounds < max_rounds:
-                    response = self.client.chat.completions.create(
-                        model=self.model,
+
+                    response = await acompletion(
                         messages=self.messages,
                         tools=tool_functions,
                         tool_choice="auto",
                         temperature=temperature,
+                        **self.llm_params
                     )
 
-                    raw_assistant = response.choices[0].message
+                    assistant_choice = response.choices[0]
+                    raw_assistant = assistant_choice.message
 
                     assistant_msg: Dict[str, Any] = {
                         "role": "assistant",
                         "content": raw_assistant.content or "",
                     }
 
+                    if self.llm_client_type == "art":
+                        parsed_tool_calls, error_message, text_content = self._parse_art_tool_calls(assistant_msg["content"])
+                        
+                        if error_message:
+                            # Keep original content when parsing fails so user can see the malformed request
+                            self._add_message(**assistant_msg)
+                            self._add_message("user", f"Error parsing your response: {error_message}. Please correct the JSON and try again.")
+                            continue
+                        
+                        # Only update content if parsing succeeded
+                        assistant_msg["content"] = text_content
+                        if parsed_tool_calls:
+                            assistant_msg["tool_calls"] = parsed_tool_calls
+                    
                     # ---------------- Convert any tool calls --------------------
                     if getattr(raw_assistant, "tool_calls", None):
                         tc_list = []
@@ -221,7 +306,7 @@ class WorkflowRunner:
                             })
                         assistant_msg["tool_calls"] = tc_list
 
-                    self._add_message(**assistant_msg)
+                    self._add_message(choice=assistant_choice, **assistant_msg)
 
                     # ---------------- Execute tool calls if any ---------------
                     if "tool_calls" in assistant_msg:
@@ -252,6 +337,7 @@ class WorkflowRunner:
                         continue  # inner while – ask model again with updated context
 
                     # ---------------- No tool call – final assistant text -----
+                    # ---------------- No tool call – final assistant text -----
                     final_response = assistant_msg["content"]
                     # Stop if the conversation is finished
                     if self.check_finished():
@@ -270,6 +356,18 @@ class WorkflowRunner:
         except Exception as e:
             self.logger.error(f"Conversation failed: {e}", exc_info=True)
             return None
+
+    # ------------------------------------------------------------------
+    #  Synchronous wrapper for legacy callers
+    # ------------------------------------------------------------------
+    def run(self, *args, **kwargs):
+        """Blocking wrapper around :pymeth:`run_async`.
+
+        This keeps backward-compatibility with code that expected a synchronous
+        ``WorkflowRunner.run``.  Internally it spins up an event-loop just once
+        and delegates to the real coroutine.
+        """
+        return asyncio.run(self.run_async(*args, **kwargs))
 
     def get_retry_message(self):
         return "Please use the tools to complete the task."
@@ -328,7 +426,7 @@ class WorkflowRunner:
     #  Internal helper – keeps chat ↔ snapshot alignment
     # ------------------------------------------------------------------
 
-    def _add_message(self, role: str, content: str, name: str | None = None, **kwargs):
+    def _add_message(self, role: str, content: str, name: str | None = None, choice: Optional[Any] = None, **kwargs):
         """Append *content* as a new chat message and snapshot the state.
 
         Additional keyword arguments are merged into the message dict so callers can
@@ -340,14 +438,105 @@ class WorkflowRunner:
         if kwargs:
             msg.update(kwargs)
         self.messages.append(msg)
+        
+        if choice:
+            try:
+                from art.utils.litellm import convert_litellm_choice_to_openai
+                openai_choice = convert_litellm_choice_to_openai(choice)
+                self.messages_and_choices.append(openai_choice)
+            except ImportError:
+                # Fallback if art.utils.litellm is not available
+                self.messages_and_choices.append(msg)
+        else:
+            self.messages_and_choices.append(msg)
+
         # Keep the session-state snapshot aligned with message index
         self.session_state.record_snapshot(msg_index=len(self.messages) - 1)
+
+    async def _find_dpo_preferred_assistant(self, context_messages: List[Dict[str, Any]], chat_kwargs: Dict[str, Any], max_tool_retry: int) -> tuple[Optional[Dict[str, Any]], Optional[Dict[str, Any]]]:
+        """
+        Retry logic to find a successful tool call after a failure.
+        """
+        preferred_assistant: Optional[Dict[str, Any]] = None
+        preferred_tool_msg: Optional[Dict[str, Any]] = None
+        
+        retry_context = list(context_messages)
+        retry = 0
+        while retry < max_tool_retry and preferred_assistant is None:
+            retry += 1
+            
+            retry_response = await acompletion(messages=retry_context, **chat_kwargs, **self.llm_params)
+            raw_retry_asst = retry_response.choices[0].message
+
+            retry_asst_msg = {
+                "role": "assistant",
+                "content": raw_retry_asst.content or "",
+            }
+
+            # Handle ART model's XML format
+            if self.llm_client_type == "art":
+                parsed_tool_calls, error_message, text_content = self._parse_art_tool_calls(retry_asst_msg["content"])
+
+                if error_message:
+                    # Parsing failed on retry, add error and continue to next retry
+                    retry_context.append(retry_asst_msg)
+                    retry_context.append({
+                        "role": "tool", 
+                        "content": json.dumps({"error": error_message}), 
+                        "tool_call_id": str(uuid.uuid4())
+                    })
+                    continue
+                
+                # Only update content if parsing succeeded
+                retry_asst_msg["content"] = text_content
+                if parsed_tool_calls:
+                    retry_asst_msg["tool_calls"] = parsed_tool_calls
+            
+            # Handle standard OpenAI tool calls
+            if getattr(raw_retry_asst, "tool_calls", None):
+                tc_retry_list = []
+                for tc in raw_retry_asst.tool_calls:
+                    tc_retry_list.append({
+                        "id": tc.id,
+                        "type": "function",
+                        "function": { "name": tc.function.name, "arguments": tc.function.arguments },
+                    })
+                retry_asst_msg["tool_calls"] = tc_retry_list
+
+            if "tool_calls" in retry_asst_msg:
+                # Execute first tool call to check for success
+                first_call = retry_asst_msg["tool_calls"][0]
+                fn_name_r = first_call["function"]["name"]
+                try:
+                    fn_args_r = json.loads(first_call["function"]["arguments"])
+                except json.JSONDecodeError:
+                    fn_args_r = {}
+
+                result_r = self.tool_integration.call_tool_function(fn_name_r, fn_args_r)
+
+                tool_msg_r = {
+                    "role": "tool",
+                    "content": json.dumps(result_r),
+                    "tool_call_id": first_call["id"],
+                }
+
+                if not result_r.get("error", False):
+                    preferred_assistant = retry_asst_msg
+                    preferred_tool_msg = tool_msg_r
+                else:
+                    # Add failing attempt to context for subsequent retry
+                    retry_context.extend([retry_asst_msg, tool_msg_r])
+            else:
+                # Retry assistant produced no tool call – add to context and retry
+                retry_context.append(retry_asst_msg)
+                
+        return preferred_assistant, preferred_tool_msg
 
     # ------------------------------------------------------------------
     #  New functionality – generate (preferred, rejected) pairs for DPO
     # ------------------------------------------------------------------
 
-    def run_generate_preference_pair_on_tool_failures(
+    async def run_generate_preference_pair_on_tool_failures_async(
         self,
         max_rounds: int = 15, 
         *,
@@ -392,7 +581,6 @@ class WorkflowRunner:
 
         # ChatCompletion parameters (deterministic behaviour)
         chat_kwargs = {
-            "model": self.model,
             "tools": tool_functions,
             "tool_choice": "auto",
             "temperature": 0.0,
@@ -403,9 +591,10 @@ class WorkflowRunner:
             # ----------------------------------------------------------------
             #  Ask the model for the next assistant turn
             # ----------------------------------------------------------------
-            response = self.client.chat.completions.create(
+            response = await acompletion(
                 messages=self.messages,
                 **chat_kwargs,  # type: ignore[arg-type]
+                **self.llm_params
             )
 
             raw_assistant = response.choices[0].message  # OpenAI object
@@ -414,6 +603,39 @@ class WorkflowRunner:
                 "role": "assistant",
                 "content": raw_assistant.content or "",
             }
+
+            rejected_assistant = assistant_msg
+            
+            # Handle ART model's XML format
+            if self.llm_client_type == "art":
+                parsed_tool_calls, error_message, text_content = self._parse_art_tool_calls(assistant_msg["content"])
+                
+                if error_message:
+                    self.logger.warning(f"DPO: Malformed XML or JSON response from ART model: {error_message}")
+                    
+                    context_messages = list(self.messages)
+                    preferred_assistant, preferred_tool_msg = await self._find_dpo_preferred_assistant(context_messages, chat_kwargs, max_tool_retry)
+
+                    if preferred_assistant and preferred_tool_msg:
+                        dpo_samples.append({
+                            "input": {"messages": context_messages},
+                            "preferred_output": [preferred_assistant],
+                            "non_preferred_output": [rejected_assistant],
+                        })
+                        self.messages = context_messages
+                        self._add_message(**preferred_assistant)
+                        self._add_message(**preferred_tool_msg)
+                    else:
+                        self.logger.error("Failed to recover from malformed response.")
+                        self._add_message(**assistant_msg) # Log the bad response and continue
+                    
+                    if stop_on_first_failure: break
+                    continue
+
+                # Only update content if parsing succeeded
+                assistant_msg["content"] = text_content
+                if parsed_tool_calls:
+                    assistant_msg["tool_calls"] = parsed_tool_calls
 
             # Convert any tool calls to the familiar chat-history structure
             if getattr(raw_assistant, "tool_calls", None):
@@ -468,63 +690,7 @@ class WorkflowRunner:
                     rollback_count = len(tool_results_messages) + 1
                     context_messages = self.messages[:-rollback_count]
 
-                    rejected_assistant = assistant_msg
-
-                    preferred_assistant: Dict[str, Any] | None = None
-                    preferred_tool_msg: Dict[str, Any] | None = None
-
-                    retry = 0
-                    while retry < max_tool_retry and preferred_assistant is None:
-                        retry += 1
-                        retry_response = self.client.chat.completions.create(
-                            messages=context_messages, **chat_kwargs  # type: ignore[arg-type]
-                        )
-                        raw_retry_asst = retry_response.choices[0].message
-
-                        retry_asst_msg = {
-                            "role": "assistant",
-                            "content": raw_retry_asst.content or "",
-                        }
-
-                        if getattr(raw_retry_asst, "tool_calls", None):
-                            tc_retry_list = []
-                            for tc in raw_retry_asst.tool_calls:
-                                tc_retry_list.append({
-                                    "id": tc.id,
-                                    "type": "function",
-                                    "function": {
-                                        "name": tc.function.name,
-                                        "arguments": tc.function.arguments,
-                                    },
-                                })
-                            retry_asst_msg["tool_calls"] = tc_retry_list
-
-                            # Execute tool(s)
-                            first_call = tc_retry_list[0]
-                            fn_name_r = first_call["function"]["name"]
-                            try:
-                                fn_args_r = json.loads(first_call["function"]["arguments"])
-                            except json.JSONDecodeError:
-                                fn_args_r = {}
-
-                            result_r = self.tool_integration.call_tool_function(fn_name_r, fn_args_r)
-
-                            tool_msg_r = {
-                                "role": "tool",
-                                "content": json.dumps(result_r),
-                                # "name": fn_name_r,
-                                "tool_call_id": first_call["id"],
-                            }
-
-                            if not result_r.get("error", False):
-                                preferred_assistant = retry_asst_msg
-                                preferred_tool_msg = tool_msg_r
-                            else:
-                                # Add failing attempt to context for subsequent retry
-                                context_messages = context_messages + [retry_asst_msg, tool_msg_r]
-                        else:
-                            # Retry assistant produced no tool call – give up
-                            context_messages = context_messages + [retry_asst_msg]
+                    preferred_assistant, preferred_tool_msg = await self._find_dpo_preferred_assistant(context_messages, chat_kwargs, max_tool_retry)
 
                     if preferred_assistant is not None and preferred_tool_msg is not None:
                         # Make sure that the tool function as well as the arguments are actually different. 
@@ -585,6 +751,18 @@ class WorkflowRunner:
                 break
 
         return dpo_samples
+
+    # ------------------------------------------------------------------
+    #  Synchronous wrapper for legacy callers
+    # ------------------------------------------------------------------
+    def run_generate_preference_pair_on_tool_failures(self, *args, **kwargs):
+        """Blocking wrapper around :pymeth:`run_generate_preference_pair_on_tool_failures_async`.
+
+        This keeps backward-compatibility with code that expected a synchronous
+        method.  Internally it spins up an event-loop just once
+        and delegates to the real coroutine.
+        """
+        return asyncio.run(self.run_generate_preference_pair_on_tool_failures_async(*args, **kwargs))
 
     def generate_chat_histories(self, output_dir, num_runs, base_run_name, start_index=0):
         for run_index in range(start_index, start_index + num_runs):

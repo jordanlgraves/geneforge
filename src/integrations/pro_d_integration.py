@@ -314,7 +314,7 @@ class ProDIntegration:
 
         if not processed:
             logger.error("No valid 17 bp spacer sequences to evaluate.")
-            return {}
+            return {"success": False, "error": f"Could not determine the 17 bp spacer from the provided sequence {seq} of length {len(seq)}."}
 
         results = evaluate_promoter_spacers(
             processed,
@@ -324,7 +324,7 @@ class ProDIntegration:
         )
         
         if results.empty:
-            return {}
+            return {"success": False, "error": "ProD returned empty results. It is likely that no variants could be found for the given spacer sequence."}
             
         # Convert results to dictionary, ensuring keys match input case
         spacer_to_strength = {}

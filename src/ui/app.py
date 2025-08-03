@@ -22,14 +22,14 @@ from src.prompt_manager import get_system_prompt
 from src.session_state import SessionState
 from src.tool_registry import ToolIntegration, tool_functions
 
-from src.examples.agent.design_w_promoter_vars import DesignWithPromoterVarsWorkflow, PROMPT as PROMPT_VARS
-from src.examples.agent.design_minimal_input_sensors import MinimalInputSensorsRunner, PROMPT as PROMPT_SENSORS
-from src.examples.agent.design_w_promoter_vars_and_research import DesignWithPromoterVarsWResearchRunner, PROMPT as PROMPT_VARS_W_RESEARCH
-from src.examples.agent.design_toggle_switch import SimpleNotGateSimulationRunner, PROMPT as PROMPT_SIMPLE_NOT_GATE
-from src.examples.agent.km_simulation import KineticModelingSimulationRunner, PROMPT as PROMPT_KM_SIMULATION
-from src.examples.agent.km_simulation_laci_decay import KMEColiLacIDecayExample, PROMPT as PROMPT_KM_SIMULATION_LACI_DECAY
-from src.examples.agent.km_simulation_aa_starvation import KMAminoAcidStarvationExample, PROMPT as PROMPT_KM_SIMULATION_AA_STARVATION
-from src.examples.agent.design_and_sim_genetic_toggle import GeneticToggleSwitchExample, PROMPT as PROMPT_GENETIC_TOGGLE_SWITCH
+from src.scenarios.agent.design_w_promoter_vars import DesignWithPromoterVarsWorkflow, PROMPT as PROMPT_VARS
+from src.scenarios.agent.design_minimal_input_sensors import MinimalInputSensorsRunner, PROMPT as PROMPT_SENSORS
+from src.scenarios.agent.design_w_promoter_vars_and_research import DesignWithPromoterVarsWResearchRunner, PROMPT as PROMPT_VARS_W_RESEARCH
+from src.scenarios.agent.design_toggle_switch import SimpleNotGateSimulationRunner, PROMPT as PROMPT_SIMPLE_NOT_GATE
+from src.scenarios.agent.km_simulation import KineticModelingSimulationRunner, PROMPT as PROMPT_KM_SIMULATION
+from src.scenarios.agent.km_simulation_laci_decay import KMEColiLacIDecayExample, PROMPT as PROMPT_KM_SIMULATION_LACI_DECAY
+from src.scenarios.agent.km_simulation_aa_starvation import KMAminoAcidStarvationExample, PROMPT as PROMPT_KM_SIMULATION_AA_STARVATION
+from src.scenarios.agent.design_and_sim_genetic_toggle import GeneticToggleSwitchExample, PROMPT as PROMPT_GENETIC_TOGGLE_SWITCH
 
 # Configure logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')

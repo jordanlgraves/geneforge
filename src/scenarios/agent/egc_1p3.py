@@ -1,14 +1,14 @@
 
 
 import json
-from src.examples.agent.workflows import WorkflowRunner
+from src.scenarios.agent.workflows import WorkflowRunner
 
 
 PROMPT = """Construct a reaction-based SBML model for the genetic circuit shown below using iBioSim or any other tool that includes an SBML editor. Use the parameter values provided and assume that CI dimerizes before acting as a transcription factor.
 Genetic Circuit Description:
-- LacI represses CI via promoter P_1
-- CI represses TetR via promoter P_3
-- TetR represses LacI via promoter P_2
+- CI represses LacI via promoter P_1
+- LacI represses TetR via promoter P_2
+- TetR represses CI via promoter P_3
 
 Parameter Values:
 ```latex
