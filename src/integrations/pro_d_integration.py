@@ -308,12 +308,12 @@ class ProDIntegration:
                     )
                     continue
                 seq_up = maybe_spacer.upper()
-                logger.debug("Auto-extracted spacer %s from full promoter", seq_up)
+                logger.warning("Auto-extracted spacer %s from full promoter", seq_up)
             processed.append(seq_up)
             original_map[seq_up] = seq  # preserve original key
 
         if not processed:
-            logger.error("No valid 17 bp spacer sequences to evaluate.")
+            logger.warning("No valid 17 bp spacer sequences to evaluate.")
             return {"success": False, "error": f"Could not determine the 17 bp spacer from the provided sequence {seq} of length {len(seq)}."}
 
         results = evaluate_promoter_spacers(

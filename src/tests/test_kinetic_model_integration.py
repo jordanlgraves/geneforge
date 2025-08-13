@@ -2,7 +2,7 @@ import unittest
 import tellurium as te
 import libsbml
 from src.integrations.kinmod_gpt_integration import KineticModelingGPTIntegration
-from src.simulate.param_template import build_param_template
+from src.simulation_utils import build_param_template
 
 class TestKineticModelIntegration(unittest.TestCase):
     """

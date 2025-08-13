@@ -1,8 +1,9 @@
 from src.prompt_manager import get_kinmod_prompt
 from openai import OpenAI  # Local import to avoid mandatory dependency at import time
 import os
-from src.llm_module import get_llm_client
-from src.simulate.param_template import build_param_template
+from src.llm_module import get_llm_params
+from litellm import completion
+from src.simulation_utils import build_param_template   
 import libsbml
 import tellurium as te
 
@@ -63,7 +64,11 @@ def _ensure_parameters_initialized(antimony_model: str) -> str:
 class KineticModelingGPTIntegration:
     def __init__(self):
         self.sys_prompt = get_kinmod_prompt()
-        self.client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+        self.llm_params = get_llm_params(model="gpt-4o-mini")
+        
+        # 'tool_choice' is only allowed when 'tools' are specified.
+        if 'tool_choice' in self.llm_params: 
+            del self.llm_params['tool_choice']
 
     def generate_kinetic_model(self, spec: str, previous_messages: list[dict] = None, previous_attempt_message: str = None):
         messages = [
@@ -78,17 +83,20 @@ class KineticModelingGPTIntegration:
             messages.append({"role": "user", "content": previous_attempt_message + ". Please try again, taking into account the error." + "\n\n" + spec})
         else:
             messages.append({"role": "user", "content": spec})
-        response = self.client.chat.completions.create(
-            model="gpt-4o-mini",
+        response = completion(
             messages=messages,
-            temperature=1,
+            **self.llm_params,
         )
         antimony_model = clean_GPT_output(response.choices[0].message.content)
-
+    
         # Ensure that the model is RoadRunner-friendly by explicitly
         # initialising all global parameters.
         antimony_model = _ensure_parameters_initialized(antimony_model)
 
         return antimony_model, messages
     
-    
+if __name__ == "__main__":
+    integration = KineticModelingGPTIntegration()
+    antimony_model, messages = integration.generate_kinetic_model("Create a kinetic model for a simple reaction.")
+    print(antimony_model)
+    print(messages)

@@ -1,31 +1,24 @@
 from __future__ import annotations
 
-import asyncio
-import uuid
-from typing import Any, Dict, List, Optional, Sequence
-
 import art  # type: ignore
-
-from src.scenarios.agent.workflows import WorkflowRunner
-
-from src.tool_registry import tool_functions # Need to change this. Makes no sense to do this here. Should get from workflow
+from src.scenarios.scenario import Scenario
 
 class ArtAdapter:
-    """Bridge between a WorkflowRunner and the *art* RL framework.
+    """Bridge between a Scenario and the *art* RL framework.
 
-    This adapter executes a synchronous ``WorkflowRunner`` inside a background
-    thread so that multiple workflows can be launched **concurrently** via
+    This adapter executes a synchronous ``Scenario`` inside a background
+    thread so that multiple scenarios can be launched **concurrently** via
     ``asyncio``.  After completion the full chat transcript is returned as an
-    :class:`art.Trajectory` while the original ``WorkflowRunner`` instance
-    remains accessible via :pyattr:`workflow`.
+    :class:`art.Trajectory` while the original ``Scenario`` instance
+    remains accessible via :pyattr:`scenario`.
     """
-
+    
     def __init__(
         self,
-        workflow: WorkflowRunner,
+        scenario: Scenario,
         step: int,
     ) -> None:
-        self.workflow = workflow
+        self.scenario = scenario
         self.step = step
 
     # ------------------------------------------------------------------
@@ -33,19 +26,19 @@ class ArtAdapter:
     # ------------------------------------------------------------------
 
     @art.retry()
-    async def rollout(self, **workflow_run_kwargs) -> art.Trajectory:  # type: ignore[name-defined]
-        """Execute the underlying workflow asynchronously and capture a trajectory."""
-        await self.workflow.run_async(**workflow_run_kwargs)
-        return self.trajectory_from_workflow(self.workflow, self.step)
+    async def rollout(self, **scenario_run_kwargs) -> art.Trajectory:  # type: ignore[name-defined]
+        """Execute the underlying scenario asynchronously and capture a trajectory."""
+        await self.scenario.run_async(**scenario_run_kwargs)
+        return self.trajectory_from_scenario(self.scenario, self.step)
 
     @staticmethod
-    def trajectory_from_workflow(workflow=None, step=None):
+    def trajectory_from_scenario(scenario: Scenario, step: int) -> art.Trajectory:
         trajectory = art.Trajectory(
-            messages_and_choices=workflow.messages_and_choices,
+            messages_and_choices=scenario.messages_and_choices,
             metadata=None if step is None else dict(step=step),
             reward=0,  # reward to be set by caller
-            metrics=workflow.get_metrics(),
-            tools=workflow.tool_integration.tool_functions
+            metrics=scenario.get_metrics(),
+            tools=scenario.tool_integration.tool_functions
         )
 
         # ------------------------------------------------------------------

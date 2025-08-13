@@ -144,3 +144,10 @@ class ToolIntegration:
         
         # If no tool found, return error
         return {"error": f"No such function: {function_name}"}
+    
+if __name__ == "__main__":
+    for tool in tool_functions:
+        print(tool["function"]["name"])
+        print(tool["function"]["description"])
+        print(tool["function"]["parameters"])
+        print("--------------------------------")

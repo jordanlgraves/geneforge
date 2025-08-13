@@ -194,3 +194,20 @@ Cello is a design-automation engine that takes a **logic specification** (Boolea
   4. `design_with_cello(run_name, verilog_code)`  → returns design files, SBOL, GenBank, metrics.
 
 Use `get_library_status` at any point to confirm which files are currently loaded and will be used by the next tool call. You can inspect the contents of the active library with the `list_promoters`, `get_dna_part_by_name`, etc. tools.
+
+## Answer Submission
+In some case, the user may want an answer to a question/problem/exercise. In this case, you should use the `report_answer` tool.
+```json
+{
+  "name": "report_answer",
+  "arguments": {"answer": "The answer to the question/problem/exercise provided by the user."}
+}
+```
+
+## Decision-Making Process
+Before answering, work through problems step-by-step:
+1. UNDERSTAND: What is the core question being asked?
+2. ANALYZE: What are the key factors/contents involved.
+3. REASON: What logical connections can I make?
+4. SYNTHESIZE: How do these elements combine?
+5. CONCLUDE: What is the most accurate/helpful response?

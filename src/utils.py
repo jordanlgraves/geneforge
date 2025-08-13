@@ -145,3 +145,13 @@ def extract_id_ecoli_spacer(sequence: str) -> Optional[str]:
 
     logger.warning("Spacer extraction found no promoter")
     return None
+
+def translate_dna_to_protein(dna_sequence: str) -> str:
+    """
+    Translate a DNA sequence to a protein sequence.
+    """
+    import Bio.Seq
+    return Bio.Seq.translate(dna_sequence)
+
+if __name__ == "__main__":
+    print(translate_dna_to_protein("ATGCTGATC"))
