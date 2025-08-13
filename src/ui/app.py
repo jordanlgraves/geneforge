@@ -22,14 +22,14 @@ from src.prompt_manager import get_system_prompt
 from src.session_state import SessionState
 from src.tool_registry import ToolIntegration, tool_functions
 
-from src.scenarios.agent.design_w_promoter_vars import DesignWithPromoterVarsWorkflow, PROMPT as PROMPT_VARS
-from src.scenarios.agent.design_minimal_input_sensors import MinimalInputSensorsRunner, PROMPT as PROMPT_SENSORS
-from src.scenarios.agent.design_w_promoter_vars_and_research import DesignWithPromoterVarsWResearchRunner, PROMPT as PROMPT_VARS_W_RESEARCH
-from src.scenarios.agent.design_toggle_switch import SimpleNotGateSimulationRunner, PROMPT as PROMPT_SIMPLE_NOT_GATE
-from src.scenarios.agent.km_simulation import KineticModelingSimulationRunner, PROMPT as PROMPT_KM_SIMULATION
-from src.scenarios.agent.km_simulation_laci_decay import KMEColiLacIDecayExample, PROMPT as PROMPT_KM_SIMULATION_LACI_DECAY
-from src.scenarios.agent.km_simulation_aa_starvation import KMAminoAcidStarvationExample, PROMPT as PROMPT_KM_SIMULATION_AA_STARVATION
-from src.scenarios.agent.design_and_sim_genetic_toggle import GeneticToggleSwitchExample, PROMPT as PROMPT_GENETIC_TOGGLE_SWITCH
+from src.scenarios.design.design_w_promoter_vars import DesignWithPromoterVarsScenario, PROMPT as PROMPT_VARS
+from src.scenarios.design.design_minimal_input_sensors import MinimalInputSensorsScenario, PROMPT as PROMPT_SENSORS
+from src.scenarios.design.design_w_promoter_vars_and_research import DesignWithPromoterVarsWResearchScenario, PROMPT as PROMPT_VARS_W_RESEARCH
+from src.scenarios.design.design_toggle_switch import SimpleNotGateSimulationScenario, PROMPT as PROMPT_SIMPLE_NOT_GATE
+from src.scenarios.km_simulation.km_simulation import KineticModelingSimulationScenario, PROMPT as PROMPT_KM_SIMULATION
+from src.scenarios.km_simulation.km_simulation_laci_decay import KMEColiLacIDecayScenario, PROMPT as PROMPT_KM_SIMULATION_LACI_DECAY
+from src.scenarios.km_simulation.km_simulation_aa_starvation import KMAminoAcidStarvationScenario, PROMPT as PROMPT_KM_SIMULATION_AA_STARVATION
+from src.scenarios.design.design_and_sim_genetic_toggle import GeneticToggleSwitchScenario, PROMPT as PROMPT_GENETIC_TOGGLE_SWITCH
 
 # Configure logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
@@ -46,13 +46,13 @@ st.set_page_config(
 # --- Examples ---
 EXAMPLES: Dict[str, Any] = {
     # "Circuit Design: Simple Not Gate Simulation": (SimpleNotGateSimulationRunner, PROMPT_SIMPLE_NOT_GATE),
-    "Circuit Design: with Promoter Variants": (DesignWithPromoterVarsWorkflow, PROMPT_VARS),
-    "Circuit Design: with Minimal Input Sensors": (MinimalInputSensorsRunner, PROMPT_SENSORS),
-    "Circuit Design: with Promoter Variants and Research": (DesignWithPromoterVarsWResearchRunner, PROMPT_VARS_W_RESEARCH),
-    "Kinetic Modeling: Simple Simulation": (KineticModelingSimulationRunner, PROMPT_KM_SIMULATION),
-    "Kinetic Modeling: E. coli LacI Decay": (KMEColiLacIDecayExample, PROMPT_KM_SIMULATION_LACI_DECAY),
-    "Kinetic Modeling: Amino Acid Starvation": (KMAminoAcidStarvationExample, PROMPT_KM_SIMULATION_AA_STARVATION),
-    "Genetic Toggle Switch": (GeneticToggleSwitchExample, PROMPT_GENETIC_TOGGLE_SWITCH),
+    "Circuit Design: with Promoter Variants": (DesignWithPromoterVarsScenario, PROMPT_VARS),
+    "Circuit Design: with Minimal Input Sensors": (MinimalInputSensorsScenario, PROMPT_SENSORS),
+    "Circuit Design: with Promoter Variants and Research": (DesignWithPromoterVarsWResearchScenario, PROMPT_VARS_W_RESEARCH),
+    "Kinetic Modeling: Simple Simulation": (KineticModelingSimulationScenario, PROMPT_KM_SIMULATION),
+    "Kinetic Modeling: E. coli LacI Decay": (KMEColiLacIDecayScenario, PROMPT_KM_SIMULATION_LACI_DECAY),
+    "Kinetic Modeling: Amino Acid Starvation": (KMAminoAcidStarvationScenario, PROMPT_KM_SIMULATION_AA_STARVATION),
+    "Genetic Toggle Switch": (GeneticToggleSwitchScenario, PROMPT_GENETIC_TOGGLE_SWITCH),
 }
 
 # --- Session State Initialization ---
@@ -237,7 +237,7 @@ def draw_sidebar():
                     fp.write(uploaded_sbml.getbuffer())
 
                 # Persist in session
-                from src.simulate.param_template import build_param_template
+                from src.simulation_utils import build_param_template
                 import libsbml
                 sbml_doc = libsbml.readSBMLFromFile(str(save_path))
                 template = build_param_template(sbml_doc)

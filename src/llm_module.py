@@ -1,9 +1,7 @@
 import os
 import logging
-import json
-from typing import List, Dict, Any, Tuple, Optional
-import asyncio
-from litellm import acompletion, completion
+from typing import Dict, Any
+from litellm import completion
 
 try:
     import art
@@ -19,53 +17,91 @@ logger = logging.getLogger(__name__)
 DEBUG_MODEL = True
 
 def get_llm_params(
-    client_type: str = None, 
-    reasoning: bool = False, 
-    *, 
-    art_model: "art.TrainableModel" = None,
-    model_name_str: str = None
+    model: str | None = None,
+    *,
+    art_model: Any | None = None,
 ) -> Dict[str, Any]:
-    """Get parameters for litellm completion.
+    """Build LiteLLM params from a human-friendly model string.
 
     Args:
-        client_type: One of ``openai``, ``deepseek`` or ``art``.
-        reasoning:   When *True* select the reasoning-optimised model variant
-                      for providers that differentiate (e.g. OpenAI, DeepSeek).
-        art_model:   Pre-initialised :class:`art.TrainableModel` instance when
-                      ``client_type='art'``.
-        model_name_str:  The name of the model to use.
+        model:       Desired model, e.g. ``"gpt-4o"``, ``"deepseek-reasoner"``,
+                     ``"google/gemini-1.5-pro"`` or fully-qualified like
+                     ``"openai/gpt-4o"``. If omitted, a sensible default is
+                     chosen (DeepSeek coder vs reasoner) unless ``art_model``
+                     is provided.
+
+        art_model:   Local ART backend; when provided and ``model`` is omitted
+                     or refers to this backend, use ``hosted_vllm/<name>`` with
+                     the provided credentials.
 
     Returns:
-        Dictionary of parameters for litellm.completion.
+        Dictionary of parameters for ``litellm.completion``/``acompletion``.
     """
-    client_type = client_type or "deepseek"
-    params = {}
 
-    if client_type == "art":
-        if art_model:
-            params["model"] = f"hosted_vllm/{art_model.name}"
-            params["api_base"] = art_model.inference_base_url
-            params["api_key"] = art_model.inference_api_key
-            params["logprobs"] = True
-        else:
-            raise ValueError("'art_model' is required for client_type='art'")
-    elif client_type == "openai":
-        model_name = os.getenv("OPENAI_MODEL_REASONING") if reasoning else os.getenv("OPENAI_MODEL")
-        params["model"] = f"openai/{model_name}"
-        # litellm.UnsupportedParamsError: openai does not support parameters: ['logprobs'], for model=o4-mini. 
-        # To drop these, set `litellm.drop_params=True` or for proxy: `litellm_settings: drop_params: true`
-        # if you want to use these params dynamically send allowed_openai_params=['logprobs'] in your request.
-        # This is a workaround to avoid the error.
-        if 'o4-mini' not in model_name:
-            params["logprobs"] = True
-    elif client_type == "deepseek":
-        model_name = "deepseek-reasoner" if reasoning else "deepseek-coder"
-        params["model"] = f"deepseek/{model_name}"
+    def _infer_provider(model_name: str) -> str:
+        if "/" in model_name:
+            return model_name.split("/", 1)[0]
+        if model_name.startswith("hosted_vllm/"):
+            return "hosted_vllm"
+        lowered = model_name.lower()
+        if lowered.startswith(("gpt-", "o1", "o3", "o4", "gpt4", "gpt3")):
+            return "openai"
+        if lowered.startswith("deepseek"):
+            return "deepseek"
+        if lowered.startswith("gemini") or lowered.startswith("models/gemini"):
+            return "google"
+        if lowered.startswith(("claude", "anthropic")):
+            return "anthropic"
+        return "openai"  # conservative default
+
+    params: Dict[str, Any] = {}
+    params["tool_choice"] = "auto"
+    # other options:
+    # params["stream"] = True
+
+    # ART backend handling
+    if art_model is not None and (model is None or model == art_model.name or str(model).startswith("hosted_vllm/")):
+        params["model"] = model if (model and model.startswith("hosted_vllm/")) else f"hosted_vllm/{art_model.name}"
+        params["api_base"] = art_model.inference_base_url
+        params["api_key"] = art_model.inference_api_key
+        params["logprobs"] = True
+        logger.info("Using LLM with params: %s", params)
+        return params
+
+    # If model not provided, choose provider-specific defaults
+    if model is None:
+        # Prefer DeepSeek defaults if no explicit preference given
+        default_model = "gpt-4o"
+        provider = _infer_provider(default_model)
+        params["model"] = f"{provider}/{default_model}"
+        logger.info("Using LLM with params: %s", params)
+        return params
+
+    provider = _infer_provider(model)
+
+    # Fully-qualified already provided
+    if "/" in model or model.startswith("hosted_vllm/"):
+        params["model"] = model
     else:
-        raise ValueError(f"Unknown client_type '{client_type}'")
+        params["model"] = f"{provider}/{model}"
 
-    if model_name_str:
-        params["model"] = model_name_str
+    if provider == "google":
+        assert os.getenv("GEMINI_API_KEY"), "GEMINI_API_KEY is not set"
+        params["logprobs"] = True
+        # if "gemini-2.5" in model:
+        #     params["reasoning_effort"] = "high"
+    elif provider == "openai":    
+        assert os.getenv("OPENAI_API_KEY"), "OPENAI_API_KEY is not set"
+        if not any(x in model for x in ("gpt-4o-mini", "gpt-5-nano")):
+            params["logprobs"] = True
+        if "o3" in model:                   # openai does not support parameters: ['logprobs'], for model=o3            
+            if "logprobs" in params: 
+                del params["logprobs"]
+            params["temperature"] = 1       # 'temperature' does not support 0.0 with this model. Only the default (1) value is supported.
+        if 'gpt-5' in model:
+            params["temperature"] = 1       # 'temperature' does not support 0.0 with this model. Only the default (1) value is supported.
+    elif provider == "deepseek":
+        assert os.getenv("DEEPSEEK_API_KEY"), "DEEPSEEK_API_KEY is not set"
 
     logger.info("Using LLM with params: %s", params)
     return params

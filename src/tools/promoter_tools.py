@@ -239,7 +239,7 @@ class GeneratePromoterLibraryFromSpacerTool(_ProDPromoterToolBase):
     ) -> Dict[str, Any]:
         prod = self._get_prod()
         if len(blueprint) != 17:
-            return {"error": "Blueprint must be exactly 17 bp."}
+            return {"error": f"Blueprint must be exactly 17 bp. Provided blueprint {blueprint} is length {len(blueprint)}."}
 
         upstream = downstream = None
         if parent_promoter:

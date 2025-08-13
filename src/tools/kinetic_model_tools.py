@@ -2,7 +2,7 @@ from pathlib import Path
 from src.tools.base_tool import Tool
 import os
 import dotenv
-from typing import Dict, Any
+from typing import Dict, Any    
 dotenv.load_dotenv()
 DEBUG_MODE = os.getenv("DEBUG_MODE", "False").lower() == "true"
 
@@ -90,7 +90,9 @@ class GenerateKineticModelFromNaturalLanguageTool(Tool):
         antimony = None
         for attempt in range(self.num_attempts):
             try:
-                antimony, messages = gpt.generate_kinetic_model(spec, previous_messages=messages, previous_attempt_message=previous_attempt_message)
+                antimony, messages = gpt.generate_kinetic_model(spec, 
+                                                                previous_messages=messages, 
+                                                                previous_attempt_message=previous_attempt_message)
                 sbml_xml = te.antimonyToSBML(antimony)
                 sbml_doc = libsbml.readSBMLFromString(sbml_xml)
                 break
@@ -103,7 +105,7 @@ class GenerateKineticModelFromNaturalLanguageTool(Tool):
                     else:
                         previous_attempt_message = f"The generated model from specification is invalid: Antimony: \n{antimony} \n\nSpec: {spec} \n\n due to error: {exc}."
 
-        from src.simulate.param_template import build_param_template
+        from src.simulation_utils import build_param_template
         template = build_param_template(sbml_doc)
 
         # Persist in session
@@ -149,7 +151,7 @@ class RunKineticModelSimulationTool(Tool):
     }, "required": []}
 
     def execute(self, start: float = 0.0, end: float = 100.0, steps: int = 100, events: list[dict] | None = None):
-        from src.simulate.run import run_kinetic_model_tellurium
+        from src.simulation_utils import run_kinetic_model_tellurium
         import uuid, os, json, io, matplotlib
         matplotlib.use("Agg")
         import matplotlib.pyplot as plt
