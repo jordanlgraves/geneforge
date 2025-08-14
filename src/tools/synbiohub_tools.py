@@ -11,25 +11,37 @@ class SynBioHubSearchTool(Tool):
     name = "synbiohub_search"
     description = (
         "Search the SynBioHub public repository (https://synbiohub.org) for SBOL objects such as parts, collections, or entire designs. "
-        "Provide exactly the key–value query string that would follow the '/search/' endpoint (e.g. 'objectType=ComponentDefinition&name=pLac'). "
         "This helper is read-only and returns the raw JSON/XML text emitted by the server so that downstream code—or the LLM—can parse it."
-        " Example: query='objectType=ComponentDefinition&dcterms:title=pTet&offset=0&limit=25'."
+        "Example: objectType='ComponentDefinition', query='pTet', offset=0, limit=25."
     )
     parameters = {
         "type": "object",
         "properties": {
-            "query": {"type": "string", "description": "Search query path, e.g. 'objectType=ComponentDefinition&pLac'."},
+            "objectType": {"type": "string", "description": "Type of object to search for (ComponentDefinition, Collection, etc.)"},
+            "sbolTag": {"type": "string", "description": "Tag in the SBOL namespace to search for (role=<http://identifiers.org/so/SO:0000316>)"},
+            "collection": {"type": "string", "description": "Collection to search for (collection=<http://synbiohub.org/public/igem/igem_collection>)"},
+            "dcterms": {"type": "string", "description": "Tag in the dcterms namespace to search for (title='pLac')"},
+            "namespace": {"type": "string", "description": "Namespace to search for (namespace=<http://sbols.org/v2#role>)"},
+            "query": {"type": "string", "description": "Search string to search for in the displayId, name, or description fields"},
             "offset": {"type": "integer", "description": "Result offset", "default": 0},
             "limit": {"type": "integer", "description": "Maximum results", "default": 20},
         },
-        "required": ["query"],
+        "required": ["objectType", "query"],
     }
 
-    def execute(self, query: str, offset: int = 0, limit: int = 20):
+    def execute(self, 
+                objectType: str | None = None, 
+                sbolTag: str | None = None, 
+                collection: str | None = None, 
+                dcterms: str | None = None, 
+                namespace: str | None = None, 
+                query: str | None = None, 
+                offset: int | None = None, 
+                limit: int | None = None):
         sbh = self.session_state.get_synbiohub_client()
         try:
-            text = sbh.search(query, offset=offset, limit=limit)
-            return {"success": True, "raw": text}
+            results = sbh.search(objectType, sbolTag, collection, dcterms, namespace, query, offset, limit)
+            return results
         except Exception as exc:
             return {"error": str(exc)}
 
@@ -53,12 +65,17 @@ class SynBioHubDownloadPartTool(Tool):
     def execute(self, uri: str, format: str = "sbol"):
         sbh = self.session_state.get_synbiohub_client()
         try:
-            content = sbh.download_part(uri, fmt=format)
+            content = sbh.download_part(uri, fmt=format) # returns bytes
+            # Write to a file and report the path
+            str_content = content.decode("utf-8", errors="ignore")
+            path = self.session_state.write_file(str_content, f"synbiohub_{uri.split('/')[-1]}.{format}")
+            
             return {
                 "success": True,
                 "format": format,
                 "bytes": len(content),
-                "content_base64": content.decode("utf-8", errors="ignore")[:5000],  # truncate
+                "content_base64_truncated": str_content[:50] + '...',  # truncate
+                "path": str(path),
             }
         except Exception as exc:
             return {"error": str(exc)}

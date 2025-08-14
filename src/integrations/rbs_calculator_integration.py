@@ -228,4 +228,4 @@ class RBSCalculatorIntegration:  # pylint: disable=too-few-public-methods
             return {"success": False, "error": str(exc)}
 
 if __name__ == "__main__":
-    print(RBSCalculatorIntegration.predict_initiation_rate("ATGCTGAGCGCGCAGGACACTC"))
+    print(RBSCalculatorIntegration.predict_initiation_rate("AUGGCCAAGCUUAUCG"))

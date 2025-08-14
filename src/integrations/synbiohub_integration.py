@@ -97,16 +97,43 @@ class SynBioHubClient:
         return self._token
 
     # --------------------------- SEARCH ---------------------------------
-    def search(self, query: str, offset: int | None = None, limit: int | None = None) -> str:
+    def search(self, objectType: str = None, 
+               sbolTag: str = None, 
+               collection: str = None, 
+               dcterms: str = None, 
+               namespace: str = None, 
+               query: str = None, 
+               offset: int | None = None, 
+               limit: int | None = None) -> str:
         """Return raw search metadata (text/JSON) for *query* string.
 
-        `query` is the portion that usually follows `/search/` in the API.
+        objectType=value	The type of object to search for ( objectType=ComponentDefinition)
+        sbolTag=value	A tag in the SBOL namespace to search for ( role=<http://identifiers.org/so/SO:0000316>)
+        collection=value	Matches objects that are members of the specified collection (collection=<http://synbiohub.org/public/igem/igem_collection>)
+        dcterms:tag=value	A tag in the dcterms namespace to search for ( dcterms:title='pLac'&) - note this requires an exact match
+        namespace/tag=value	A full namespace with tag separated by appropriate delimiter ( <http://sbols.org/v2#role>=<http://identifiers.org/so/SO:0000316>)
+
+        After the key/value pairs, an optional search string can be provided that will be used to search for partial matches in the displayId, name, or description fields.
+
+        Finally, the URL can end with an offset (where you want to start) and limit parameter (how many results you want to get).
         """
-        url = f"{self.base_url}/search/{query}"
+        url = f"{self.base_url}/search/"
+        if objectType is not None:
+            url += f"objectType={objectType}&"
+        if sbolTag is not None:
+            url += f"sbolTag={sbolTag}&"
+        if collection is not None:
+            url += f"collection={collection}&"
+        if dcterms is not None:
+            url += f"dcterms:title={dcterms}&"
+        if namespace is not None:
+            url += f"namespace={namespace}&"
+        if query is not None:
+            url += f"{query}"
         if offset is not None or limit is not None:
             url += f"?offset={offset or 0}&limit={limit or 20}"
         resp = self._request("GET", url, headers=self._headers())
-        return resp.text
+        return resp.json()
 
     # --------------------------- SEQUENCE SEARCH ----------------------
     def sequence_search(self, search_params: str) -> str:
@@ -186,3 +213,9 @@ class SynBioHubClient:
     # ------------------------------------------------------------------
     def __repr__(self) -> str:  # pragma: no cover
         return f"<SynBioHubClient url={self.base_url} token={'yes' if self._token else 'no'}>"
+    
+    
+if __name__ == "__main__":
+    client = SynBioHubClient()
+    result = client.search(objectType="ComponentDefinition", query="pBad")
+    print(result)

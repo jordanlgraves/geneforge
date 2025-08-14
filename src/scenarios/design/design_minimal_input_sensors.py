@@ -39,4 +39,7 @@ class MinimalInputSensorsScenario(Scenario):
             return {
                 "input_sensors_correct": False
             }
-        return {
+        else:
+            return {
+                "input_sensors_correct": True
+            }

@@ -9,18 +9,24 @@ import os
 from dataclasses import dataclass
 from typing import List, Dict, Any, Optional, Type
 
+from src.scenarios.retrieval.synbiohub_part import SynBioHubPartScenario
 from src.scenarios.intro_to_sys_eng.p1p1 import IntroToSysEng1p1
 from src.scenarios.intro_to_sys_eng.p1p2 import IntroToSysEng1p2
 from src.scenarios.intro_to_sys_eng.p1p3 import IntroToSysEng1p3
 from src.scenarios.intro_to_sys_eng.p3p1 import IntroToSysEng3p1
 from src.scenarios.intro_to_sys_eng.p3p7 import IntroToSysEng3p7
 from src.scenarios.intro_to_sys_eng.p3p13 import IntroToSysEng3p13
+
 from src.scenarios.eng_gene_circuits.egc_1p1 import EGCProblem1p1Scenario
-from src.scenarios.eng_gene_circuits.to_review.egc_1p3 import EGCProblem1p3Scenario
 from src.scenarios.eng_gene_circuits.egc_3p1p1 import EGCProblem3p1p1Scenario
 from src.scenarios.eng_gene_circuits.egc_3p1p2 import EGCProblem3p1p2Scenario
 from src.scenarios.eng_gene_circuits.egc_3p1p3 import EGCProblem3p1p3Scenario
 from src.scenarios.eng_gene_circuits.egc_5p1p1 import EGCProblem5p1p1Scenario
+
+from src.scenarios.design.design_minimal_input_sensors import MinimalInputSensorsScenario
+from src.scenarios.design.design_w_promoter_vars import DesignWithPromoterVarsScenario
+from src.scenarios.design.design_and_sim_genetic_toggle import GeneticToggleSwitchScenario
+
 from src.scenarios.scenario import Scenario
 
 
@@ -72,6 +78,7 @@ if __name__ == "__main__":
         }
         
         scenarios = [
+            SynBioHubPartScenario(scenario_name="SynBioHubPart", **args),
             IntroToSysEng1p1(scenario_name="IntroToSysEng1p1", **args),
             IntroToSysEng1p2(scenario_name="IntroToSysEng1p2", **args),
             IntroToSysEng1p3(scenario_name="IntroToSysEng1p3", **args),
@@ -79,11 +86,13 @@ if __name__ == "__main__":
             IntroToSysEng3p7(scenario_name="IntroToSysEng3p7", **args),
             IntroToSysEng3p13(scenario_name="IntroToSysEng3p13", **args),
             EGCProblem1p1Scenario(scenario_name="EGCProblem1p1", **args),
-            EGCProblem1p3Scenario(scenario_name="EGCProblem1p3", **args),
             EGCProblem3p1p1Scenario(scenario_name="EGCProblem3p1p1", **args),
             EGCProblem3p1p2Scenario(scenario_name="EGCProblem3p1p2", **args),
             EGCProblem3p1p3Scenario(scenario_name="EGCProblem3p1p3", **args),
             EGCProblem5p1p1Scenario(scenario_name="EGCProblem5p1p1", **args),
+            DesignWithPromoterVarsScenario(scenario_name="DesignWithPromoterVars", **args),
+            MinimalInputSensorsScenario(scenario_name="MinimalInputSensors", **args),
+            GeneticToggleSwitchScenario(scenario_name="GeneticToggleSwitch", **args),
         ]
 
         finished_scenarios = run_scenarios(

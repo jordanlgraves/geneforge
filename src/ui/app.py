@@ -17,7 +17,8 @@ if PROJECT_ROOT not in sys.path:
     sys.path.append(PROJECT_ROOT)
 
 
-from src.llm_module import get_llm_client
+from litellm import completion
+from src.llm_module import get_llm_params
 from src.prompt_manager import get_system_prompt
 from src.session_state import SessionState
 from src.tool_registry import ToolIntegration, tool_functions
@@ -86,10 +87,19 @@ def init_session_state():
     if st.session_state.deepseek_base_url:
         os.environ["DEEPSEEK_BASE_URL"] = st.session_state.deepseek_base_url
 
-    # Initialize client and model based on selection using the up-to-date env
-    client, model = get_llm_client(client_type=st.session_state.llm_client_type)
-    st.session_state.client = client
-    st.session_state.model = model
+    # Initialize model based on selection using the up-to-date env
+    def _default_model_for_client(client_type: str) -> str:
+        if client_type == "openai":
+            return os.getenv("OPENAI_MODEL", "gpt-4o")
+        if client_type == "deepseek":
+            return os.getenv("DEEPSEEK_MODEL", "deepseek-coder")
+        if client_type == "art":
+            # If using local ART, caller should configure hosted_vllm/<name> via env
+            return os.getenv("ART_MODEL", "hosted_vllm/local")
+        return "gpt-4o"
+
+    if "model" not in st.session_state:
+        st.session_state.model = _default_model_for_client(st.session_state.llm_client_type)
     if "core_session" not in st.session_state:
         st.session_state.core_session = SessionState()
     if "tool_integration" not in st.session_state:
@@ -136,8 +146,12 @@ def draw_sidebar():
                 if openai_key != st.session_state.openai_api_key:
                     st.session_state.openai_api_key = openai_key
                     os.environ["OPENAI_API_KEY"] = openai_key
-                    if "client" in st.session_state: del st.session_state["client"]
                     if "model" in st.session_state: del st.session_state["model"]
+                    st.rerun()
+                # Model override
+                m = st.text_input("OpenAI model", value=st.session_state.get("model", "gpt-4o"))
+                if m != st.session_state.get("model"):
+                    st.session_state.model = m
                     st.rerun()
             elif client_type == "deepseek":
                 deepseek_key = st.text_input("DeepSeek API Key", value=st.session_state.deepseek_api_key, type="password")
@@ -153,12 +167,19 @@ def draw_sidebar():
                     os.environ["DEEPSEEK_BASE_URL"] = deepseek_url
                     changed = True
                 if changed:
-                    if "client" in st.session_state: del st.session_state["client"]
                     if "model" in st.session_state: del st.session_state["model"]
+                    st.rerun()
+                m = st.text_input("DeepSeek model", value=st.session_state.get("model", "deepseek-coder"))
+                if m != st.session_state.get("model"):
+                    st.session_state.model = m
                     st.rerun()
             else:
                 # 'art' backend currently requires no additional credentials.
                 st.info("Using local *art* model – no API keys required.")
+                m = st.text_input("ART model (hosted_vllm/<name>)", value=st.session_state.get("model", os.getenv("ART_MODEL", "hosted_vllm/local")))
+                if m != st.session_state.get("model"):
+                    st.session_state.model = m
+                    st.rerun()
 
             agent_mode = st.toggle(
                 "🤖 Agent Mode",
@@ -381,8 +402,11 @@ def handle_chat_submission(prompt: Optional[str]):
                     {k: v for k, v in msg.items() if k != "name"}
                     for msg in st.session_state.messages
                 ]
-                stream = st.session_state.client.chat.completions.create(
-                    model=st.session_state.model,
+                # Build litellm params (provider inferred from model string)
+                llm_params = get_llm_params(model=st.session_state.model)
+                # Use litellm streaming interface
+                stream = completion(
+                    **llm_params,
                     messages=api_messages,
                     tools=tool_functions,
                     tool_choice="auto",

@@ -390,3 +390,19 @@ class SessionState:
     def get_history(self):
         """Get the history of session snapshots."""
         return self._history 
+    
+    def write_file(self, content: str, path: str):
+        """Write a file to the output directory."""
+        p = Path(self.output_directory) / path
+        p.parent.mkdir(parents=True, exist_ok=True)
+        p.write_text(content)
+        return p
+    
+    def read_file(self, path: str):
+        """Read a file from the output directory."""
+        p = Path(path)
+        if not p.exists():
+            p = Path(self.output_directory) / path
+        if not p.exists():
+            raise FileNotFoundError(f"File not found: {p}")
+        return p.read_text()

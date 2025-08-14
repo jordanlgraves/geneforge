@@ -374,7 +374,7 @@ class Scenario:
                     if self._execute_tool_calls(assistant_msg):
                         # After executing tools, continue to next assistant round
                         rounds += 1
-                        # continue  # inner while – ask model again with updated context
+                        continue  # inner while – ask model again with updated context
 
                     # ---------------- No tool call – final assistant text -----
                     final_response = assistant_msg["content"]
