@@ -376,6 +376,7 @@ class Scenario:
                     final_response = assistant_msg["content"]
                     # Stop if the conversation is finished
                     if self.check_finished():
+                        self._on_finished()
                         return final_response
                     break  # exit inner rounds loop – no further tool calls
                 
@@ -385,6 +386,7 @@ class Scenario:
 
             # outside attempts loop
             self.session_state.chat_rounds = len(self.messages)
+            self._on_finished()
             return final_response
 
         except Exception as e:
@@ -896,3 +898,9 @@ class Scenario:
             if message.get("role") == "tool" and message.get("tool_call_id") == answer_tool_id:
                 return message.get("content")
         return None
+    
+    def _on_finished(self):
+        """
+        Called when the scenario is finished.
+        """
+        pass

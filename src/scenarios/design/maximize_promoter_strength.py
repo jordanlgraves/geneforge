@@ -164,6 +164,20 @@ class MaximizePromoterStrengthScenario(ReportAnswerScenario):
             print(f'Error getting metrics: {e}')
             return {"gave_answer": False, **super().get_metrics(), "promoter_sequence": self.promoter_sequence}
 
+    def _on_finished(self):
+        """
+        Called when the scenario is finished. Add metrics as a final message for the grader to see.
+        """
+        print(f'Promoter sequence: {self.promoter_sequence}')
+        metrics = self.get_metrics()
+        metrics_to_add_to_last_message = ['difference', 'sequence_similarity', 'num_rounds']
+        metrics_str = ''
+        for metric in metrics_to_add_to_last_message:
+            metrics_str += f"- {metric}: {metrics[metric]}\n"
+        
+        self._add_message(role="system", 
+                          content=f"computed_metrics:\n {metrics_str}")
+
 
 if __name__ == "__main__":
     models = [
