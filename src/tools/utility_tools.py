@@ -273,10 +273,10 @@ class SequenceSimilarityTool(Tool):
     }
     
     def execute(self, seq1: str, seq2: str):
-        from Bio import Align
-        aligner = Align.PairwiseAligner()
-        alignments = aligner.align(seq1, seq2)
-        return {"success": True, "similarity": alignments.score}
+        from Bio import pairwise2
+        alignments = pairwise2.align.globalxx(seq1, seq2)
+        longest_sequence_length = max(len(seq1), len(seq2))
+        return {"success": True, "similarity": alignments[0].score / longest_sequence_length}
     
 class ReportAnswerTool(Tool):
     name = "report_answer"
@@ -300,3 +300,10 @@ class ReportAnswerTool(Tool):
             return {"success": True, "answer": kwargs['answer']}
         else:
             return {"success": True, "answer": kwargs}
+        
+        
+if __name__ == "__main__":
+    from src.scenarios.scenario import SessionState
+    tool = SequenceSimilarityTool(session_state=SessionState())
+    sim = tool.execute(seq1="CGACGTACGGTGGAATCTGATTCGTTACCAATTGACATGATACGAAACGTACCGTATCGTTAAGGT", seq2="CGACGTACGGTGGAATCTGATTCGTTACCAATTGACATGATACGAAACGTACCGTATCGTTAAGGT")
+    print(sim)
