@@ -173,7 +173,10 @@ class MaximizePromoterStrengthScenario(ReportAnswerScenario):
         metrics_to_add_to_last_message = ['difference', 'sequence_similarity', 'num_rounds']
         metrics_str = ''
         for metric in metrics_to_add_to_last_message:
-            metrics_str += f"- {metric}: {metrics[metric]}\n"
+            if metric in metrics:
+                metrics_str += f"- {metric}: {metrics[metric]}\n"
+            else:
+                metrics_str += f"- {metric}: None\n"
         
         self._add_message(role="system", 
                           content=f"computed_metrics:\n {metrics_str}")
