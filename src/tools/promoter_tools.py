@@ -29,7 +29,7 @@ class _ProDToolBase(Tool):
 class _ProDPromoterToolBase(_ProDToolBase):
     """Helper mix-in providing common promoter-centric utilities."""
 
-    _dna_chars: ClassVar[set[str]] = set("ATGCRYSWKMBDHVNatgcryswkmbdhvn")
+    _dna_chars: ClassVar[set[str]] = set("UATGCRYSWKMBDHVNatgcryswkmbdhvnu")
 
     def _resolve_promoter_sequence(self, promoter: str, file_type: str = "ucf") -> Optional[str]:
         """Return full promoter DNA sequence from ID or sequence.
@@ -132,7 +132,7 @@ class EstimatePromoterStrengthWithProDTool(_ProDToolBase):
         prod = self._get_prod()
 
         # Determine if string looks like DNA
-        dna_chars = set("ATGCRYSWKMBDHVNatgcryswkmbdhvn")
+        dna_chars = set("UATGCRYSWKMBDHVNatgcryswkmbdhvnu")
         is_dna = set(promoter_or_spacer).issubset(dna_chars) and len(promoter_or_spacer) >= 17
 
         sequence = None
@@ -657,5 +657,5 @@ class RemovePromoterTool(Tool):
 if __name__ == "__main__":
     
     prod = ProDIntegration()
-    result = prod.evaluate_spacers(["GTTTCTATCGATCTATNN"])
+    result = prod.evaluate_spacers(["UGACGTACGGTGGAATCTGATTCGTTACCAATTGACATGATACGAAACGTACCGTATCGTTAAGGT"])
     print(result)
