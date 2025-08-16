@@ -16,6 +16,14 @@ logger = logging.getLogger(__name__)
 
 DEBUG_MODEL = True
 
+models = [
+    "gemini/gemini-2.5-pro", 
+    "gpt-4o-mini",
+    "gpt-5-nano-2025-08-07",
+    "o3",
+    "deepseek-chat",
+]
+
 def get_llm_params(
     model: str | None = None,
     *,

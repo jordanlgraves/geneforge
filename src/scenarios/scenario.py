@@ -66,7 +66,6 @@ class Scenario:
         self.llm_params = {}
         self.messages = []
         self.messages_and_choices: List[Any] = []
-        self.rounds_seen = 0        # ❶ counter
 
         self.model_name = model_name
         self.art_model = art_model
@@ -185,8 +184,6 @@ class Scenario:
                 tool_call_id=tc["id"],
             )
 
-        # Keep parity with rounds tracking used by run_async when tools are used
-        self.rounds_seen += 1
         return True
 
     def _process_prompt(self, prompt: str):  
@@ -224,7 +221,7 @@ class Scenario:
             
         gave_answer = self._is_answer_reported()
         return {
-            "num_rounds": self.rounds_seen, 
+            "num_rounds": len(self.messages), 
             "tool_calls": tool_calls, 
             "tool_call_failures": tool_call_failures, 
             "tool_call_successes": tool_call_successes,
@@ -247,7 +244,6 @@ class Scenario:
         self.session_state.set_design_spec(self.prompt)
 
         self.tool_integration = ToolIntegration(self.session_state)
-        self.rounds_seen = 0
         self.messages_and_choices = []
         
         # Initialize LLM client

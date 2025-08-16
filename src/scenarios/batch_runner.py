@@ -76,7 +76,7 @@ if __name__ == "__main__":
             "model_name": model,
             "system_prompt": None
         }
-        
+            
         scenarios = [
             SynBioHubPartScenario(scenario_name="SynBioHubPart", **args),
             IntroToSysEng1p1(scenario_name="IntroToSysEng1p1", **args),
