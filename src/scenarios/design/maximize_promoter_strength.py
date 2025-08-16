@@ -168,8 +168,14 @@ class MaximizePromoterStrengthScenario(ReportAnswerScenario):
         """
         Called when the scenario is finished. Add metrics as a final message for the grader to see.
         """
+        # check that this is not called twice my making sure the last message is not a system message
+        if self.messages[-1]["role"] == "system":
+            return
+        
         print(f'Promoter sequence: {self.promoter_sequence}')
+        
         metrics = self.get_metrics()
+        print(metrics)
         metrics_to_add_to_last_message = ['difference', 'sequence_similarity', 'num_rounds']
         metrics_str = ''
         for metric in metrics_to_add_to_last_message:

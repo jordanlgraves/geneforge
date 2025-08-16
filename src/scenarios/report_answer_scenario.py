@@ -47,7 +47,8 @@ class ReportAnswerScenario(Scenario):
 
         if not self._is_answer_reported():
             final_response = await self._request_report_answer_followup()
-
+        
+        self._on_finished()
         return final_response
 
     async def _request_report_answer_followup(self) -> str:
