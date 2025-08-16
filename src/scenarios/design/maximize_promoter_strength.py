@@ -168,9 +168,13 @@ class MaximizePromoterStrengthScenario(ReportAnswerScenario):
         """
         Called when the scenario is finished. Add metrics as a final message for the grader to see.
         """
-        # check that this is not called twice my making sure the last message is not a system message
-        if self.messages[-1]["role"] == "system":
-            return
+        # handle cases when this is twice by removing the previous system message with the metrics
+        messages = []
+        for message in self.messages:
+            if message["role"] == "system" and message["content"].startswith("computed_metrics:"):
+                continue
+            messages.append(message)
+        self.messages = messages
         
         print(f'Promoter sequence: {self.promoter_sequence}')
         
