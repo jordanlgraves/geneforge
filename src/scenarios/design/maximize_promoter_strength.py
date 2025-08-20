@@ -26,17 +26,14 @@ The promoter sequence is: {promoter_sequence}
 """
 
 GRADING_RUBRIC = """
+- Base the reward strongly on the following metrics, in priority order:
+    - difference: the difference between the answer and reference promoter strengths (ymax) (higher is better)
+    - sequence_similarity: the similarity between the answer and reference promoter sequences (higher is better)
+    - num_rounds: the number of rounds the agent took to find the answer (lower is better)
+- Reward responses that significantly increase the strength of the promoter sequence while preserving the original sequence as much as possible.
 - Reward responses that rapidly converge to an optimal answer and demonstrate an understanding of which positions to mutate based on the given sequence.
 - Reward responses that demonstrate reasoning and reasoning steps.
-- Compute the reward based on the following metrics, in priority order:
-    - difference: the difference between the answer and reference promoter strengths (ymax)
-    - sequence_similarity: the similarity between the answer and reference promoter sequences
-    - num_rounds: the number of rounds the agent took to find the answer
-- Solutions with the maximize difference (ymax) and maximal sequence_similarity should be the best.
-- Reward responses that significantly increase the strength of the promoter sequence while preserving the original sequence as much as possible.
-- Lightly penalize responses that take too many rounds to converge.
-- Penalize responses with low sequence similarity to the reference promoter sequence.
-- Penalize responses that use inappropiate tools such as cello, synbiohub, as these are not needed to maximize promoter strength.
+- Penalize responses that use inappropiate tools such as cello, synbiohub. The appropriate tools are ProD tools or any scientific literature search: estimate_promoter_strength_with_pro_d, get_spacer_from_promoter, generate_library_from_promoter, generate_library_from_spacer.
 """
 
 train_promoters = {
@@ -102,15 +99,27 @@ class MaximizePromoterStrengthScenario(ReportAnswerScenario):
         # called by parent class to set self.prompt
         """
         return PROMPT.replace("{promoter_sequence}", self.promoter_sequence)
+    
+    def _get_reference_promoter_id(self):
+        # Sorted by the name
+        all_promoters = {**train_promoters, **eval_promoters}
+        all_promoters_names_sorted = sorted(all_promoters.keys(), key=lambda x: all_promoters[x])
+        all_promoters_sequences_sorted = [all_promoters[name].upper() for name in all_promoters_names_sorted]
         
+        # Find the index of the reference promoter sequence in the sorted list
+        index_of_reference_promoter = all_promoters_sequences_sorted.index(self.promoter_sequence.upper())
+
+        return index_of_reference_promoter
+
     def get_metrics(self):
-        
+        reference_promoter_id = self._get_reference_promoter_id()
+
         reported_answer = self.get_reported_answer_content()
         if not reported_answer:
             return {"gave_answer": False, **super().get_metrics()}
         
         try:
-            answer = json.loads(reported_answer)
+            answer = json.loads(reported_answer.replace("'", '"'))
         except Exception:
             print(f'Error parsing answer: {reported_answer}')
             return super().get_metrics()
@@ -120,7 +129,7 @@ class MaximizePromoterStrengthScenario(ReportAnswerScenario):
             nested_answer = answer.get("answer")
             if nested_answer:
                 if isinstance(nested_answer, str):
-                    nested_answer_json = json.loads(nested_answer)
+                    nested_answer_json = json.loads(nested_answer.replace("'", '"'))
                 elif isinstance(nested_answer, dict):
                     nested_answer_json = nested_answer
                 else:
@@ -149,6 +158,9 @@ class MaximizePromoterStrengthScenario(ReportAnswerScenario):
             else:
                 similarity = None
             
+            
+            
+
             return {
                 "answer_strength": estimated_answer_strength.get("ymax") if estimated_answer_strength else None,
                 "reference_strength": reference_answer_strength.get("ymax") if reference_answer_strength else None,
@@ -157,12 +169,12 @@ class MaximizePromoterStrengthScenario(ReportAnswerScenario):
                 "answer_class": estimated_class,
                 "sequence_similarity": similarity,
                 "gave_answer": True,
-                "promoter_sequence": self.promoter_sequence,
+                "promoter_id": reference_promoter_id,
                 **super().get_metrics()
             }
         except Exception as e:
             print(f'Error getting metrics: {e}')
-            return {"gave_answer": False, **super().get_metrics(), "promoter_sequence": self.promoter_sequence}
+            return {"gave_answer": False, **super().get_metrics(), "promoter_id": reference_promoter_id}
 
     def _on_finished(self):
         """
@@ -209,11 +221,12 @@ if __name__ == "__main__":
             promoter_sequence=sequence,
             model_name=model
         )
-        runner.run()
-        all_metrics[model] = runner.get_metrics()
-        print(all_metrics[model])
-        print('Done')
+        print(runner._get_reference_promoter_id())
+    #     runner.run()
+    #     all_metrics[model] = runner.get_metrics()
+    #     print(all_metrics[model])
+    #     print('Done')
         
-    print(all_metrics)
-    with open('outputs/maximize_promoter_strength_metrics.json', 'w') as f:
-        json.dump(all_metrics, f)
+    # print(all_metrics)
+    # with open('outputs/maximize_promoter_strength_metrics.json', 'w') as f:
+    #     json.dump(all_metrics, f)

@@ -180,7 +180,6 @@ class EstimatePromoterStrengthWithProDTool(_ProDToolBase):
             "success": True
         }
 
-
 class GetSpacerFromPromoterTool(_ProDPromoterToolBase):
     name = "get_spacer_from_promoter"
     description = "Extract the 17-bp spacer from a full promoter sequence or part id/name from the selected library."
