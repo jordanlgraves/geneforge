@@ -15,7 +15,7 @@ Your task is to use the tools to maximize the strength of a given promoter seque
 
 Use as many rounds as you need to determine an optimal promoter sequence.
 
-The `promoter_or_spacer` argument is the sequence to estimate the strength of.
+The `promoter_sequence` argument is the sequence to estimate the strength of.
 
 Once you have determined an optimal promoter sequence, use the `report_answer` tool to submit the promoter sequence as you answer in json using the `promoter_sequence` argument in the following format:
 {
