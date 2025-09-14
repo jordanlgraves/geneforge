@@ -5,7 +5,7 @@ import os
 import dotenv
 from typing import ClassVar, Dict, Any, Optional, List
 
-from src.utils import extract_id_ecoli_spacer
+from src.utils.bio import extract_id_ecoli_spacer
 
 
 dotenv.load_dotenv()
@@ -229,7 +229,7 @@ class GeneratePromoterLibraryFromSpacerTool(_ProDPromoterToolBase):
 
     def execute(
         self,
-        blueprint: str,
+        blueprint: str, # ACGAGACCATGATATACAA -> blueprint? -> ACGAGANCATGNNNTACAA  | 17-bp degenerate spacer sequence with at least one IUPAC ambiguity code
         desired_strengths: List[int] | None = None,
         sequences_per_class: int = 5,
         parent_promoter: str | None = None,
@@ -245,7 +245,7 @@ class GeneratePromoterLibraryFromSpacerTool(_ProDPromoterToolBase):
             parent_seq = self._resolve_promoter_sequence(parent_promoter, file_type)
             if not parent_seq:
                 return {"error": f"Could not resolve parent promoter '{parent_promoter}'."}
-            from src.utils import extract_id_ecoli_spacer
+            from src.utils.bio import extract_id_ecoli_spacer
             spacer_parent = extract_id_ecoli_spacer(parent_seq)
             if spacer_parent and spacer_parent in parent_seq:
                 upstream, downstream = self._split_flanks(parent_seq, spacer_parent)
@@ -330,7 +330,7 @@ class GeneratePromoterLibraryFromPromoterTool(_ProDPromoterToolBase):
         file_type: str = "ucf",
         save_to_library: str | None = None,
     ) -> Dict[str, Any]:
-        from src.utils import extract_id_ecoli_spacer
+        from src.utils.bio import extract_id_ecoli_spacer
         prod = self._get_prod()
 
         parent_seq = self._resolve_promoter_sequence(promoter, file_type)
@@ -419,7 +419,7 @@ class PatchUcfWithPromotersTool(Tool):
 
     def execute(self, parent_promoter_id: str, variants: List[Dict[str, Any]], replace_parent: bool = False):
         import copy
-        from src.utils import extract_id_ecoli_spacer
+        from src.utils.bio import extract_id_ecoli_spacer
         import src.library.cello_utils as plc
 
         cello_library = self.session_state.cello_library
@@ -517,7 +517,7 @@ class AddPromoterVariantTool(Tool):
         new_promoter_id: Optional[str] = None,
     ) -> Dict[str, Any]:
         import copy
-        from src.utils import extract_id_ecoli_spacer
+        from src.utils.bio import extract_id_ecoli_spacer
         import src.library.cello_utils as plc
         
 

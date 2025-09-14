@@ -73,12 +73,12 @@ class ToolDocsQueryTool(Tool):
 
             try:
                 # 1. Create a single vector store for all tool docs
-                vector_store = client.beta.vector_stores.create(name="Tool Documentation Store")
+                vector_store = client.vector_stores.create(name="Tool Documentation Store")
 
                 # 2. Upload all files and add them to the vector store
                 file_streams = [open(path, "rb") for path in doc_paths]
                 try:
-                    file_batch = client.beta.vector_stores.file_batches.upload_and_poll(
+                    file_batch = client.vector_stores.file_batches.upload_and_poll(
                         vector_store_id=vector_store.id, files=file_streams
                     )
                 finally:
@@ -89,10 +89,10 @@ class ToolDocsQueryTool(Tool):
                     return {"error": f"File upload failed with status: {file_batch.status}"}
 
                 # 3. Create a single assistant for all docs
-                assistant = client.beta.assistants.create(
+                assistant = client.completions.create(
                     name="Tool Documentation Assistant",
                     instructions="You are an expert Q&A bot. You answer questions about various software tools by consulting the documentation files provided to you. When answering, cite the relevant file.",
-                    model="gpt-4o-mini",
+                    model=os.getenv("OPENAI_MODEL", "gpt-5-mini-2025-08-07"),    
                     tools=[{"type": "file_search"}],
                     tool_resources={"file_search": {"vector_store_ids": [vector_store.id]}},
                 )
@@ -108,7 +108,7 @@ class ToolDocsQueryTool(Tool):
 
         try:
             # Create a thread with the user's message
-            thread = client.beta.threads.create(
+            thread = client.threads.create(
                 messages=[
                     {
                         "role": "user",

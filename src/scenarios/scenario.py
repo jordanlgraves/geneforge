@@ -19,9 +19,38 @@ try:
     import art
 except ModuleNotFoundError:
     art = None
+from dataclasses import dataclass, asdict
+from enum import Enum
+from typing import Any, Dict, Optional, List, Tuple
+import traceback
+
+class FailureCode(str, Enum):
+    NO_TOOL_USE = "NO_TOOL_USE"
+    NO_REPORT_ANSWER = "NO_REPORT_ANSWER"
+    BAD_TOOL_ARGS = "BAD_TOOL_ARGS"
+    TOOL_RUNTIME_ERROR = "TOOL_RUNTIME_ERROR"
+    BAD_JSON = "BAD_JSON"
+    MALFORMED_ART_XML = "MALFORMED_ART_XML"
+    ANSWER_NOT_PROVIDED = "ANSWER_NOT_PROVIDED"
+    ANSWER_PARSE_ERROR = "ANSWER_PARSE_ERROR"
+    WRONG_ANSWER = "WRONG_ANSWER"
+    MAX_ROUNDS_REACHED = "MAX_ROUNDS_REACHED"
+    PROVIDER_EMPTY_RESPONSE = "PROVIDER_EMPTY_RESPONSE"
+    PROVIDER_ERROR = "PROVIDER_ERROR"
+    UNCAUGHT_EXCEPTION = "UNCAUGHT_EXCEPTION"
+
+@dataclass
+class FailureEvent:
+    code: FailureCode
+    message: str
+    details: Dict[str, Any]
+    at_round: int
 
 
 SYSTEM_PROMPT = get_system_prompt()
+
+
+
 
 class Scenario:
     """
@@ -73,7 +102,9 @@ class Scenario:
         self.include_pre_calls_in_chat = include_pre_calls_in_chat
         self._is_art_backend = False
         
-        
+        self.fail_events: List[FailureEvent] = []
+        self._max_rounds_seen: int = 0
+
     
     def _parse_art_tool_calls(self, content: str) -> tuple[Optional[List[Dict[str, Any]]], Optional[str], Optional[str]]:
         if "<tool_call>" not in content:
@@ -133,6 +164,11 @@ class Scenario:
             parsed_tool_calls, parse_error, text_content = self._parse_art_tool_calls(assistant_msg["content"])
             if parse_error:
                 error_message = parse_error
+                # record the failure here (we still return error_message to caller)
+                self.record_failure(FailureCode.MALFORMED_ART_XML,
+                                    "Malformed ART <tool_call> JSON",
+                                    raw_content=assistant_msg["content"],
+                                    error=error_message)
             else:
                 assistant_msg["content"] = text_content
                 if parsed_tool_calls:
@@ -155,27 +191,36 @@ class Scenario:
         return assistant_msg, error_message
 
     def _execute_tool_calls(self, assistant_msg: Dict[str, Any]) -> bool:
-        """
-        Execute tool calls present in assistant_msg, append corresponding tool
-        messages, and update internal counters.
-
-        Returns True if any tool calls were executed.
-        """
         if "tool_calls" not in assistant_msg:
             return False
 
         for tc in assistant_msg["tool_calls"]:
             fn_name = tc["function"]["name"]
+            raw_args = tc["function"]["arguments"]
             try:
-                fn_args = json.loads(tc["function"]["arguments"])
-            except json.JSONDecodeError:
+                fn_args = json.loads(raw_args)
+            except json.JSONDecodeError as e:
+                self.record_failure(FailureCode.BAD_JSON,
+                                    "Tool arguments not valid JSON",
+                                    tool=fn_name,
+                                    arguments_preview=str(raw_args)[:400],
+                                    error=str(e))
                 fn_args = {}
 
             try:
                 result = self.tool_integration.call_tool_function(fn_name, fn_args)
             except Exception as e:
+                self.record_failure(FailureCode.TOOL_RUNTIME_ERROR,
+                                    f"Tool '{fn_name}' raised",
+                                    tool=fn_name,
+                                    args=fn_args,
+                                    error=str(e),
+                                    traceback=traceback.format_exc())
                 result = {"error": str(e)}
-                self.logger.error("Error executing tool %s: %s", fn_name, e)
+
+            # --- normalize success flag so metrics count correctly ---
+            if "success" not in result:
+                result["success"] = not bool(result.get("error"))
 
             self._add_message(
                 "tool",
@@ -185,6 +230,7 @@ class Scenario:
             )
 
         return True
+
 
     def _process_prompt(self, prompt: str):  
         """
@@ -219,13 +265,17 @@ class Scenario:
             if message.get("role") == "assistant" and message.get("tool_calls"):
                 tool_calls += len(message.get("tool_calls"))
             
+        failure_report = self.get_failure_report()
         gave_answer = self._is_answer_reported()
+        status = "success" if gave_answer else "failed"
         return {
+            "status": status,
             "num_rounds": len(self.messages), 
             "tool_calls": tool_calls, 
             "tool_call_failures": tool_call_failures, 
             "tool_call_successes": tool_call_successes,
             "gave_answer": gave_answer,
+            "failure_report": failure_report         
         }
     
     def get_metadata(self):
@@ -348,8 +398,12 @@ class Scenario:
                     )
                     if len(response.choices) == 0:
                         max_inner_attempt -= 1
+                        self.record_failure(FailureCode.PROVIDER_EMPTY_RESPONSE,
+                                            "Provider returned 0 choices")
                         self.logger.error(f"No response from model, trying again... {max_inner_attempt} attempts left")
                         if max_inner_attempt == 0:
+                            self.record_failure(FailureCode.PROVIDER_ERROR,
+                                                "Provider returned 0 choices repeatedly; aborting")
                             self.logger.error("No response from model, giving up...")
                             return None
                         continue
@@ -381,6 +435,10 @@ class Scenario:
                     break  # exit inner rounds loop – no further tool calls
                 
                     
+                if rounds >= max_rounds and not self.check_finished():
+                    self.record_failure(FailureCode.MAX_ROUNDS_REACHED,
+                                        "Max rounds reached without finishing",
+                                        max_rounds=max_rounds)
                 # End of conversation for this attempt
                 attempt += 1
 
@@ -391,6 +449,10 @@ class Scenario:
 
         except Exception as e:
             self.logger.error(f"Conversation failed: {e}", exc_info=True)
+            self.record_failure(FailureCode.UNCAUGHT_EXCEPTION,
+                    "Uncaught during run_async",
+                    error=str(e),
+                    traceback=traceback.format_exc())
             return None
 
     # ------------------------------------------------------------------
@@ -904,3 +966,28 @@ class Scenario:
         Called when the scenario is finished.
         """
         pass
+    
+    def record_failure(self, code: FailureCode, message: str, **details):
+        self.fail_events.append(FailureEvent(
+            code=code, message=message, details=details, at_round=len(self.messages)
+        ))
+
+    def tail_transcript(self, n: int = 6) -> List[Dict[str, Any]]:
+        return self.messages[-n:]
+
+    def get_failure_report(self) -> Optional[Dict[str, Any]]:
+        if not self.fail_events:
+            return None
+        # First critical is usually enough; you can also return the whole list
+        first = self.fail_events[0]
+        return {
+            "primary": {
+                "code": first.code,
+                "message": first.message,
+                "details": first.details,
+                "at_round": first.at_round,
+            },
+            "all_events": [asdict(ev) for ev in self.fail_events],
+            "tail_transcript": self.tail_transcript(),
+            "tool_usage": self.get_tool_usage(),
+        }

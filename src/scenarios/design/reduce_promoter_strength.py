@@ -11,7 +11,7 @@ logger = logging.getLogger("MaximizePromoterStrengthExample")
 
 
 PROMPT = """You will be given an E. coli promoter sequence and a set of tools to use. 
-Your task is to use the tools to maximize the strength of a given promoter sequence while preserving the original sequence as much as possible.
+Your task is to use the tools to reduce the strength of a given promoter sequence while preserving the original sequence as much as possible.
 
 Use as many rounds as you need to determine an optimal promoter sequence.
 
@@ -27,13 +27,13 @@ The promoter sequence is: {promoter_sequence}
 
 GRADING_RUBRIC = """
 - Base the reward strongly on the following metrics, in priority order:
-    - difference: the difference between the answer and reference promoter strengths (ymax) (higher is better)
-    - sequence_similarity: the similarity between the answer and reference promoter sequences (higher is better)
+    - difference: the difference between the answer and reference promoter strengths (ymax) (lower is better)
+    - sequence_similarity: the similarity between the answer and reference promoter sequences (lower is better)
     - num_rounds: the number of rounds the agent took to find the answer (lower is better)
-- Reward responses that significantly increase the strength of the promoter sequence while preserving the original sequence as much as possible.
+- Reward responses that significantly reduce the strength of the promoter sequence while preserving the original sequence as much as possible.
 - Reward responses that rapidly converge to an optimal answer and demonstrate an understanding of which positions to mutate based on the given sequence.
 - Reward responses that demonstrate reasoning and reasoning steps.
-- Penalize responses that use inappropiate tools such as cello, synbiohub. The appropriate tools are ProD tools or any scientific literature search: estimate_promoter_strength_with_pro_d, get_spacer_from_promoter, generate_library_from_promoter, generate_library_from_spacer.
+- Penalize responses that use in-appropiate tools such as cello, synbiohub. The appropriate tools are ProD tools or any scientific literature search: estimate_promoter_strength_with_pro_d, get_spacer_from_promoter, generate_library_from_promoter, generate_library_from_spacer.
 """
 
 train_promoters = {
@@ -54,7 +54,7 @@ eval_promoters = {
     "pAmtR": "CTTGTCCAACCAAATGATTCGTTACCAATTGACAGTTTCTATCGATCTATAGATAATGCTAGC",
 }
 
-class MaximizePromoterStrengthScenario(ReportAnswerScenario):
+class ReducePromoterStrengthScenario(ReportAnswerScenario):
     def __init__(self, promoter_sequence: str, *args, **kwargs):
         self.promoter_sequence = promoter_sequence
         super().__init__(*args, **kwargs)
@@ -216,7 +216,7 @@ if __name__ == "__main__":
     all_metrics = {}
     for model in models:
         sequence = 'CTTGTCCAACCAAATGATTCGTTACCAATTGACAGTTTCTATCGATCTATAGATAATGCTAGC'
-        runner = MaximizePromoterStrengthScenario(
+        runner = ReducePromoterStrengthScenario(
             scenario_name=f"MaximizePromoterStrength_{model}",
             promoter_sequence=sequence,
             model_name=model

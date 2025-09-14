@@ -215,7 +215,7 @@ def draw_sidebar():
         
         if st.button("Load Example"):
             runner_class, prompt_text = EXAMPLES[example_name]
-            runner = runner_class(example_name, prompt=prompt_text, max_rounds=20)
+            runner = runner_class(scenario_name=example_name, prompt=prompt_text)
             st.session_state.system_prompt = runner.system_prompt or get_system_prompt()
             st.session_state.messages = []
             st.session_state.loaded_prompt = runner.prompt
@@ -409,7 +409,6 @@ def handle_chat_submission(prompt: Optional[str]):
                     **llm_params,
                     messages=api_messages,
                     tools=tool_functions,
-                    tool_choice="auto",
                     stream=True,
                 )
 

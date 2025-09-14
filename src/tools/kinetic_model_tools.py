@@ -6,6 +6,52 @@ from typing import Dict, Any
 dotenv.load_dotenv()
 DEBUG_MODE = os.getenv("DEBUG_MODE", "False").lower() == "true"
 
+
+# src/tools/set_kinetic_model_from_sbml.py
+from pathlib import Path
+from typing import Dict, Any
+import libsbml
+from src.tools.base_tool import Tool
+from src.session_state import SessionState
+from src.simulation_utils import build_param_template
+
+class SetKineticModelFromSBMLTool(Tool):
+    name = "set_kinetic_model_from_sbml"
+    description = ("Load an SBML file from a local path and set it as the current kinetic model "
+                   "(sbml_doc, sbml_file, parameter_template).")
+    parameters = {
+        "type": "object",
+        "properties": {"path": {"type": "string", "description": "Filesystem path to SBML .xml"}},
+        "required": ["path"],
+    }
+
+    def __init__(self, session_state: SessionState):
+        self.session_state = session_state
+
+    @classmethod
+    def get_openai_schema(cls):
+        return {"name": cls.name, "description": cls.description, "parameters": cls.parameters}
+
+    def execute(self, path: str) -> Dict[str, Any]:
+        p = Path(path)
+        if not p.exists():
+            return {"success": False, "error": f"File not found: {p}"}
+        doc = libsbml.readSBMLFromFile(str(p))
+        if doc.getModel() is None:
+            return {"success": False, "error": "SBML parse failed: no <model> node."}
+        template = build_param_template(doc)
+        species_map = {s.getId(): (s.getName() or s.getId()) for s in doc.getModel().getListOfSpecies()}
+        self.session_state.sbml_doc = doc
+        self.session_state.set_sbml_file(str(p))
+        self.session_state.initialise_parameter_template(template)
+        setattr(self.session_state, "species_pretty_map", species_map)
+        try:
+            self.session_state.add_generated_file(p, label="Loaded SBML model")
+        except Exception:
+            pass
+        return {"success": True, "parameter_template": template, "path": str(p), "species_pretty_map": species_map}
+
+
 class SetParameterValueTool(Tool):
     name = "set_parameter_value"
     description = (

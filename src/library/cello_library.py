@@ -576,7 +576,7 @@ class CelloLibrary:
             new_promoter_id = f"{parent_promoter}Var{i}"
 
             # Re-create promoter sequence using parent sequence flanks
-            from src.utils import extract_id_ecoli_spacer
+            from src.utils.bio import extract_id_ecoli_spacer
 
             parent_part = next(
                 (p for p in self.user_constraints if p.get("collection") == "parts" and p.get("name") == parent_promoter),

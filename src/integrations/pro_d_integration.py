@@ -7,7 +7,7 @@ from pathlib import Path
 import sys
 import traceback
 
-from src.utils import extract_id_ecoli_spacer
+from src.utils.bio import extract_id_ecoli_spacer
 
 # Configure logging
 logger = logging.getLogger(__name__)

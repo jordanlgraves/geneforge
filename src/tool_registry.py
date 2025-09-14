@@ -31,6 +31,7 @@ from src.tools.rbs_tools import *
 from src.tools.synbiohub_tools import *
 from src.tools.utility_tools import *
 from src.tools.kinetic_model_tools import *
+from src.tools.biomodel_tools import *
 
 TOOL_REGISTRY = {}
 
@@ -76,6 +77,7 @@ TOOL_REGISTRY[SetParameterValueTool.name] = SetParameterValueTool
 TOOL_REGISTRY[GetParameterTemplateTool.name] = GetParameterTemplateTool
 TOOL_REGISTRY[GenerateKineticModelFromNaturalLanguageTool.name] = GenerateKineticModelFromNaturalLanguageTool
 TOOL_REGISTRY[RunKineticModelSimulationTool.name] = RunKineticModelSimulationTool   
+TOOL_REGISTRY[SetKineticModelFromSBMLTool.name] = SetKineticModelFromSBMLTool
 
 # Utility tools
 TOOL_REGISTRY[ScientificSearchTool.name] = ScientificSearchTool
@@ -85,6 +87,9 @@ TOOL_REGISTRY[GcContentTool.name] = GcContentTool
 TOOL_REGISTRY[SearchBioNumbersTool.name] = SearchBioNumbersTool
 TOOL_REGISTRY[ReportAnswerTool.name] = ReportAnswerTool
 TOOL_REGISTRY[SequenceSimilarityTool.name] = SequenceSimilarityTool
+
+# BioModels tools
+TOOL_REGISTRY[DownloadBioModelSBMLTool.name] = DownloadBioModelSBMLTool
 
 # Generate OpenAI function schemas from tools
 _tool_schemas = [
@@ -116,7 +121,11 @@ class ToolIntegration:
         """
         # Handle ReadFileTool separately as it's from langchain
         if function_name == "read_file":
-            return ReadFileTool().run(function_args.get("file_path", function_args))
+            try:
+                result = ReadFileTool().run(function_args.get("file_path", function_args))
+                return {"success": True, "result": result}
+            except Exception as e:
+                return {"success": False, "error": f"Error reading file: {e}"}
         
         # Use the tool from the registry if available
         if function_name in self.tools:

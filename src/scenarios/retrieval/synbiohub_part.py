@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 import logging
-from src.scenarios.scenario import Scenario
+from src.scenarios.report_answer_scenario import ReportAnswerScenario
+import json
 
 # Set up logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
@@ -8,7 +9,7 @@ logger = logging.getLogger("GeneticToggleSwitchExample")
 
 PROMPT = """Find a part in SynBioHub for the pBad promoter, download it, and report its sequence.
 
-Use the `report_answer` tool to submit the sequence in latex format. 
+Use the `report_answer` tool to submit the sequence. 
 
 For example, if the sequence is "AATTCCGG":
 
@@ -17,6 +18,10 @@ For example, if the sequence is "AATTCCGG":
 }
 """
 
+GRADING_RUBRIC = """
+"""
+
+reference_answer = "AAAGATAACATAGATATGATATTAGA"
 
 class SynBioHubPartScenario(ReportAnswerScenario):
     """Extension of Scenario to check for both custom input sensors file and Cello results."""
@@ -32,6 +37,15 @@ class SynBioHubPartScenario(ReportAnswerScenario):
         return PROMPT
     
     def get_metrics(self) -> dict:
+        reported_answer = self.get_reported_answer_content()
+        if not reported_answer:
+            return {"gave_answer": False, **super().get_metrics()}
+        
+        try:
+            answer = json.loads(reported_answer.replace("'", '"'))
+        except Exception:
+            print(f'Error parsing answer: {reported_answer}')
+            return super().get_metrics()
         return {
             "success": True,
             "message": "SynBioHub part retrieved successfully",

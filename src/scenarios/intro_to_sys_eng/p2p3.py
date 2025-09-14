@@ -1,7 +1,8 @@
 import json
-from src.scenarios.report_answer_scenario import ReportAnswerScenario
 from src.latex_utils import get_latex_expr, compare_latex
-
+from src.scenarios.report_answer_scenario import ReportAnswerScenario
+from src.scenarios.scenario import FailureCode
+from src.utils.answer_parsing import coerce_answer_object
 
 PROMPT = """Autorepression with Hill input function: A repressor X represses its own promoter with Hill
 coefficient n.
@@ -10,24 +11,23 @@ Dynamics:
   dX/dt = β / (1 + (X/K)^n) − α X.
 
 Tasks:
-  - Provide the response time T_{1/2} under strong autorepression. Use the approximation (  (X/K)^n >> 1 ).
+  - Provide the response time T_{1/2} under strong autorepression. Use the approximation ( (X/K)^n >> 1 ).
   - Provide the ratio of response time for autoregulated circuits to non-autoregulated (simple) circuits for n=1, n=2 and n=3.
 
 Use the `report_answer` tool to submit JSON:
 {
-  "T_half": string,              # latex for T_{1/2} as a function of n and α (alpha)
-  "ratio_n1": float,             # ratio of response time for autoregulated to non-autoregulated circuits for n=1
-  "ratio_n2": float,             # ratio of response time for autoregulated to non-autoregulated circuits for n=2
-  "ratio_n3": float             # ratio of response time for autoregulated to non-autoregulated circuits for n=3
+  "T_half": string,   # latex
+  "ratio_n1": float,
+  "ratio_n2": float,
+  "ratio_n3": float
 }
 """
 
-
-# Reference (from solutions text in PDF):
 REFERENCE_T_HALF = r"\frac{1}{(n+1)\,\alpha} \log\left( \frac{2^{n+1}}{2^{n+1}-1} \right)"
 REFERENCE_RATIO_N1 = 0.2
 REFERENCE_RATIO_N2 = 0.06
 REFERENCE_RATIO_N3 = 0.02
+
 
 class IntroToSysEng2p3(ReportAnswerScenario):
     def _process_prompt(self, prompt: str):
@@ -37,53 +37,66 @@ class IntroToSysEng2p3(ReportAnswerScenario):
         return self._is_answer_reported() or super().check_finished()
 
     def get_metrics(self):
+        base = super().get_metrics()
         reported = self.get_reported_answer_content()
         if not reported:
-            return {"gave_answer": False, **super().get_metrics()}
+            self.record_failure(FailureCode.ANSWER_NOT_PROVIDED, "No `report_answer` payload to grade")
+            base.update({"gave_answer": False, "failure_report": self.get_failure_report()})
+            return base
+
+        def close(a, b, tol=1e-2):
+            try:
+                return abs(float(a) - float(b)) <= tol
+            except Exception:
+                return False
+
         try:
-            answer_json = json.loads(reported)
-            answer = answer_json.get("answer", {})
-            answer = json.loads(answer)
-
-            try:
-                t_half = answer.get("T_half", None)
-                t_half_expr = get_latex_expr(t_half)
-                t_half_ref_expr = get_latex_expr(REFERENCE_T_HALF)
-                t_half_correct = compare_latex(t_half_expr, t_half_ref_expr)
-            except Exception as e:
-                print(f'Error parsing T_half: {t_half}')
-                print(e)
-                t_half_correct = False
-
-            try:
-                n1_ratio = answer.get("ratio_n1", None)
-                n2_ratio = answer.get("ratio_n2", None)
-                n3_ratio = answer.get("ratio_n3", None)
-                n1_ratio_close = abs(n1_ratio - REFERENCE_RATIO_N1) <= 1e-2
-                n2_ratio_close = abs(n2_ratio - REFERENCE_RATIO_N2) <= 1e-2
-                n3_ratio_close = abs(n3_ratio - REFERENCE_RATIO_N3) <= 1e-2
-            except Exception as e:
-                print(f'Error parsing ratios: {answer}')
-                print(e)
-                n1_ratio_close = False
-                n2_ratio_close = False
-                n3_ratio_close = False
-
-            is_correct = t_half_correct and n1_ratio_close and n2_ratio_close and n3_ratio_close
-
-            return {
-                "gave_answer": True,
-                "T_half_correct": t_half_correct,
-                "provided_n1_ratio": n1_ratio_close,
-                "provided_n2_ratio": n2_ratio_close,
-                "provided_n3_ratio": n3_ratio_close,
-                "correct": is_correct,
-                **super().get_metrics(),
-            }
+            payload = json.loads(reported)
         except Exception as e:
-            print(f'Error parsing answer: {reported}')
-            print(e)
-            return super().get_metrics()
+            self.record_failure(FailureCode.BAD_JSON, "Tool payload not valid JSON",
+                                payload_preview=str(reported)[:400], error=str(e))
+            base.update({"gave_answer": True, "failure_report": self.get_failure_report()})
+            return base
+
+        ans_obj, warnings = coerce_answer_object(payload.get("answer"))
+        if not isinstance(ans_obj, dict):
+            self.record_failure(FailureCode.ANSWER_PARSE_ERROR, "`answer` not parseable into object",
+                                payload_preview=str(payload.get("answer"))[:400],
+                                parse_warnings=warnings)
+            base.update({"gave_answer": True, "failure_report": self.get_failure_report()})
+            return base
+
+        # T_half latex
+        try:
+            t_half_ok = compare_latex(get_latex_expr(ans_obj.get("T_half", None)),
+                                      get_latex_expr(REFERENCE_T_HALF))
+        except Exception as e:
+            self.record_failure(FailureCode.ANSWER_PARSE_ERROR, "LaTeX parse failed for T_half", error=str(e))
+            t_half_ok = False
+
+        n1_ok = close(ans_obj.get("ratio_n1"), REFERENCE_RATIO_N1)
+        n2_ok = close(ans_obj.get("ratio_n2"), REFERENCE_RATIO_N2)
+        n3_ok = close(ans_obj.get("ratio_n3"), REFERENCE_RATIO_N3)
+
+        ok = t_half_ok and n1_ok and n2_ok and n3_ok
+        if not ok:
+            self.record_failure(FailureCode.WRONG_ANSWER, "Autorepression metrics incorrect",
+                                details={"T_half_correct": t_half_ok,
+                                         "provided_n1_ratio": n1_ok,
+                                         "provided_n2_ratio": n2_ok,
+                                         "provided_n3_ratio": n3_ok})
+
+        base.update({
+            "gave_answer": True,
+            "T_half_correct": t_half_ok,
+            "provided_n1_ratio": n1_ok,
+            "provided_n2_ratio": n2_ok,
+            "provided_n3_ratio": n3_ok,
+            "correct": ok,
+            "parse_warnings": warnings,
+            "failure_report": self.get_failure_report()
+        })
+        return base
 
 
 if __name__ == "__main__":
@@ -93,10 +106,8 @@ if __name__ == "__main__":
     scenario = IntroToSysEng2p3(
         scenario_name="IntroToSysEng2p3",
         prompt=PROMPT,
-        use_reasoning_model=True,
     )
     adapter = ArtAdapter(scenario, step=0)
     asyncio.run(adapter.rollout())
     print(adapter.scenario.get_metrics())
     print("Done")
-

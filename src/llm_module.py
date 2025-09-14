@@ -79,7 +79,7 @@ def get_llm_params(
     # If model not provided, choose provider-specific defaults
     if model is None:
         # Prefer DeepSeek defaults if no explicit preference given
-        default_model = "gpt-4o"
+        default_model = "gpt-5-mini-2025-08-07"
         provider = _infer_provider(default_model)
         params["model"] = f"{provider}/{default_model}"
         logger.info("Using LLM with params: %s", params)

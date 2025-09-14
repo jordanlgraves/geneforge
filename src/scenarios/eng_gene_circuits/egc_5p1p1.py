@@ -1,6 +1,11 @@
 import json
+from typing import Dict, Any
+
 from src.scenarios.report_answer_scenario import ReportAnswerScenario
 from src.latex_utils import compare_latex, get_latex_expr
+from src.scenarios.scenario import FailureCode
+from src.utils.answer_parsing import coerce_answer_object, clean_math
+
 
 PROMPT = """Below are the chemical reactions involved in a competitive enzymatic
 reaction in which two substrates compete for a single enzyme
@@ -37,110 +42,114 @@ Use the `report_answer` tool to output your answer as a json string in the follo
 }
 """
 
-reference_answer = {"d[S_1]/dt": "k_{2}[ES_1] - k_{1}[E][S_1]",
-                    "d[S_2]/dt": "k_{5}[ES_2] - k_{4}[E][S_2]",
-                    "d[ES_1]/dt": "k_{1}[E][S_1] - k_{2}[ES_1] - k_{3}[ES_1]",
-                    "d[ES_2]/dt": "k_{4}[E][S_2] - k_{5}[ES_2] - k_{6}[ES_2]",
-                    "d[P_1]/dt": "k_{3}[ES_1]",
-                    "d[P_2]/dt": "k_{6}[ES_2]"
-                    }
+reference_answer = {
+    "d[S_1]/dt": "k_{2}[ES_1] - k_{1}[E][S_1]",
+    "d[S_2]/dt": "k_{5}[ES_2] - k_{4}[E][S_2]",
+    "d[ES_1]/dt": "k_{1}[E][S_1] - k_{2}[ES_1] - k_{3}[ES_1]",
+    "d[ES_2]/dt": "k_{4}[E][S_2] - k_{5}[ES_2] - k_{6}[ES_2]",
+    "d[P_1]/dt": "k_{3}[ES_1]",
+    "d[P_2]/dt": "k_{6}[ES_2]"
+}
 
 RUBRIC = f"""
 The reference answer is:
 {reference_answer}
 
-
 - Reward responses that correctly define the rate of change functions of [S_1], [S_2], [ES_1], [ES_2], [P_1], and [P_2]
 - Reward responses that are close to the reference answer
 - Penalize responses that are not valid latex equations
 """
+
+
 class EGCProblem5p1p1Scenario(ReportAnswerScenario):
     def __init__(self, *args, **kwargs):
+        self.reference_answer = reference_answer
         super().__init__(*args, **kwargs)
-    
+
     def _process_prompt(self, prompt: str):
         return PROMPT
-    
+
     def check_finished(self) -> bool:
-        """
-        Returns:
-            True if the example is finished, False otherwise. Useful for stopping the workflow when a condition is met.
-        """
         answer_tool_id = None
         for message in self.messages:
-            if message["role"] == "assistant" and message.get("tool_calls", []) != []:
-                for tool_call in message["tool_calls"]:
-                    if tool_call.get("function", {}).get("name", None) == "report_answer": # Why would this ever be None?
-                        answer_tool_id = tool_call["id"]
-                        break
-            if message['role'] == 'tool' and message['tool_call_id'] == answer_tool_id:
+            if message["role"] == "assistant" and message.get("tool_calls"):
+                for tc in message["tool_calls"]:
+                    if tc.get("function", {}).get("name") == "report_answer":
+                        answer_tool_id = tc["id"]; break
+            if message["role"] == "tool" and message.get("tool_call_id") == answer_tool_id:
                 return True
         return super().check_finished()
-    
+
+    def _compare_field(self, ans: Dict[str, Any], key: str) -> bool:
+        try:
+            text = clean_math(ans.get(key))
+            a = get_latex_expr(text)
+            b = get_latex_expr(self.reference_answer.get(key))
+            return compare_latex(a, b)
+        except Exception:
+            return False
+
     def get_metrics(self):
+        base = super().get_metrics()
         reported_answer = self.get_reported_answer_content()
         if not reported_answer:
-            return {"gave_answer": False, **super().get_metrics()}
-        
+            self.record_failure(FailureCode.ANSWER_NOT_PROVIDED, "No `report_answer` payload to grade")
+            base.update({"gave_answer": False, "failure_report": self.get_failure_report()})
+            return base
+
+        # Parse outer tool payload
         try:
-            answer_json = json.loads(reported_answer)
-            answer = answer_json.get("answer")
-            if isinstance(answer, str):
-                answer = json.loads(answer)
-            d_S1_dt = get_latex_expr(answer.get("d[S_1]/dt"))
-            d_S2_dt = get_latex_expr(answer.get("d[S_2]/dt"))
-            d_ES1_dt = get_latex_expr(answer.get("d[ES_1]/dt"))
-            d_ES2_dt = get_latex_expr(answer.get("d[ES_2]/dt"))
-            d_P1_dt = get_latex_expr(answer.get("d[P_1]/dt"))
-            d_P2_dt = get_latex_expr(answer.get("d[P_2]/dt"))
-            d_S1_dt_ref = get_latex_expr(reference_answer.get("d[S_1]/dt"))
-            d_S2_dt_ref = get_latex_expr(reference_answer.get("d[S_2]/dt"))
-            d_ES1_dt_ref = get_latex_expr(reference_answer.get("d[ES_1]/dt"))
-            d_ES2_dt_ref = get_latex_expr(reference_answer.get("d[ES_2]/dt"))
-            d_P1_dt_ref = get_latex_expr(reference_answer.get("d[P_1]/dt"))
-            d_P2_dt_ref = get_latex_expr(reference_answer.get("d[P_2]/dt"))
-            
-            is_correct = compare_latex(d_S1_dt, d_S1_dt_ref) and compare_latex(d_S2_dt, d_S2_dt_ref) and compare_latex(d_ES1_dt, d_ES1_dt_ref) and compare_latex(d_ES2_dt, d_ES2_dt_ref) and compare_latex(d_P1_dt, d_P1_dt_ref) and compare_latex(d_P2_dt, d_P2_dt_ref)
-            
-            return {
-                "gave_answer": True,
-                "correct": is_correct,
-                "d_S1_dt_correct": compare_latex(d_S1_dt, d_S1_dt_ref),
-                "d_S2_dt_correct": compare_latex(d_S2_dt, d_S2_dt_ref),
-                "d_ES1_dt_correct": compare_latex(d_ES1_dt, d_ES1_dt_ref),
-                "d_ES2_dt_correct": compare_latex(d_ES2_dt, d_ES2_dt_ref),
-                "d_P1_dt_correct": compare_latex(d_P1_dt, d_P1_dt_ref),
-                "d_P2_dt_correct": compare_latex(d_P2_dt, d_P2_dt_ref),
-                **super().get_metrics()
-            }
-        except Exception:
-            print(f'Error parsing answer: {reported_answer}')
-            return super().get_metrics()
+            outer = json.loads(reported_answer)
+        except Exception as e:
+            self.record_failure(FailureCode.BAD_JSON, "Tool payload not valid JSON",
+                                payload_preview=str(reported_answer)[:400], error=str(e))
+            base.update({"gave_answer": True, "failure_report": self.get_failure_report()})
+            return base
+
+        # Inner "answer" may be dict or stringified; coerce robustly
+        ans_obj, warns = coerce_answer_object(outer.get("answer"))
+        if not isinstance(ans_obj, dict):
+            self.record_failure(FailureCode.ANSWER_PARSE_ERROR, "`answer` not parseable into object",
+                                parse_warnings=warns, payload_preview=str(outer.get("answer"))[:400])
+            base.update({"gave_answer": True, "failure_report": self.get_failure_report()})
+            return base
+
+        # Required keys
+        required = ["d[S_1]/dt","d[S_2]/dt","d[ES_1]/dt","d[ES_2]/dt","d[P_1]/dt","d[P_2]/dt"]
+        missing = [k for k in required if k not in ans_obj]
+        if missing:
+            self.record_failure(FailureCode.ANSWER_PARSE_ERROR, "Missing required key(s)",
+                                missing_keys=missing, parse_warnings=warns)
+            base.update({"gave_answer": True, "failure_report": self.get_failure_report()})
+            return base
+
+        # Per-field comparisons
+        flags = { f"{k}_correct": self._compare_field(ans_obj, k) for k in required }
+        is_correct = all(flags.values())
+        if not is_correct:
+            self.record_failure(FailureCode.WRONG_ANSWER, "One or more rate equations differ",
+                                details=flags, parse_warnings=warns)
+
+        base.update({
+            "gave_answer": True,
+            "correct": is_correct,
+            **flags,
+            "parse_warnings": warns,
+            "failure_report": self.get_failure_report(),
+        })
+        return base
 
     def get_nl_rubric(self):
         return RUBRIC
 
+
 if __name__ == "__main__":
     import asyncio
-    from art.rewards.ruler import ruler_score_group
-    from art import Trajectory, TrajectoryGroup
     from src.adapters.art_adapter import ArtAdapter
-    
-    trajectories = []
-    for i in range(3):
-        adapter = ArtAdapter(EGCProblem5p1p1Scenario(
-            scenario_name="EGCProblem5p1p1",
-            prompt=PROMPT
-        ), step=i)
-        trajectory = asyncio.run(adapter.rollout())
-        trajectories.append(trajectory)
-        
-    group = TrajectoryGroup(trajectories=trajectories)
-    scored_groups = asyncio.run(ruler_score_group(group, rubric=RUBRIC))
 
-    for trajectory in scored_groups.trajectories:
-        print('-'*100)
-        print(trajectory.logs)
-        print(trajectory.reward)
-        print('-'*100)
-    
+    adapter = ArtAdapter(EGCProblem5p1p1Scenario(
+        scenario_name="EGCProblem5p1p1",
+        prompt=PROMPT
+    ), step=0)
+    traj = asyncio.run(adapter.rollout())
+    print(traj)

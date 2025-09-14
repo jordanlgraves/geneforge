@@ -5,7 +5,7 @@ from typing import Any, Dict, Optional
 
 from litellm import acompletion
 
-from src.scenarios.scenario import Scenario
+from src.scenarios.scenario import FailureCode, Scenario
 from src.tool_registry import tool_functions
 
 
@@ -48,10 +48,17 @@ class ReportAnswerScenario(Scenario):
         if not self._is_answer_reported():
             final_response = await self._request_report_answer_followup()
         
+        if not self._is_answer_reported():
+            self.record_failure(
+                FailureCode.NO_REPORT_ANSWER,
+                "No `report_answer` call even after follow-up",
+                followup_prompt=self.followup_prompt
+            )
+        
         self._on_finished()
         return final_response
 
-    async def _request_report_answer_followup(self) -> str:
+    async def _request_report_answer_followup(self) -> Optional[str]:
         """
         Send a single follow-up asking the assistant to use `report_answer` and
         process at most one assistant turn with any tool calls.
@@ -77,6 +84,9 @@ class ReportAnswerScenario(Scenario):
             self._execute_tool_calls(assistant_msg)
 
             rounds += 1
+        if not self._is_answer_reported():
+            self.record_failure(FailureCode.NO_REPORT_ANSWER,
+                                "Follow-up completed but no `report_answer` tool call present")
         return self.get_reported_answer_content()
 
 

@@ -1,8 +1,8 @@
 import json
-import math
 from src.latex_utils import get_latex_expr, compare_latex
 from src.scenarios.report_answer_scenario import ReportAnswerScenario
-
+from src.scenarios.scenario import FailureCode
+from src.utils.answer_parsing import coerce_answer_object
 
 PROMPT = """Speedup for incoherent type-1 FFL (I1-FFL):
 
@@ -11,14 +11,17 @@ Compare response time to simple regulation with production β_{2}. Assume equal 
 
 Use the `report_answer` tool to submit JSON:
 {
-  "T_simple": "...",       # latex for simple response time to reach half steady-state
-  "T_I1FFL": "...",       # latex for I1-FFL response time
-  "speedup": "..."        # latex for ratio T_simple / T_I1FFL
+  "T_simple": "...",   # latex for simple response time (half steady-state)
+  "T_I1FFL": "...",    # latex for I1-FFL response time
+  "speedup": "..."     # latex for ratio T_simple / T_I1FFL
 }
 """
+
 REFERENCE_T_SIMPLE = r"log(2)/\alpha"
 REFERENCE_T_I1FFL = r"\frac{\beta_{2}}{2\beta_{1}\alpha}"
 REFERENCE_SPEEDUP = r"2log(2) \frac{\beta_{1}}{\beta_{2}}"
+RUBRIC = None
+
 
 class IntroToSysEng3p13(ReportAnswerScenario):
     def _process_prompt(self, prompt: str):
@@ -28,42 +31,61 @@ class IntroToSysEng3p13(ReportAnswerScenario):
         return self._is_answer_reported() or super().check_finished()
 
     def get_metrics(self):
+        base = super().get_metrics()
         reported_answer = self.get_reported_answer_content()
         if not reported_answer:
-            return {"gave_answer": False, **super().get_metrics()}
-        try:
-            answer_json = json.loads(reported_answer)
-            answer = answer_json.get("answer", {})
-            answer = json.loads(answer)
-            
-            t_simple = answer.get("T_simple", None)
-            t_i1ffl = answer.get("T_I1FFL", None)
-            speedup = answer.get("speedup", None)
-            t_simple_expr = get_latex_expr(t_simple)
-            t_i1ffl_expr = get_latex_expr(t_i1ffl)
-            speedup_expr = get_latex_expr(speedup)
-            
-            reference_t_simple = get_latex_expr(REFERENCE_T_SIMPLE)
-            reference_t_i1ffl = get_latex_expr(REFERENCE_T_I1FFL)
-            reference_speedup = get_latex_expr(REFERENCE_SPEEDUP)
-            
-            t_simple_correct = compare_latex(t_simple_expr, reference_t_simple)
-            t_i1ffl_correct = compare_latex(t_i1ffl_expr, reference_t_i1ffl)
-            speedup_correct = compare_latex(speedup_expr, reference_speedup)
-            is_correct = t_simple_correct and t_i1ffl_correct and speedup_correct
-            return {
-                "is_correct": is_correct,
-                "gave_answer": True,
-                "T_simple_correct": t_simple_correct,
-                "T_I1FFL_correct": t_i1ffl_correct,
-                "speedup_correct": speedup_correct,
-                **super().get_metrics(),
-            }
-        except Exception as e:
-            print(f'Error parsing answer: {reported_answer}')
-            print(e)
-            return super().get_metrics()
+            self.record_failure(FailureCode.ANSWER_NOT_PROVIDED, "No `report_answer` payload to grade")
+            base.update({"gave_answer": False, "failure_report": self.get_failure_report()})
+            return base
 
+        # Parse outer tool payload
+        try:
+            payload = json.loads(reported_answer)
+        except Exception as e:
+            self.record_failure(FailureCode.BAD_JSON, "Tool payload not valid JSON",
+                                payload_preview=str(reported_answer)[:400], error=str(e))
+            base.update({"gave_answer": True, "failure_report": self.get_failure_report()})
+            return base
+
+        # Robustly parse inner "answer"
+        ans_obj, warnings = coerce_answer_object(payload.get("answer"))
+        if not isinstance(ans_obj, dict):
+            self.record_failure(FailureCode.ANSWER_PARSE_ERROR, "`answer` not parseable into object",
+                                payload_preview=str(payload.get("answer"))[:400],
+                                parse_warnings=warnings)
+            base.update({"gave_answer": True, "failure_report": self.get_failure_report()})
+            return base
+
+        # Compare LaTeX expressions
+        def check(key, ref):
+            try:
+                return compare_latex(get_latex_expr(ans_obj.get(key)), get_latex_expr(ref))
+            except Exception as e:
+                self.record_failure(FailureCode.ANSWER_PARSE_ERROR,
+                                    f"LaTeX parse failed for {key}", error=str(e))
+                return False
+
+        t_simple_ok = check("T_simple", REFERENCE_T_SIMPLE)
+        t_i1ffl_ok = check("T_I1FFL", REFERENCE_T_I1FFL)
+        speedup_ok = check("speedup", REFERENCE_SPEEDUP)
+
+        ok = t_simple_ok and t_i1ffl_ok and speedup_ok
+        if not ok:
+            self.record_failure(FailureCode.WRONG_ANSWER, "I1-FFL timing/speedup expressions incorrect",
+                                details={"T_simple_correct": t_simple_ok,
+                                         "T_I1FFL_correct": t_i1ffl_ok,
+                                         "speedup_correct": speedup_ok})
+
+        base.update({
+            "is_correct": ok,
+            "gave_answer": True,
+            "T_simple_correct": t_simple_ok,
+            "T_I1FFL_correct": t_i1ffl_ok,
+            "speedup_correct": speedup_ok,
+            "parse_warnings": warnings,
+            "failure_report": self.get_failure_report(),
+        })
+        return base
 
 
 if __name__ == "__main__":
@@ -73,10 +95,8 @@ if __name__ == "__main__":
     scenario = IntroToSysEng3p13(
         scenario_name="IntroToSysEng3p13",
         prompt=PROMPT,
-        use_reasoning_model=True,
     )
     adapter = ArtAdapter(scenario, step=0)
     asyncio.run(adapter.rollout())
     print(adapter.scenario.get_metrics())
     print("Done")
-

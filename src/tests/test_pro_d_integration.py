@@ -14,7 +14,7 @@ from src.integrations.pro_d_integration import (
     ProDIntegration,
     DEFAULT_MODEL_PATH
 )
-from src.utils import extract_id_ecoli_spacer
+from src.utils.bio import extract_id_ecoli_spacer
 
 class TestProDIntegration(unittest.TestCase):
     """

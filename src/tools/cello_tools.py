@@ -557,7 +557,7 @@ class CreateCustomUcfTool(Tool):
                                 promoter_seq = col.get("dnasequence")
                                 if promoter_seq and part_id_or_sequence.lower() in promoter_seq.lower():
                                     # Could be this one
-                                    from src.utils import extract_id_ecoli_spacer
+                                    from src.utils.bio import extract_id_ecoli_spacer
                                     spacer = extract_id_ecoli_spacer(part_id_or_sequence)
                                     if spacer:
                                         part_id = col.get("name")

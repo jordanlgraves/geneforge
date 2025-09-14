@@ -1,7 +1,8 @@
 import json
 from src.latex_utils import get_latex_expr, compare_latex
 from src.scenarios.report_answer_scenario import ReportAnswerScenario
-
+from src.scenarios.scenario import FailureCode
+from src.utils.answer_parsing import coerce_answer_object
 
 PROMPT = """Coherent type-1 FFL (C1-FFL) with OR logic at Z:
 
@@ -15,12 +16,13 @@ Use the `report_answer` tool to submit JSON:
 {
   "T_ON": "...",      # latex expression for T_ON
   "T_OFF": "...",     # expression for T_OFF in terms of Y_{m}^* level and K_YZ
-  "use_case": "..."   # short text
+  "use_case": "..."   # short text (any short text is acceptable)
 }
 """
 
 REF_T_ON = r"0"
 REF_T_OFF = r"\frac{1}{\alpha}log(\frac{Y^*_{m}}{K_{YZ}})"
+RUBRIC = None
 
 
 class IntroToSysEng3p7(ReportAnswerScenario):
@@ -31,40 +33,60 @@ class IntroToSysEng3p7(ReportAnswerScenario):
         return self._is_answer_reported() or super().check_finished()
 
     def get_metrics(self):
+        base = super().get_metrics()
         reported = self.get_reported_answer_content()
         if not reported:
-            return {"gave_answer": False, **super().get_metrics()}
-        try:
-            answer_json = json.loads(reported)
-            answer = answer_json.get("answer", {})
-            answer = json.loads(answer)
-            
-            t_on = answer.get("T_ON", None)
-            t_off = answer.get("T_OFF", None)
-            use_case = answer.get("use_case", None)
-            
-            t_on_expr = get_latex_expr(t_on)
-            t_off_expr = get_latex_expr(t_off)
-            reference_t_on = get_latex_expr(REF_T_ON)
-            reference_t_off = get_latex_expr(REF_T_OFF)
-            
-            t_on_correct = compare_latex(t_on_expr, reference_t_on)
-            t_off_correct = compare_latex(t_off_expr, reference_t_off)
-            
-            return {
-                "gave_answer": True,
-                "correct": t_on_correct and t_off_correct,
-                "T_ON_correct": t_on_correct,
-                "T_OFF_correct": t_off_correct,
-                **super().get_metrics(),
-            }
-            
-        except Exception as e:
-            print(f'Error parsing answer: {reported}')
-            print(e)
-            return super().get_metrics()
+            self.record_failure(FailureCode.ANSWER_NOT_PROVIDED, "No `report_answer` payload to grade")
+            base.update({"gave_answer": False, "failure_report": self.get_failure_report()})
+            return base
 
-       
+        # Parse outer tool payload
+        try:
+            payload = json.loads(reported)
+        except Exception as e:
+            self.record_failure(FailureCode.BAD_JSON, "Tool payload not valid JSON",
+                                payload_preview=str(reported)[:400], error=str(e))
+            base.update({"gave_answer": True, "failure_report": self.get_failure_report()})
+            return base
+
+        # Robustly parse inner "answer"
+        ans_obj, warnings = coerce_answer_object(payload.get("answer"))
+        if not isinstance(ans_obj, dict):
+            self.record_failure(FailureCode.ANSWER_PARSE_ERROR, "`answer` not parseable into object",
+                                payload_preview=str(payload.get("answer"))[:400],
+                                parse_warnings=warnings)
+            base.update({"gave_answer": True, "failure_report": self.get_failure_report()})
+            return base
+
+        # Compare LaTeX
+        try:
+            t_on_ok = compare_latex(get_latex_expr(ans_obj.get("T_ON")),
+                                    get_latex_expr(REF_T_ON))
+        except Exception as e:
+            self.record_failure(FailureCode.ANSWER_PARSE_ERROR, "LaTeX parse failed for T_ON", error=str(e))
+            t_on_ok = False
+
+        try:
+            t_off_ok = compare_latex(get_latex_expr(ans_obj.get("T_OFF")),
+                                     get_latex_expr(REF_T_OFF))
+        except Exception as e:
+            self.record_failure(FailureCode.ANSWER_PARSE_ERROR, "LaTeX parse failed for T_OFF", error=str(e))
+            t_off_ok = False
+
+        ok = t_on_ok and t_off_ok
+        if not ok:
+            self.record_failure(FailureCode.WRONG_ANSWER, "C1-FFL delay expressions incorrect",
+                                details={"T_ON_correct": t_on_ok, "T_OFF_correct": t_off_ok})
+
+        base.update({
+            "gave_answer": True,
+            "correct": ok,
+            "T_ON_correct": t_on_ok,
+            "T_OFF_correct": t_off_ok,
+            "parse_warnings": warnings,
+            "failure_report": self.get_failure_report(),
+        })
+        return base
 
 
 if __name__ == "__main__":
@@ -74,10 +96,8 @@ if __name__ == "__main__":
     scenario = IntroToSysEng3p7(
         scenario_name="IntroToSysEng3p7",
         prompt=PROMPT,
-        use_reasoning_model=True,
     )
     adapter = ArtAdapter(scenario, step=0)
     asyncio.run(adapter.rollout())
     print(adapter.scenario.get_metrics())
     print("Done")
-
